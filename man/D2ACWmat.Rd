@@ -1,0 +1,140 @@
+\name{D2ACWmat}
+\alias{D2ACWmat}
+\alias{D2ACWmat.d}
+\alias{D2ACWmat.l}
+\title{Compute 2-D discrete autocorrelation wavelets but return in array form.}
+\description{
+This function computes two-dimensional discrete autocorrelation wavelets, but results in a matrix form, rather than a list.
+}
+\usage{
+D2ACWmat(J, filter.number = 10, family = "DaubLeAsymm", switch = "direction", OPLENGTH = 1e+05)
+}
+\arguments{
+  \item{J}{Discrete autocorrelation wavelets will be computed for scales -1 up to scale J within each decomposition direction (horiznotal, vertical and diagonal). This number should be a negative integer.}
+  \item{filter.number}{The index of the wavelet used to compute the discrete autocorrelation wavelets.}
+  \item{family}{The family of wavelet used to compute the discrete autocorrelation wavelets.}
+  \item{switch}{Allows the user to define how they wish their inner product matrix to be formed. There are two available options:
+
+\code{switch = "direction"} - structures the matrix by scale within each decomposition direction. Thus, the ordering goes as follows (-1, V), (-2, V), ...
+
+
+\code{switch} = "direction"} - structures the matrix by direction within each scale. Thus the ordering is as follows (-1,V), (-1, H), (-1, D), (-2, V), (-2, H), ...
+  \item{OPLENGTH}{This integer variable defines some workspace of length OPLENGTH. The code uses this workspace. If the workspace is not long enough then the routine will stop and probably tell you what OPLENGTH should be set to.}
+}
+\details{
+This function computes the 2-D discrete autocorrelation wavelets. It does not have any direct use for space-scale analysis (e.g. cddews). However, it 
+is useful to be able to numerically compute the discrete autocorrelation wavelets for arbitrary wavelets and scales as there are still unanswered 
+theoretical questions concerning the wavelets. The method is a brute force -- a more elegant solution would probably be based on interpolatory 
+schemes (see Eckley and Nason (2005) for example).
+
+This routine returns only the values of the discrete autocorrelation wavelets and not their spatial positions. Each discrete autocorrelation wavelet 
+is compactly supported with the support determined from the compactly supported wavelet that generates it. See the paper by Eckley, Nason, and 
+Treloar which defines the spatial scale (but basically the finer scale discrete autocorrelation wavelets are interpolated versions of the coarser 
+ones. When one goes from scale j to j-1 (negative j remember) an extra point is inserted between all of the old points and the discrete 
+autocorrelation wavelet value is computed there. Thus as J tends to negative infinity the numerical approximation tends towards the continuous 
+autocorrelation wavelet.
+
+This function stores any 2-D discrete autocorrelation wavelet sets that it computes. The Psiname2D function defines the naming convention for 
+objects returned by this function. The storage mechanism is not as advanced as that for ipndacw and its subsidiary routines rmname and firstdot but helps a 
+little bit.
+
+Sometimes it is useful to have the discrete autocorrelation wavelets stored in matrix form. The D2ACWmat does this. 
+}
+
+\value{
+A matrix containing -3J sub-matrices, each of dimension 2L_J-1 x 2L_J-1, where L_J denotes the support of the coarsest discret autocorrelation 
+wavelet. Each sub-matrix, contains the values of the discrete autocorrelation wavelet for a different scale-direction pair.
+
+The middle position of each sub-matrix is the value of the discrete autocorrelation wavelet at zero --- by definition, this is always 1. The discrete 
+autocorrelation wavelet is symmetric about this point.
+
+If \code{switch="direction"}, the first -J sub-matrices contain the vertical autocorrelation wavelet coefficients, the second set of -J components 
+contains 
+the horizontal autocorrelation wavelet coefficients (scales -1, ...-J) and the last -J components constitute the diagonal autocorrelation wavelet 
+coefficients.
+
+However, if \code{switch="level"}, then the first 3 rows contain the finest scale autocorrelation wavelet coefficients in the vertical, horizontal and 
+diagonal decomposition directions respectively. The second set of 3 contains the vertical, horizontal and diagonal coefficients at scale -2 etc, etc. 
+}
+
+\references{ 
+Eckley IA, Nason GP (2005). Efficient computation of the inner-product matrix of discrete
+autocorrelation wavelets. Statistics and Computing, 15, 83-92.
+
+Eckley IA, Nason GP, Treloar RL (2010). Locally stationary elds with application to the
+modelling and analysis of image texture. Journal of the Royal Statistical Society (Series
+C), 59, (to appear).
+}
+\author{Idris Eckley}
+\seealso{\code{\link{D2ACW}}, \code{\link{D2Amat}}, \code{\link{D2autoplot}}}
+\examples{
+#
+# Let us create the discrete autocorrelation wavelets for the Haar wavelet.
+# We shall create up to scale 4.
+#
+D2ACWmat(J=-2, filter.number=1, family="DaubExPhase")
+#Computing The two-dimensional (discrete) autocorrelation coefficients: 
+#
+#The output will be structured as follows .... 
+#
+#
+#
+#Levels 1 to  2  contain the vertical autocorrelation wavelet coefficients. 
+#
+#Levels  3  to  4  contain the horizontal autocorrelation wavelet coefficients. 
+#
+#Levels  5  to  6  contain the horizontal autocorrelation wavelet coefficients. 
+#
+# 
+# 
+#Returning precomputed version
+#Returning precomputed version 
+#Returning precomputed version 
+#Took  NA  seconds 
+#         [,1]   [,2]    [,3]  [,4]    [,5]   [,6]    [,7] 
+# [1,]  0.0000  0.000  0.0000  0.00  0.0000  0.000  0.0000
+# [2,]  0.0000  0.000  0.0000  0.00  0.0000  0.000  0.0000
+# [3,]  0.0000  0.000 -0.2500 -0.50 -0.2500  0.000  0.0000
+# [4,]  0.0000  0.000  0.5000  1.00  0.5000  0.000  0.0000
+# [5,]  0.0000  0.000 -0.2500 -0.50 -0.2500  0.000  0.0000
+# [6,]  0.0000  0.000  0.0000  0.00  0.0000  0.000  0.0000
+# [7,]  0.0000  0.000  0.0000  0.00  0.0000  0.000  0.0000
+# [8,] -0.0625 -0.125 -0.1875 -0.25 -0.1875 -0.125 -0.0625
+# [9,] -0.1250 -0.250 -0.3750 -0.50 -0.3750 -0.250 -0.1250
+#[10,]  0.0625  0.125  0.1875  0.25  0.1875  0.125  0.0625
+#[11,]  0.2500  0.500  0.7500  1.00  0.7500  0.500  0.2500
+#[12,]  0.0625  0.125  0.1875  0.25  0.1875  0.125  0.0625
+#[13,] -0.1250 -0.250 -0.3750 -0.50 -0.3750 -0.250 -0.1250
+#[14,] -0.0625 -0.125 -0.1875 -0.25 -0.1875 -0.125 -0.0625
+#[15,]  0.0000  0.000  0.0000  0.00  0.0000  0.000  0.0000
+#[16,]  0.0000  0.000  0.0000  0.00  0.0000  0.000  0.0000
+#[17,]  0.0000  0.000 -0.2500  0.50 -0.2500  0.000  0.0000
+#[18,]  0.0000  0.000 -0.5000  1.00 -0.5000  0.000  0.0000
+#[19,]  0.0000  0.000 -0.2500  0.50 -0.2500  0.000  0.0000
+#[20,]  0.0000  0.000  0.0000  0.00  0.0000  0.000  0.0000
+#[21,]  0.0000  0.000  0.0000  0.00  0.0000  0.000  0.0000
+#[22,] -0.0625 -0.125  0.0625  0.25  0.0625 -0.125 -0.0625
+#[23,] -0.1250 -0.250  0.1250  0.50  0.1250 -0.250 -0.1250
+#[24,] -0.1875 -0.375  0.1875  0.75  0.1875 -0.375 -0.1875
+#[25,] -0.2500 -0.500  0.2500  1.00  0.2500 -0.500 -0.2500
+#[26,] -0.1875 -0.375  0.1875  0.75  0.1875 -0.375 -0.1875
+#[27,] -0.1250 -0.250  0.1250  0.50  0.1250 -0.250 -0.1250
+#[28,] -0.0625 -0.125  0.0625  0.25  0.0625 -0.125 -0.0625
+#[29,]  0.0000  0.000  0.0000  0.00  0.0000  0.000  0.0000
+#[30,]  0.0000  0.000  0.0000  0.00  0.0000  0.000  0.0000
+#[31,]  0.0000  0.000  0.2500 -0.50  0.2500  0.000  0.0000
+#[32,]  0.0000  0.000 -0.5000  1.00 -0.5000  0.000  0.0000
+#[33,]  0.0000  0.000  0.2500 -0.50  0.2500  0.000  0.0000
+#[34,]  0.0000  0.000  0.0000  0.00  0.0000  0.000  0.0000
+#[35,]  0.0000  0.000  0.0000  0.00  0.0000  0.000  0.0000
+#[36,]  0.0625  0.125 -0.0625 -0.25 -0.0625  0.125  0.0625
+#[37,]  0.1250  0.250 -0.1250 -0.50 -0.1250  0.250  0.1250
+#[38,] -0.0625 -0.125  0.0625  0.25  0.0625 -0.125 -0.0625
+#[39,] -0.2500 -0.500  0.2500  1.00  0.2500 -0.500 -0.2500
+#[40,] -0.0625 -0.125  0.0625  0.25  0.0625 -0.125 -0.0625
+#[41,]  0.1250  0.250 -0.1250 -0.50 -0.1250  0.250  0.1250
+#[42,]  0.0625  0.125 -0.0625 -0.25 -0.0625  0.125  0.0625
+}
+
+
+\keyword{models}

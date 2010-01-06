@@ -1,0 +1,74 @@
+\name{PhiJ}
+\alias{PhiJ}
+\title{Compute discrete autocorrelation scaling function.}
+\description{
+  This function computes discrete autocorrelation scaling function.
+}
+\usage{
+PhiJ(J, filter.number = 10, family = "DaubLeAsymm", tol = 1e-100, OPLENGTH = 2000, verbose = FALSE)
+}
+%- maybe also 'usage' for other objects documented here.
+\arguments{
+  \item{J}{Discrete autocorrelation wavelets will be computed for scales -1 up to scale J. This number should be a negative integer.}
+  \item{filter.number}{The index of the wavelet used to compute the discrete autocorrelation wavelets.}
+  \item{family}{The family of wavelet used to compute the discrete autocorrelation wavelets.}
+  \item{tol}{In the brute force computation for Daubechies compactly supported wavelets many inner product computations are performed. This tolerance discounts any results which are smaller than tol which effectively defines how long the inner product/autocorrelation products are.}
+  \item{OPLENGTH}{    This integer variable defines some workspace of length OPLENGTH. The code uses this workspace. If the workspace is not long enough then the routine will stop and probably tell you what OPLENGTH should be set to.
+}
+  \item{verbose}{A logical variable. If set to \code{TRUE} certain helpful statements are printed to screen during execution of this  fundcion. }
+}
+\details{
+This function computes the discrete autocorrelation scalingfunction. It does not have any direct use for location-scale analysis (e.g. ewspec). However, it is useful to be able to numerically compute the discrete autocorrelation wavelets for arbitrary wavelets and scales as there are still unanswered theoretical questions concerning the wavelets. The method is a brute force -- a more elegant solution would probably be based on interpolatory schemes.
+
+Horizontal scale. This routine returns only the values of the discrete autocorrelation scaling function and not their horiztonal positions. Each discrete autocorrelation scaling function is compactly supported with the support determined from the compactly supported wavelet that generates it. See the paper by Nason, von Sachs and Kroisandt which defines the horiztonal scale (but basically the finer scale discrete autocorrelation scaling function are interpolated versions of the coarser ones. When one goes from scale j to j-1 (negative j remember) an extra point is inserted between all of the old points and the discrete autocorrelation scaling function value is computed there. Thus as J tends to negative infinity the numerical approximation tends towards the continuous autocorrelation scaling function.
+
+This function stores any discrete autocorrelation wavelet sets that it computes. The storage mechanism is not as advanced as that for ipndacw and its subsidiary routines rmget and firstdot but helps a little bit. The PhinameIE function defines the naming convention for objects returned by this function.
+
+Sometimes it is useful to have the discrete autocorrelation scaling functions stored in matrix form. The PhiJmat does this. 
+}
+
+\value{
+A list containing -J components, numbered from 1 to -J. The [[j]]th component contains the discrete autocorrelation scaling function at scale j.
+}
+
+\references{ Eckley, I. A., Nason, G. P. and Treloar (2009). 
+Locally stationary wavelet fields with application
+to the modelling and analysis of image texture. Technical Report, Department of Mathematics and Statistics, Lancaster University.}
+\author{Idris Eckley}
+
+\seealso{\code{\link{PsiJ}}}
+\examples{
+#
+# Let us create the discrete autocorrelation wavelets for the Haar wavelet.
+# We shall create up to scale 4.
+#
+ PhiJ(-4, filter.number=1, family="DaubExPhase")
+#[[1]]:
+#[1] 0.5  1.0 0.5
+#
+#[[2]]:
+#[1] 0.25 0.50  0.75  1.00  0.75 0.50 0.25
+#
+#[[3]]:
+# [1] 0.125 0.250 0.375 0.500 0.625  0.750  0.875  1.000  0.875  0.750
+#[11] 0.625 0.500 0.375 0.250 0.125#
+#
+#[[4]]:
+# [1] 0.0625 0.1250 0.1875 0.2500 0.3125 0.3750 0.4375 0.5000 0.5625
+#[10] 0.6250  0.6875  0.7500  0.8125  0.8750  0.9375  1.0000  0.9375  0.8750
+#[19]  0.8125  0.7500  0.6875 0.6250 0.5625 0.5000 0.4375 0.3750 0.3125
+#[28] 0.2500 0.1875 0.1250 0.0625
+#
+# You can plot the fourth component to get an idea of what the
+# autocorrelation wavelet looks like.
+#
+# Note that the previous call stores the autocorrelation wavelet
+# in D1.Phi.4.1.DaubExPhase. This is mainly so that it doesn't have to
+# be recomputed.  
+#
+# Note that the x-coordinates in the following are approximate.
+#
+ plot(seq(from=-1, to=1, length=length(D1Phi.4.1.DaubExPhase[[4]])),D1Phi.4.1.DaubExPhase[[4]], type="l",xlab = "t", ylab = "Haar Autocorrelation Scaling function")
+}
+
+\keyword{models}

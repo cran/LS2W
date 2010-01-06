@@ -1,0 +1,45 @@
+\name{Haar2MA.diag}
+\alias{Haar2MA.diag}
+\title{Generate 2-D Haar MA process (diagonal/vertical/horizontal direction).}
+\description{
+These functions generate an arbitrary number of observations from a Haar MA process of any order with a particular variance. We will focus here on 
+\code{Haar2MA.diag} --- the routine which generates processes having spectral structure solely in the diagonal decomposition direction.
+}
+\usage{
+Haar2MA.diag(n, sd = 1, order = 5)
+}
+%- maybe also 'usage' for other objects documented here.
+\arguments{
+  \item{n}{The dimension of the realisation that you want to create. Note that \code{n} does NOT have to be a power of two, though it is square 
+(nxn).}
+  \item{sd}{The standard deviation of the innovations.}
+  \item{order}{The order of the MA process.}
+}
+\details{
+A two-dimensional Haar MA process is a special kind of moving-average (MA) field. A \emph{diagonal} Haar MA process of order $k$ is a MA field of order $2^k-1$, the coefficients of the process being given by the filter coefficients of the two-dimensional, discrete Haar wavelet at various scales within the diagonal direction. For example: the diagonal Haar MA field of order 1 is an MA process of order 1. 
+It is possible to define such processes for other wavelets as well.
+
+}
+\value{
+A matrix containing a realisation of the specified dimension, order and standard deviation.
+}
+\references{ 
+Eckley IA, Nason GP, Treloar RL (2010). Locally stationary elds with application to the
+modelling and analysis of image texture. Journal of the Royal Statistical Society (Series
+C), 59, (to appear).
+}
+\author{Idris Eckley}
+\seealso{\code{\link{HaarMontage}}}
+\examples{
+#
+# Generate a realisation of a diagonal component 2-D MA field
+# of order 4.
+#
+image1 <- Haar2MA.diag(n=128, sd=3, order=4)
+#
+#
+#
+}
+% Add one or more standard keywords, see file 'KEYWORDS' in the
+% R documentation directory.
+\keyword{models}

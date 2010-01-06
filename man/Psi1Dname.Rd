@@ -1,0 +1,46 @@
+\name{Psi1Dname}
+\alias{Psi1Dname}
+\title{Return a PsiJ list object style name.}
+\description{
+  This function returns a character string according to a particular format for naming PsiJ objects. Note that this construct is different from that used in WaveThresh as we wish to be able to differentiate between one and two-dimensional autocorrelation wavelets!
+}
+\usage{
+Psi1Dname(J, filter.number, family)
+}
+\arguments{
+  \item{J}{A negative integer representing the order of the PsiJ object.}
+  \item{filter.number}{The index number of the wavelet used to build the PsiJ object.}
+  \item{family}{The wavelet family used to build the PsiJ object.}
+}
+
+\details{
+Some of the objects computed by PsiJ take a long time to compute. Hence it is a good idea to store them and reuse them. This function generates a name according to a particular naming scheme that permits a search algorithm to easily find the matrices.
+
+Each object has three defining characteristics: its order, filter.number and family. Each of these three characteristics are concatenated together to form a name.
+
+This function performs exactly the same role as rmname except for objects produced by PsiJ. 
+}
+
+\value{
+A character string containing the name of an object according to a particular naming scheme.
+}
+\references{Nason, G.P., von Sachs, R. and Kroisandt, G. (1998). Wavelet processes and adaptive estimation of the evolutionary wavelet spectrum. Technical Report, Department of Mathematics University of Bristol/ Fachbereich Mathematik, Kaiserslautern.}
+\author{Idris Eckley}
+\seealso{\code{\link{PsiJ}},\code{\link{Psi1Dname}}}
+\examples{
+#
+# What's the name of the order 4 Haar PsiJ object?
+#
+ Psiname(-4, filter.number=1, family="DaubExPhase")
+#[1] "D1Psi.4.1.DaubExPhase"
+#
+# What's the name of the order 12 Daubechies least-asymmetric wavelet PsiJ
+# with 7 vanishing moments?
+#
+ Psiname(-12, filter.number=7, family="DaubLeAsymm")             
+#[1] "D1Psi.12.7.DaubLeAsymm"
+}
+
+% Add one or more standard keywords, see file 'KEYWORDS' in the
+% R documentation directory.
+\keyword{models}
