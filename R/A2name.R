@@ -8,15 +8,13 @@ function(J, filter.number, family, switch = "direction")
 #
 if(J >= 0.) stop("J must be a negative integer")
 if(switch == "direction") {
-return(paste("D2Amat.d.",  - J, ".", filter.number, ".", family,
-sep = ""))
+   return(paste("D2Amat.d.",  - J, ".", filter.number, ".", family, sep = ""))
 }
 if(switch == "level") {
-return(paste("D2Amat.l.",  - J, ".", filter.number, ".", family,
-sep = ""))
+   return(paste("D2Amat.l.",  - J, ".", filter.number, ".", family, sep = ""))
 }
 else {
-stop("Muppet! You can only allow switch to equal direction or level!"
+  stop("You can only allow switch to equal direction or level!"
 )
 }
 }

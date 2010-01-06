@@ -26,37 +26,34 @@ if(verbose == TRUE) cat("Computing ipndacw\n")
 #
 if(verbose) now <- proc.time()[1.:2.]
 if(J >= 0.)
-stop("J must be negative integer")
+   stop("J must be negative integer")
 if(J - round(J) != 0.)
-stop("J must be an integer")
+   stop("J must be an integer")
 #
 #
 if(switch != "direction" && switch != "level") #
-stop("Sorry, but switch can only take the value direction or level! Try again."
-)
+   stop("Sorry, but switch can only take the value direction or level! Try again.")
 if(switch == "direction")
-Aorig <- A2name(J = J, filter.number = filter.number, family = 
-family, switch = switch)
+   Aorig <- A2name(J = J, filter.number = filter.number, family = family, switch = switch)
 #
 # See if matrix already exists
 #
-if(switch == "level") Aorig <- #
-A2name(J = J, filter.number = filter.number, family = family,
-switch = switch)
+if(switch == "level") 
+   Aorig <- A2name(J = J, filter.number = filter.number, family = family, switch = switch)
 #
 #
 #If it doesn't, then we calculate the matrix as follows.
 #
 if(exists(Aorig)) {
-cat("Returning precomputed version \n")
-if(verbose) {
-speed <- proc.time()[1.:2.] - now
-cat("Took ", sum(speed), " seconds \n")
-}
-return(get(Aorig))
+   cat("Returning precomputed version \n")
+   if(verbose) {
+      speed <- proc.time()[1.:2.] - now
+      cat("Took ", sum(speed), " seconds \n")
+   }
+   return(get(Aorig))
 }
 P <- D2ACW(J, filter.number = filter.number, family = family, OPLENGTH
- = 10000., switch = switch)
+ = OPLENGTH, switch = switch)
 J <-  - J
 #The no of rows of any element in P = 
 #the no. of it's columns.
@@ -64,20 +61,18 @@ J <-  - J
 A <- #
 matrix(0., nrow = (3. * J), ncol = (3. * J))
 for(i in 1.:(3. * J)) {
-for(j in 1.:(3. * J)) {
-tmp1 <- P[[i]]
-tmp2 <- P[[j]]
-nri <- nrow(tmp1)
-nrj <- nrow(tmp2)
-nrmin <- min(nri, nrj)
-nri2 <- (nri - nrmin)/2.
-nrj2 <- (nrj - nrmin)/2.
-tmp3 <- tmp1[(1. + nri2):(nri - nri2), (1. + nri2):
-(nri - nri2)]
-tmp4 <- tmp2[(1. + nrj2):(nrj - nrj2), (1. + nrj2):
-(nrj - nrj2)]
-A[i, j] <- sum(tmp3 * tmp4)
-}
+   for(j in 1.:(3. * J)) {
+      tmp1 <- P[[i]]
+      tmp2 <- P[[j]]
+      nri <- nrow(tmp1)
+      nrj <- nrow(tmp2)
+      nrmin <- min(nri, nrj)
+      nri2 <- (nri - nrmin)/2.
+      nrj2 <- (nrj - nrmin)/2.
+      tmp3 <- tmp1[(1. + nri2):(nri - nri2), (1. + nri2):(nri - nri2)]
+      tmp4 <- tmp2[(1. + nrj2):(nrj - nrj2), (1. + nrj2):(nrj - nrj2)]
+      A[i, j] <- sum(tmp3 * tmp4)
+   }
 }
 nm <- as.character(0.:( - (3. * J) + 1.))
 dimnames(A) <- list(nm, nm)

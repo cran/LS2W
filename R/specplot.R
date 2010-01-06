@@ -11,7 +11,7 @@ function (cddews, scaling = "by.level", arrangement = c(3,
     if (verbose == TRUE) 
         cat("Computing the wavelet spectrum \ncoefficients\n")
     enwdata <- cddews$S
-    switch <- cddews$STRUCTURE
+    switch <- cddews$structure
     J <- dim(enwdata)[1]/3
     nr <- dim(enwdata)[2]
     nc <- dim(enwdata)[3]
@@ -36,17 +36,17 @@ function (cddews, scaling = "by.level", arrangement = c(3,
                   xlabstr <- paste("Level", -i, "(vertical)")
                   image(msub1, xlab = xlabstr)
 		  if(wtitle==TRUE){
-                  title("DDEWS of", dataname)
+                  title("cddews of", dataname)
                   }
                   xlabstr <- paste("Level", -i, "(horizontal)")
                   if(wtitle==TRUE){
-                  title("DDEWS of", dataname)
+                  title("cddews of", dataname)
                   }
                   image(msub2, xlab = xlabstr)
                   xlabstr <- paste("Level", -i, "(diagonal)")
                   image(msub3, xlab = xlabstr)
                   if(wtitle==TRUE){
-                  title("DDEWS of", dataname)
+                  title("cddews of", dataname)
                   }
                 }
                 if (display == "persp") {
@@ -94,17 +94,17 @@ function (cddews, scaling = "by.level", arrangement = c(3,
                   xlabstr <- paste("Level", -i, "(vertical)")
                   image(msub1, xlab = xlabstr)
                   if(wtitle==TRUE){
-                  title("DDEWS of", dataname)
+                  title("cddews of", dataname)
                   }
                   xlabstr <- paste("Level", -i, "(horizontal)")
                   if(wtitle==TRUE){
-                  title("DDEWS of", dataname)
+                  title("cddews of", dataname)
                   }
                   image(msub2, xlab = xlabstr)
                   xlabstr <- paste("Level", -i, "(diagonal)")
                   image(msub3, xlab = xlabstr)
                   if(wtitle==TRUE){
-                  title("DDEWS of", dataname)
+                  title("cddews of", dataname)
                   }
                 }
                 if (display == "persp") {

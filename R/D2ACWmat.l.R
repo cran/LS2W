@@ -64,44 +64,43 @@ m[((3. * J - 3.) * nc + 1.):((3. * J - 2.) * nc),  ] <- tmp[1.:nc,
 #####
 # Horizontal
 for(j in 1.:(J - 1.)) {
-nrj <- nrow(P[[j]])
-ncj <- ncol(P[[j]])
-ncz <- (nc - ncj)/2.
-nrz <- (nrlocal - nrj)/2.
-z1 <- matrix(0., nrow = nrj, ncol = ncz)
-z2 <- matrix(0., nrow = nrz, ncol = nc)
-tmp1 <- matrix(0., nrow = nrj, ncol = ncj)
-tmp1 <- P[[j]]
-m[((3. * j - 3.) * nc + 1.):((3. * j - 2.) * nc),  ] <- rbind(
-z2, cbind(z1, tmp1[1.:nrj,  ], z1), z2)
+   nrj <- nrow(P[[j]])
+   ncj <- ncol(P[[j]])
+   ncz <- (nc - ncj)/2.
+   nrz <- (nrlocal - nrj)/2.
+   z1 <- matrix(0., nrow = nrj, ncol = ncz)
+   z2 <- matrix(0., nrow = nrz, ncol = nc)
+   tmp1 <- matrix(0., nrow = nrj, ncol = ncj)
+   tmp1 <- P[[j]]
+   m[((3. * j - 3.) * nc + 1.):((3. * j - 2.) * nc),  ] <- rbind(z2, cbind(z1, tmp1[1.:nrj,  ], z1), z2)
 }
 ######
 #Diag
 for(j in (J + 1.):(2. * J - 1.)) {
-i <- j - J
-nrj <- nrow(P[[j]])
-ncj <- ncol(P[[j]])
-ncz <- (nc - ncj)/2.
-nrz <- (nrlocal - nrj)/2.
-z1 <- matrix(0., nrow = nrj, ncol = ncz)
-z2 <- matrix(0., nrow = nrz, ncol = nc)
-tmp1 <- matrix(0., nrow = nrj, ncol = ncj)
-tmp1 <- P[[j]]
-m[((3. * i - 2.) * nc + 1.):((3. * i - 1.) * nc),  ] <- rbind(
-z2, cbind(z1, tmp1[1.:nrj,  ], z1), z2)
+   i <- j - J
+   nrj <- nrow(P[[j]])
+   ncj <- ncol(P[[j]])
+   ncz <- (nc - ncj)/2.
+   nrz <- (nrlocal - nrj)/2.
+   z1 <- matrix(0., nrow = nrj, ncol = ncz)
+   z2 <- matrix(0., nrow = nrz, ncol = nc)
+   tmp1 <- matrix(0., nrow = nrj, ncol = ncj)
+   tmp1 <- P[[j]]
+   m[((3. * i - 2.) * nc + 1.):((3. * i - 1.) * nc),  ] <- rbind(
+   z2, cbind(z1, tmp1[1.:nrj,  ], z1), z2)
 }
 for(j in (2. * J + 1.):(3. * J - 1.)) {
-i <- j - (2. * J)
-nrj <- nrow(P[[j]])
-ncj <- ncol(P[[j]])
-ncz <- (nc - ncj)/2.
-nrz <- (nrlocal - nrj)/2.
-z1 <- matrix(0., nrow = nrj, ncol = ncz)
-z2 <- matrix(0., nrow = nrz, ncol = nc)
-tmp1 <- matrix(0., nrow = nrj, ncol = ncj)
-tmp1 <- P[[j]]
-m[((3. * i - 1.) * nc + 1.):(3. * i * nc),  ] <- rbind(z2,
-cbind(z1, tmp1[1.:nrj,  ], z1), z2)
+   i <- j - (2. * J)
+   nrj <- nrow(P[[j]])
+   ncj <- ncol(P[[j]])
+   ncz <- (nc - ncj)/2.
+   nrz <- (nrlocal - nrj)/2.
+   z1 <- matrix(0., nrow = nrj, ncol = ncz)
+   z2 <- matrix(0., nrow = nrz, ncol = nc)
+   tmp1 <- matrix(0., nrow = nrj, ncol = ncj)
+   tmp1 <- P[[j]]
+   m[((3. * i - 1.) * nc + 1.):(3. * i * nc),  ] <- rbind(z2,
+   cbind(z1, tmp1[1.:nrj,  ], z1), z2)
 }
 m
 }

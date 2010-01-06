@@ -9,34 +9,32 @@ function(J, filter.number = 10., family = "DaubLeAsymm", tol = 1e-100, OPLENGTH
 # wavelets (see Psi1Dname or Psi2Dname)
 #
 if(verbose) {
-cat("Computing PsiJ\n")
-now <- proc.time()[1.:2.]
+   cat("Computing PsiJ\n")
+   now <- proc.time()[1.:2.]
 }
 if(J >= 0.)
-stop("J must be negative integer")
+   stop("J must be negative integer")
 if(J - round(J) != 0.)
-stop("J must be an integer")
+   stop("J must be an integer")
 #
 #See if matrix already exists. If so, return it
 #
-Psiorig <- #
-Psi1Dname(J = J, filter.number = filter.number, family = family)
+Psiorig <- Psi1Dname(J = J, filter.number = filter.number, family = family)
 #
 #
 # If it doesnt exist go create!
 # This uses the C-Code PsiJ (contained in WT.c)
 #
 if(exists(Psiorig)) {
-if(verbose)
-cat("Returning precomputed version\n")
-if(verbose) {
-speed <- proc.time()[1.:2.] - now
-cat("Took ", sum(speed), " seconds\n")
+   if(verbose)
+      cat("Returning precomputed version\n")
+   if(verbose) {
+      speed <- proc.time()[1.:2.] - now
+      cat("Took ", sum(speed), " seconds\n")
+   }
+   return(get(Psiorig))
 }
-return(get(Psiorig))
-}
-H <- filter.select(filter.number = filter.number, family = family)$
-H
+H <- filter.select(filter.number = filter.number, family = family)$H
 wout <- rep(0., OPLENGTH)
 rlvec <- rep(0.,  - J)
 error <- 0.
@@ -51,19 +49,18 @@ rlvec = as.integer(rlvec),
 error = as.integer(error),
 PACKAGE = "wavethresh")
 if(answer$error != 0.) {
-if(answer$error == 160.)
-cat("Increase ", OPLENGTH, " to be larger than ", 
-answer$lwout, "\n")
-stop(paste("Error code was ", answer$error))
+   if(answer$error == 160.)
+   cat("Increase OPLENGTH to be larger than ", answer$lwout, "\n")
+   stop(paste("Error code was ", answer$error))
 }
 if(verbose) {
-speed <- proc.time()[1.:2.] - now
-cat("Took ", sum(speed), " seconds\n")
+   speed <- proc.time()[1.:2.] - now
+   cat("Took ", sum(speed), " seconds\n")
 }
 m <- vector("list",  - J)
 lj <- c(0., cumsum(2. * answer$rlvec - 1.))
 for(j in 1.:( - J))
-m[[j]] <- answer$wout[(lj[j] + 1.):lj[j + 1.]]
+   m[[j]] <- answer$wout[(lj[j] + 1.):lj[j + 1.]]
 assign(Psiorig, m, pos = 1.)
 m
 }

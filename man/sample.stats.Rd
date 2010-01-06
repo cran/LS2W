@@ -1,0 +1,33 @@
+\name{sample.stats}
+\alias{sample.stats}
+%- Also NEED an '\alias' for EACH other topic documented here.
+\title{A function to calculate sample statistics for textured images using LS2W}
+\description{
+This is one, of many, possible ways of calculating a feature vector for a given textured image using the LS2W modelling framework. Please refer 
+to Eckley et al. (2010) for details about the texture statistic being used. This function is only 
+intended to be used with sample.stats.}
+\usage{
+sample.stats(x, n=25, size=64)
+}
+\arguments{
+\item{x}{The textured image which is going to be analysed.}
+\item{n}{The number of sub-images to be sampled from the main texture.} 
+\item{size}{The number of rows-columns required for each sub-image.}
+}
+\value{
+A matrix containing the feature vectors for each sub-image. Each row 
+contains the feature vector for one specific subimage
+}
+\references{Eckley, I.A., Nason, G.P. and Treloar, R.L. (2010) Locally stationary wavelet fields with 
+application to the modelling and analysis of image texture. J. R. Statist. Soc. Series C, 59, (to 
+appear). }
+\author{Idris Eckley}
+\seealso{\code{\link{example.ls2w}}}
+%\examples{
+%##---- Should be DIRECTLY executable !! ----
+%##-- ==>  Define data, use random,
+%##--	or do  help(data=index)  for the standard data sets.
+%}
+% Add one or more standard keywords, see file 'KEYWORDS' in the
+% R documentation directory.
+\keyword{models}

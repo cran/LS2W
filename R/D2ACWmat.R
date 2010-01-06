@@ -21,11 +21,11 @@ stop("Sorry, but switch can only take the values level and direction.\n")
 }
 if(switch == "direction") {
 return(D2ACWmat.d(J, filter.number = filter.number, family = 
-family, OPLENGTH = 100000.))
+family, OPLENGTH = OPLENGTH))
 }
 else {
 return(D2ACWmat.l(J, filter.number = filter.number, family = 
-family, OPLENGTH = 100000.))
+family, OPLENGTH = OPLENGTH))
 }
 }
 

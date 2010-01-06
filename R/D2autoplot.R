@@ -1,6 +1,6 @@
 `D2autoplot` <-
 function (J, filter.number = 1, family = "DaubExPhase", direction = 3, 
-    desc = "2-D Autocorrelation Wavelet", OPLENGTH = 10000, scaling = "other", box=TRUE) 
+    main = "2-D Autocorrelation Wavelet", OPLENGTH = 10000, scaling = "other", box=TRUE) 
 {
     if (J >= 0) 
         stop("J must be a negative integer")
@@ -24,7 +24,7 @@ function (J, filter.number = 1, family = "DaubExPhase", direction = 3,
             y <- c(1:nc)
         }
         persp(x, y, m, theta = 30, phi = 30, expand =0.5, xlab = "tau_1", ylab = "tau_2", zlab = "ACW coeff", box = box)
-        title(desc)
+        title(main)
     }
     if (direction == 2) {
         tmp <- D2ACW(J = J, filter.number = filter.number, family = family, 
@@ -42,7 +42,7 @@ function (J, filter.number = 1, family = "DaubExPhase", direction = 3,
             y <- c(1:nc)
         }
         persp(x, y, m, theta = 30, phi = 30, expand =0.5, xlab = "tau_1", ylab = "tau_2", zlab = "ACW coeff", box=box)
-        title(desc)
+        title(main)
     }
     else if (direction == 1) {
         tmp <- D2ACW(J = J, filter.number = filter.number, family = family, 
@@ -60,7 +60,7 @@ function (J, filter.number = 1, family = "DaubExPhase", direction = 3,
             y <- c(1:nc)
         }
         persp(x, y, m, theta = 30, phi = 30, expand =0.5, xlab = "tau_1", ylab = "tau_2", zlab = "ACW coeff", box=box)
-        title(desc)
+        title(main)
     }
 }
 

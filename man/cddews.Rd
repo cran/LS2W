@@ -63,8 +63,9 @@ spectral image, whilst the third element refers to the columns of the image. }
 \item{filter.number:}{This gives the index of the wavelet used in the analysis of the image (i.e. the wavelet basis functions used in the 
 modelling). For Daubechies compactly supported wavelets the filter number is the number of vanishing moments.}
 \item{family:}{This contains the wavelet family used in the analysis of the image (i.e. the wavelet family used in the modelling).}
-\item{STRUCTURE:}{Explains the structure of the inner product matrix and S. It can only take two values, \code{direction} and \code{scale}.}
-\item{Levels:}{The number of levels in the decomposition.}
+\item{structure:}{Explains the structure of the inner product matrix and S. It can only take two values, \code{direction} and 
+\code{scale}.}
+\item{nlevels:}{The number of levels in the decomposition.}
 \item{correct:}{\code{TRUE} or \code{FALSE}, depending on whether the user corrected for the bias.}
 \item{smooth:}{\code{TRUE} or \code{FALSE}, depending on whether the LWP has been smoothed.}
 \item{date:}{The date when the analysis was perfromed.}

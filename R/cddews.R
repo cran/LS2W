@@ -28,7 +28,7 @@ function (data, filter.number = 1, family = "DaubExPhase", switch = "direction",
         if (correct == FALSE) {
             cat("OK, so you've chosen to use the raw (uncorrected periodogram!\n")
             l <- list(S = RawPer, datadim = dim(data), filter.number = filter.number, 
-                family = "DaubExPhase", STRUCTURE = switch, Levels = data.wd$nlevels, 
+                family = "DaubExPhase", structure = switch, nlevels = data.wd$nlevels, 
                 correct = correct, smooth = smooth, sm.filter.number = sm.filter.number, 
                 sm.family = sm.family, levels = levels, type = type, 
                 policy = policy, date = date())
@@ -55,7 +55,7 @@ function (data, filter.number = 1, family = "DaubExPhase", switch = "direction",
             speed <- proc.time()[1:2] - now
             cat("Took ", sum(speed), "seconds \n")
             l <- list(S = data2, datadim = dim(data), filter.number = filter.number, 
-                family = "DaubExPhase", STRUCTURE = switch, Levels = data.wd$nlevels, 
+                family = "DaubExPhase", structure = switch, nlevels = data.wd$nlevels, 
                 correct = correct, smooth = smooth, sm.filter.number = sm.filter.number, 
                 sm.family = sm.family, levels = levels, type = type, 
                 policy = policy, date = date())
@@ -67,7 +67,7 @@ function (data, filter.number = 1, family = "DaubExPhase", switch = "direction",
         if (correct == FALSE) {
             cat("OK, so you've chosen to use the raw (uncorrected periodogram!\n")
             l <- list(S = RawPer, datadim = dim(data), filter.number = filter.number, 
-                family = "DaubExPhase", STRUCTURE = switch, Levels = data.wd$nlevels, 
+                family = "DaubExPhase", structure = switch, nlevels = data.wd$nlevels, 
                 correct = correct, smooth = smooth, date = date())
         }
         if (correct == TRUE) {
@@ -92,7 +92,7 @@ function (data, filter.number = 1, family = "DaubExPhase", switch = "direction",
             speed <- proc.time()[1:2] - now
             cat("Took ", sum(speed), "seconds \n")
             l <- list(S = data2, datadim = dim(data), filter.number = filter.number, 
-                family = "DaubExPhase", STRUCTURE = switch, Levels = data.wd$nlevels, 
+                family = "DaubExPhase", structure = switch, nlevels = data.wd$nlevels, 
                 correct = correct, smooth = smooth, date = date())
         }
         class(l) <- "cddews"
