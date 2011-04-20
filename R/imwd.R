@@ -95,7 +95,7 @@ if(type == "wavelet") {
       lastDout = as.integer(first.last.d[level, 2.]),
       ImCC = as.double(ImCC),ImCD = as.double(ImCD),ImDC = as.double(ImDC),ImDD = as.double(ImDD),
       nbc = as.integer(nbc),ntype = as.integer(ntype),error = as.integer(error),
-      PACKAGE = "wavethresh")
+      PACKAGE = "LS2W")
       error <- z$error
       if(error != 0.) {
          cat("Error was ", error, "\n")

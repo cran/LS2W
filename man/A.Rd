@@ -1,6 +1,8 @@
 \name{A}
 \docType{data}
 \alias{A}
+\alias{B}
+\alias{C}
 \title{Examples of textured images}
 \description{A, B, and C are examples of different textured images 
 (grayscale). Each matrix object contains an image. Each entry of the 

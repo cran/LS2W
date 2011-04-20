@@ -47,7 +47,7 @@ wout = as.double(wout),
 lwout = as.integer(length(wout)),
 rlvec = as.integer(rlvec),
 error = as.integer(error),
-PACKAGE = "wavethresh")
+PACKAGE = "LS2W")
 if(answer$error != 0.) {
    if(answer$error == 160.)
    cat("Increase OPLENGTH to be larger than ", answer$lwout, "\n")

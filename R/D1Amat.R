@@ -57,7 +57,7 @@ if(J != -1.) {
          LengthH = as.integer(length(H)),
          fmat = as.double(fmat),
          tol = as.double(tol),
-         error = as.integer(error), PACKAGE = "wavethresh")
+         error = as.integer(error), PACKAGE = "LS2W")
          if(answer$error != 0.)
            stop(paste("Error code was ", answer$error))
          m <- matrix(answer$fmat, nrow =  - J)
@@ -83,7 +83,7 @@ LengthH = as.integer(length(H)),
 fmat = as.double(fmat),
 tol = as.double(tol),
 error = as.integer(error),
-PACKAGE = "wavethresh")
+PACKAGE = "LS2W")
 if(answer$error != 0.)
 stop(paste("Error code was ", answer$error))
 speed <- proc.time()[1.:2.] - now

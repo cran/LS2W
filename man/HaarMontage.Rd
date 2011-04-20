@@ -33,7 +33,7 @@ C), 59, (to appear).
 \examples{
 # Generate a realisation of the non-stationary combined Haar MA
 # process with structure in the vertical direction. 
-MyHaar2 <- HaarMontage(direction="vertical") 
+MyHaar2 <- HaarMontage(direction="diagonal") 
 # Plot it.
 #
  image(MyHaar2)

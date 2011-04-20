@@ -110,10 +110,10 @@ int lastCout;	/* Index number of last element				*/
 int LengthDout;/* Length of D part of output image			*/
 int firstDout;	/* Index number of first element in output "D" image	*/
 int lastDout;	/* Index number of last element				*/
-double **cc_out;/* Smoothed output image				*/
-double **cd_out;/* Horizontal detail					*/
-double **dc_out;/* Vertical detail					*/
-double **dd_out;/* Diagonal detail					*/
+double *cc_out;/* Smoothed output image				*/
+double *cd_out;/* Horizontal detail					*/
+double *dc_out;/* Vertical detail					*/
+double *dd_out;/* Diagonal detail					*/
 int bc;	/* Method of boundary correction			*/
 int type;	/* Type of transform, wavelet or stationary		*/
 int *error;	/* Error code						*/
@@ -130,6 +130,8 @@ int step_factor;	/* This should always be 1 for the WAVELET trans*/
 
 void convolveC();
 void convolveD();
+
+void mycpyd();
 
 *error = 0l;
 
@@ -232,12 +234,12 @@ if ((afterDD = (double *)malloc((unsigned)(LengthDout*LengthDout*sizeof(double))
     }
 
 /* Link this memory to the returning pointers */
-
+/*
 *cc_out = afterCC;
 *cd_out = afterCD;
 *dc_out = afterDC;
 *dd_out = afterDD;
-
+*/
 
 /* Apply the filters, first to afterC to get afterCC and afterCD */
 
@@ -307,6 +309,25 @@ free((char *)dcopy_out);
 free((char *)ccopy_out);
 free((char *)ccopy);
 
+/* MAN  extra frees */
+
+int tmp;
+
+tmp=LengthCout*LengthCout;
+mycpyd(afterCC,&tmp,cc_out);
+
+tmp=LengthDout*LengthCout;
+mycpyd(afterCD,&tmp,cd_out);
+mycpyd(afterDC,&tmp,dc_out);
+
+tmp=LengthDout*LengthDout;
+mycpyd(afterDD,&tmp,dd_out);
+
+free(afterCC);
+free(afterDD);
+free(afterDC);
+free(afterCD);
+
 return;
 }
 
@@ -342,10 +363,20 @@ void ImageDecomposeStepIE();
 
 step_factor = *stepfactor;
 
+/* MAN  I think the out vectors should be alloc'd - see frees at 
+the end 
+*/
+
+cc_out=calloc(*LengthCout**LengthCout,sizeof(double));
+dd_out=calloc(*LengthDout**LengthDout,sizeof(double));
+cd_out=calloc(*LengthCout**LengthDout,sizeof(double));
+dc_out=calloc(*LengthCout**LengthDout,sizeof(double));
+
+
 ImageDecomposeStepIE(C, *Csize, *firstCin, H, *LengthH,
 	*LengthCout, *firstCout, *lastCout,
 	*LengthDout, *firstDout, *lastDout,
-	&cc_out, &cd_out, &dc_out, &dd_out, *bc, *type,
+	cc_out, cd_out, dc_out, dd_out, *bc, *type,
 	error, *stepfactor);
 
 /* Copy images */
@@ -370,8 +401,11 @@ for(i=0; i<(int)*LengthCout; ++i)	{
 			*LengthCout, j,i);
 	}
 
+/* MAN  unnec. frees now make sense */
+
 free((void *)cc_out);
 free((void *)cd_out);
 free((void *)dc_out);
 free((void *)dd_out);
+
 }

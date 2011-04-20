@@ -95,7 +95,7 @@ double *tmpcfvec;	/* Temporary vector				*/
 double *TheData;
 double *C, *D;
 int *firstC, *lastC, *offsetC, *firstD, *lastD, *offsetD;
-int LengthC, LengthD, levels;
+int LengthC, LengthD, levels=0;
 int type,bc;
 int n_to_rotate;
 int start_level;
@@ -105,16 +105,18 @@ int idlastzero();
 void rotateleft();
 void IEwaverecons();
 
+void mycpyd();
+
 ndata = (int)0x01 << BigJ;
 
 /*
  * Create ixvec
  */
 
-if ((ixvec = (int *)Calloc((1+BigJ),int))==NULL){
+if ((ixvec = (int *)calloc((1+BigJ),sizeof(int)))==NULL){
 	*error = 140l;
 	return;
-	}
+}
 
 /* IAE changed from i< J to i <= J 
 * changed the contents of the first loop also (see notes for further
@@ -127,16 +129,18 @@ for(i=0; i<=BigJ; ++i)
 for(i=1; i<=BigJ; ++i)
 	*(ixvec+i) = *(ixvec+i-1) + *(ixvec+i);
 
-for(i=0; i<=BigJ; ++i)
+for(i=0; i<=BigJ; ++i){
 	--*(ixvec+i);
+}
 
 /*
  * Basically a dummy wavelet transform to set up first/last stuff
  */
-if ((TheData = (double *)Calloc(ndata,double))==NULL)	{
+
+if ((TheData = (double *)calloc(ndata,sizeof(double)))==NULL)	{
 	*error = 141l;
 	return;
-	}
+}
 
 for(i=0; i<ndata; ++i)
 	*(TheData+i) = 0.0;
@@ -145,19 +149,34 @@ for(i=0; i<ndata; ++i)
  * Do the wavelet transform
  */
 
+/* MAN  The call to simpleWT doesn't know what memory it's using
+and so during the next for loop, *D is being used when we don't know what 
+it contains.  I am going to allocate memory specifically for the input into
+simpleWT.
+*/
+
+firstC=calloc(BigJ+1,sizeof(int));
+lastC=calloc(BigJ+1,sizeof(int));
+offsetC=calloc(BigJ+1,sizeof(int));
+firstD=calloc(BigJ,sizeof(int));
+lastD=calloc(BigJ,sizeof(int));
+offsetD=calloc(BigJ,sizeof(int));
+C=calloc(2*ndata-1,sizeof(double));
+D=calloc(ndata-1,sizeof(double));
+
 simpleWT(TheData, &ndata, H, LengthH,
-	&C, &LengthC, &D, &LengthD, &levels,
-	&firstC, &lastC, &offsetC,
-	&firstD, &lastD, &offsetD,
+	C, &LengthC, D, &LengthD, &levels,
+	firstC, lastC, offsetC,
+	firstD, lastD, offsetD,
 	&type, &bc, error);
 
 if (*error != 0)
 	return;
 
-if ((lcoefvec = (double **)Calloc(*J,double*))==NULL){
+if ((lcoefvec = (double **)calloc(*J,sizeof(double*)))==NULL){
 	*error = 142l;
 	return;
-	}
+}
 
 for(i=1; i <=*J; ++i)	{
 	for(j=0; j<LengthC; ++j)
@@ -165,9 +184,9 @@ for(i=1; i <=*J; ++i)	{
 
 	*(C+ *(ixvec+i)) = 1;
 
-start_level=BigJ-i;
+	start_level=BigJ-i;
 
- IEwaverecons(C, D, H, LengthH, &levels,
+	IEwaverecons(C, D, H, LengthH, &levels,
 		firstC, lastC, offsetC, firstD, lastD, offsetD,
 		&start_level, &type, &bc, error);
 
@@ -196,12 +215,10 @@ start_level=BigJ-i;
 			++large_ones;
 
 	/* Now get memory for the large ones */
-
-	if ((tmpcfvec = (double *)Calloc(large_ones,double))==
-		NULL)	{
+	if ((tmpcfvec = (double *)calloc(large_ones,sizeof(double)))== NULL){
 		*error = 143l;
 		return;
-		}
+	}
 
 	large_ones = 0;
 
@@ -213,8 +230,15 @@ start_level=BigJ-i;
 	/* Install this vector into the array */
 
 	*(lcoefvec+i-1) = tmpcfvec;
+	/* MAN: to record now big tmpcfvec is */
+	/*
+	int tmp;
+	tmp=large_ones;
+	mycpyd(tmpcfvec,&tmp,*(coefvec+i-1));
+	*/
 	*(lvec+i-1) = (int)large_ones;
-	}
+
+}
 
 /* Install the lcoefvec into the coefvec */
 
@@ -222,6 +246,31 @@ start_level=BigJ-i;
 
 free((void *)ixvec);
 free((void *)TheData);
+
+/* MAN Free the memory allocated above for simpleWT. 
+ and the other vectors from the loop
+*/
+
+/* 1: tmpcfvec still exists from last iteration of loop. */
+/*
+free(tmpcfvec);
+*/
+/* 2:  now the pesky ** vector.*/
+/*
+for(i=0; i<*J; ++i)
+        free((void *)*(lcoefvec+i));
+
+free((void *)lcoefvec);
+*/
+free((void *)C);
+free((void *)D);
+free((void *)firstC); 
+free((void *)lastC);
+free((void *)offsetC);
+free((void *)firstD); 
+free((void *)lastD);
+free((void *)offsetD);
+
 }
 
 
@@ -233,7 +282,6 @@ double *tol;	/* Elements smaller than this will be deleted		*/
 double *wout;	/* Answers for \Psi_j(\tau)				*/
 int *lwout;	/* Length of previous array				*/
 int *rlvec;	/* Vector of length J contains lengths of \psi_j	*/
-/*double *psivec; */
 int *error;	/* Error code. Nonzero is an error			*/
 {
 register int i;
@@ -251,8 +299,6 @@ void PsiJonlyIE();
 
 /* whichlevel */
 
-printf("J is %d\n", *J);
-
 wlpart(J, &BigJ, H, LengthH, error);
 
 if (*error != 0)
@@ -260,13 +306,27 @@ if (*error != 0)
 
 /* mkcoef */
 
-if ((lvec = (int *)Calloc(*J,int))==NULL)	{
-	*error = 130l;
+if ((lvec = (int *)calloc(*J,sizeof(int)))==NULL)	{
+	*error = 130;
 	return;
-	}
+}
 
 for(i=0; i<*J; ++i)
-	*(lvec+i) = 0l;
+	*(lvec+i) = 0;
+
+/* MAN  coefvec needs to be alloc'd some memory. 
+
+Let's try and give it something sensible.
+*/
+/*
+coefvec=calloc(*J,sizeof(double*));
+int tmp;
+for(i=0; i<*J; ++i){
+	tmp= (int) pow(2,i+1) -1;
+	tmp=2*tmp*(*LengthH-1)+1;
+	*(coefvec+i) = calloc(tmp,sizeof(double));  
+}
+*/
 
 mkcoefIE(J, BigJ, H, LengthH, &coefvec, lvec, tol, error); 
 
@@ -282,17 +342,15 @@ if (*error != 0)
 for(i=0; i<*J; ++i)
 	*(rlvec + i) = *(lvec+i);
 
-/*
- *for(i=0; i<*J; ++i) 
- **(psivec + i) = **(coefvec+i);
- */
-
 free((void *)lvec);
+
+/* MAN Remove free? */
 
 for(i=0; i<*J; ++i)
 	free((void *)*(coefvec+i));
 
 free((void *)coefvec);
+
 }
 
 void PsiJonlyIE(J, coefvec, lvec, wout, lwout, error)
@@ -326,23 +384,23 @@ if (totall > *lwout)	{
 	*error = 160l;
 	*lwout = totall;
 	return;
-	}
+}
 
 
-if ((w = (double **)Calloc(*J,double*))==NULL)	{
+if ((w = (double **)calloc(*J,sizeof(double*)))==NULL)	{
 	*error = 161;
 	return;
-	}
+}
 
 /* Now populate each of the *w */
 
 for(j=0; j<*J; ++j)	{
-	if ((*(w+j) = (double *)Calloc(*(lvec+j)*2-1,double))==NULL)	{
+	if ((*(w+j) = (double *)calloc(*(lvec+j)*2-1,sizeof(double)))==NULL)	{
 		*error = 162;
 		*J = (int)j;
 		return;
-		}
 	}
+}
 
 /* Now compute each of the wjk */
 
@@ -353,10 +411,10 @@ for(j=0; j< *J; ++j)	{
 		for(m = max(0, k); m <= min(lj-1, lj-1+k); ++m)	{
 			sum += *((*(coefvec+j))+m) *
 				*((*(coefvec+j))+m-k);
-			}
-		ACCESSW(w, j, k-1+lj) = sum;
 		}
+		ACCESSW(w, j, k-1+lj) = sum;
 	}
+}
 
 /* Store the w */
 
@@ -367,14 +425,15 @@ for(j=0; j < *J; ++j)	{
 	for(k = 1-lj; k <= lj-1; ++k)	{
 		*(wout+cnt) = ACCESSW(w, j, k-1+lj);
 		++cnt;
-		}
 	}
+}
 
 
 /* Now free the w */
 for(j=0; j<*J; ++j)	{
 	free((void *)*(w+j));
-	}
+}
+
 free((void *)w);
 }
 

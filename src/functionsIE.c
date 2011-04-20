@@ -936,7 +936,7 @@ int bc;
 int type;
 double *C, *D;
 int LengthC, LengthD;
-int levels;
+int levels=0;
 int *firstC, *lastC, *offsetC;
 int *firstD, *lastD, *offsetD;
 
@@ -945,6 +945,12 @@ void Cthreshold();
 void waverecons();
 int LargerPowerOfTwo(); /* A function that returns next larger  */
                 /* power of two than it's argument  */
+
+/* MAN  Added the stuff below so that the lengths of simpleWT inputs
+can be calculated
+*/
+int tmp;
+int IsPowerOfTwo();
 
 /* No errors yet */
 *error = 0;
@@ -1008,10 +1014,27 @@ for(i=0; i< (nrightExtend-2*nright); ++i)
  * Now we can work out the wavelet transforms of leftExtend and rightExtend
  */
 
+/* MAN  The call to simpleWT doesn't know what memory it's using
+and so during the next for loop, *D is being used when we don't know what 
+it contains.  I am going to allocate memory specifically for the input into
+simpleWT.
+*/
+
+tmp=IsPowerOfTwo(nleftExtend);
+firstC=calloc(tmp+1,sizeof(int));
+lastC=calloc(tmp+1,sizeof(int));
+offsetC=calloc(tmp+1,sizeof(int));
+firstD=calloc(tmp,sizeof(int));
+lastD=calloc(tmp,sizeof(int));
+offsetD=calloc(tmp,sizeof(int));
+C=calloc(2*nleftExtend-1,sizeof(double));
+D=calloc(nleftExtend-1,sizeof(double));
+
+
 simpleWT(leftEx, &nleftExtend, H, LengthH,
-    &C, &LengthC, &D, &LengthD, &levels,
-    &firstC, &lastC, &offsetC,
-    &firstD, &lastD, &offsetD,
+    C, &LengthC, D, &LengthD, &levels,
+    firstC, lastC, offsetC,
+    firstD, lastD, offsetD,
     &type, &bc, error);
 
 if (*error != 0)    {
@@ -1070,12 +1093,29 @@ free((void *)C);    free((void *)D);
 free((void *)firstC);   free((void *)lastC);    free((void *)offsetC);
 free((void *)firstD);   free((void *)lastD);    free((void *)offsetD);
 
+/* MAN  The call to simpleWT doesn't know what memory it's using
+and so during the next for loop, *D is being used when we don't know what 
+it contains.  I am going to allocate memory specifically for the input into
+simpleWT.
+*/
+
+tmp=IsPowerOfTwo(nrightExtend);
+firstC=calloc(tmp+1,sizeof(int));
+lastC=calloc(tmp+1,sizeof(int));
+offsetC=calloc(tmp+1,sizeof(int));
+firstD=calloc(tmp,sizeof(int));
+lastD=calloc(tmp,sizeof(int));
+offsetD=calloc(tmp,sizeof(int));
+C=calloc(2*nrightExtend-1,sizeof(double));
+D=calloc(nrightExtend-1,sizeof(double));
+
+
 /* Now repeat everything for the right one */
 
 simpleWT(rightEx, &nrightExtend, H, LengthH,
-    &C, &LengthC, &D, &LengthD, &levels,
-    &firstC, &lastC, &offsetC,
-    &firstD, &lastD, &offsetD,
+    C, &LengthC, D, &LengthD, &levels,
+    firstC, lastC, offsetC,
+    firstD, lastD, offsetD,
     &type, &bc, error);
 
 if (*error != 0)    {
@@ -1411,10 +1451,10 @@ int lastCout;  /* Index number of last element             */
 int LengthDout;/* Length of D part of output image         */
 int firstDout; /* Index number of first element in output "D" image    */
 int lastDout;  /* Index number of last element             */
-double **cc_out;/* Smoothed output image                */
-double **cd_out;/* Horizontal detail                    */
-double **dc_out;/* Vertical detail                  */
-double **dd_out;/* Diagonal detail                  */
+double *cc_out;/* Smoothed output image                */
+double *cd_out;/* Horizontal detail                    */
+double *dc_out;/* Vertical detail                  */
+double *dd_out;/* Diagonal detail                  */
 int bc;    /* Method of boundary correction            */
 int type;  /* Type of transform, wavelet or stationary     */
 int *error;    /* Error code                       */
@@ -1534,12 +1574,12 @@ if ((afterDD = (double *)malloc((unsigned)(LengthDout*LengthDout*sizeof(double))
 
 
 /* Link this memory to the returning pointers */
-
+/*
 *cc_out = afterCC;
 *cd_out = afterCD;
 *dc_out = afterDC;
 *dd_out = afterDD;
-
+*/
 
 /* Apply the filters, first to afterC to get afterCC and afterCD */
 
@@ -1609,6 +1649,26 @@ free((char *)dcopy_out);
 free((char *)ccopy_out);
 free((char *)ccopy);
 
+/* MAN  extra frees and out vectors*/
+
+int tmp;
+void mycpyd();
+
+tmp=LengthCout*LengthCout;
+mycpyd(afterCC,&tmp,cc_out);
+
+tmp=LengthDout*LengthCout;
+mycpyd(afterCD,&tmp,cd_out);
+mycpyd(afterDC,&tmp,dc_out);
+
+tmp=LengthDout*LengthDout;
+mycpyd(afterDD,&tmp,dd_out);
+
+free(afterCC);
+free(afterDD);
+free(afterDC);
+free(afterCD);
+
 return;
 }
 
@@ -1640,10 +1700,20 @@ double *cc_out, *cd_out, *dc_out, *dd_out;
 
 void ImageDecomposeStep();
 
+/* MAN I think the out vectors should be alloc'd - see frees at 
+the end 
+*/
+
+cc_out=calloc(*LengthCout**LengthCout,sizeof(double));
+dd_out=calloc(*LengthDout**LengthDout,sizeof(double));
+cd_out=calloc(*LengthCout**LengthDout,sizeof(double));
+dc_out=calloc(*LengthCout**LengthDout,sizeof(double));
+
+
 ImageDecomposeStep(C, *Csize, *firstCin, H, *LengthH,
     *LengthCout, *firstCout, *lastCout,
     *LengthDout, *firstDout, *lastDout,
-    &cc_out, &cd_out, &dc_out, &dd_out, *bc, *type,
+    cc_out, cd_out, dc_out, dd_out, *bc, *type,
     error);
 
 /* Copy images */
@@ -1667,6 +1737,8 @@ for(i=0; i<(int)*LengthCout; ++i)   {
         ACCESS(ImCC, (int)*LengthCout,j,i) = ACCESS(cc_out,
             *LengthCout, j,i);
     }
+
+/* MAN  With the allocs above, the frees now make sense. */
 
 free((void *)cc_out);
 free((void *)cd_out);
@@ -1823,7 +1895,17 @@ for(i=0; i<LengthCout; ++i) {
     for(j=0; j<LengthCout; ++j)
         ACCESS(ImOut, (int)LengthCout, i, j)  = *(c_out+j);
     }
+
+/* MAN : there should be some frees here, though it might complain */
+
+free(c_in);
+free(c_out);
+free(d_in);
+free(toC);
+free(toD);
+
 }
+
 /* AV_BASIS Do the basis averaging */
 
 /*
@@ -2008,6 +2090,10 @@ else    {
 
 for(i=0; i<LengthC; ++i)
     *(cl+i) = ((double)0.5)*( *(cl+i) + *(cr+i) );
+
+/* MAN  Free cr.  Probably won't make much difference. */
+
+free(cr);
 
 return(cl);
 }
@@ -2511,13 +2597,13 @@ int *ndata; /* The length of the data               */
 double *H;  /* The wavelet filter that you want to use      */
 int *LengthH;   /* The length of the wavelet filter         */
 /* The following arguments are the answer               */
-double **C; /* A pointer to the array of C answers is returned  */
+double *C; /* A pointer to the array of C answers is returned  */
 int *LengthC;   /* The length of the C array is returned        */
-double **D; /* A pointer to the array of D answers is returned  */
+double *D; /* A pointer to the array of D answers is returned  */
 int *LengthD;   /* The length of the D array is returned        */
 int *levels;    /* The number of levels of the transform is returned    */
-int **firstC,**lastC,**offsetC;/* These are computed and returned   */
-int **firstD,**lastD,**offsetD;/* These are computed and returned   */
+int *firstC,*lastC,*offsetC;/* These are computed and returned   */
+int *firstD,*lastD,*offsetD;/* These are computed and returned   */
 int *type;  /* This is filled in with type WAVELET          */
 int *bc;    /* This is filled in with PERIODIC          */
 int *error; /* Returns any error condition              */
@@ -2542,8 +2628,6 @@ int IsPowerOfTwo();     /*MAN: added since missing declaration, see 2537 */
 /* Now work out the size of the arrays needed for the transform     */
 
 *levels = (int)IsPowerOfTwo(*ndata);
-
-/* Now create memory for first/last and offset */
 
 /* Now create memory for first/last and offset */
 
@@ -2577,10 +2661,6 @@ if ((loD = (int *)malloc((size_t)(*levels)*sizeof(int)))==NULL)   {
     return;
     }
 
-
-
-
-
 /* Now fill up these arrays */
 
 *lfC = *llC = 0;
@@ -2611,10 +2691,12 @@ for(i=*levels-2; i>=0; --i) {
     *(loD+i) = *(loD+i+1) + *(llD+i+1)+1;
     }
 
+
 /* Now we have to create the C and D arrays */
 
 *LengthC = *loC + 1;
 *LengthD = *loD + 1;
+
 
 if ((lC = (double *)calloc((size_t)*LengthC,(size_t)sizeof(double)))==NULL) {
     *error = 3007;
@@ -2640,10 +2722,11 @@ if (*error != 0)    {
     return;
     }
 
+
 /* Now we can return all the answers. To do this we have to link the information
  * in the l* arrays to the real ones
  */
-
+/*
 *C = lC;
 *D = lD;
 *firstC = lfC;
@@ -2652,8 +2735,38 @@ if (*error != 0)    {
 *firstD = lfD;
 *lastD = llD;
 *offsetD = loD;
+*/
+
+void mycpyi();
+void mycpyd();
+
+int tmp;
+
+tmp=*levels;
+mycpyi(lfD,&tmp,firstD);
+mycpyi(llD,&tmp,lastD);
+mycpyi(loD,&tmp,offsetD);
+tmp++;
+mycpyi(lfC,&tmp,firstC);
+mycpyi(llC,&tmp,lastC);
+mycpyi(loC,&tmp,offsetC);
+tmp=*LengthC;
+mycpyd(lC,&tmp,C);
+tmp=*LengthD;
+mycpyd(lD,&tmp,D);
 
 /* That's it, time to go home */
+
+/* MAN frees: <-> mycpyi, d above */
+
+free(lC);
+free(lD);
+free(lfC);
+free(lfD);
+free(llC);
+free(llD);
+free(loD);
+free(loC);
 
 return;
 }
@@ -5964,14 +6077,12 @@ double *TheData;
 int ndata;
 double *C, *D;
 int *firstC, *lastC, *offsetC, *firstD, *lastD, *offsetD;
-int LengthC, LengthD, levels;
+int LengthC, LengthD, levels=0;
 int type,bc;
 int *ixvec;
 
-
 void simpleWT();
 void waverecons();
-
 
 *error=0;
 
@@ -5980,11 +6091,9 @@ KeepGoing = TRUE;
 
 while(KeepGoing)    {
 
-    /* printf("Entered loop BigJ is %ld\n", *BigJ); */
+/*     printf("Entered loop BigJ is %d\n", *BigJ); */
 
     ndata = (int)0x01 << *BigJ;
-
-    /* printf("ndata is %ld\n", ndata);*/
 
     /*
      * Basically a dummy wavelet transform to set up first/last stuff
@@ -6000,11 +6109,28 @@ while(KeepGoing)    {
     /*
      * Do the wavelet transform
      */
+
+/* MAN:  allocate memory for the inputs into simpleWT. 
+  The allocation should cover the present sizes (w.r.t the while
+loop).  
+Maybe the D ones should be the same size as the Cs just in case.
+*/
+
+firstC=calloc(*BigJ+1,sizeof(int));
+lastC=calloc(*BigJ+1,sizeof(int));
+offsetC=calloc(*BigJ+1,sizeof(int));
+firstD=calloc(*BigJ,sizeof(int));
+lastD=calloc(*BigJ,sizeof(int));
+offsetD=calloc(*BigJ,sizeof(int));
+C=calloc(2*ndata-1,sizeof(double));
+D=calloc(ndata-1,sizeof(double));
+
+
     
     simpleWT(TheData, &ndata, H, LengthH,
-        &C, &LengthC, &D, &LengthD, &levels,
-        &firstC, &lastC, &offsetC,
-        &firstD, &lastD, &offsetD,
+        C, &LengthC, D, &LengthD, &levels,
+        firstC, lastC, offsetC,
+        firstD, lastD, offsetD,
         &type, &bc, error);
 
     if (*error != 0)
@@ -6058,8 +6184,9 @@ while(KeepGoing)    {
         if (somefull)
             break;
 
-    }
+    } /* for loop */
     /* Free memory */
+/* MAN:  frees. */
 
     free((void *)C);
     free((void *)D);
@@ -6067,6 +6194,7 @@ while(KeepGoing)    {
     free((void *)offsetC);
     free((void *)firstD); free((void *)lastD);
     free((void *)offsetD);
+
     free((void *)ixvec);
     free((void *)TheData);
 
@@ -6074,8 +6202,9 @@ while(KeepGoing)    {
         KeepGoing = FALSE;
     else
         *BigJ = *BigJ + 1;
-    }
-}
+    }	/* while */
+} /* function */
+
 
 /*
  * Return the index number of the last zero in a vector
@@ -6182,6 +6311,10 @@ if ((lvec = (int *)malloc((unsigned)*J*sizeof(int)))==NULL)   {
 for(i=0; i<*J; ++i)
     *(lvec+i) = 0;
 
+/* MAN  coefvec initialization? */
+
+/* coefvec=calloc(*J,sizeof(double*));*/
+
 mkcoef(J, BigJ, H, LengthH, &coefvec, lvec, tol, error); 
 
 if (*error != 0)
@@ -6231,7 +6364,6 @@ int LengthC, LengthD, levels;
 int type,bc;
 int n_to_rotate;
 
-
 void simpleWT();
 int idlastzero();
 void rotateleft();
@@ -6254,8 +6386,10 @@ for(i=0; i< BigJ; ++i)
 for(i=1; i< BigJ; ++i)
     *(ixvec+i) = *(ixvec+i-1) + *(ixvec+i);
 
-for(i=0; i< BigJ; ++i)
+for(i=0; i< BigJ; ++i){
     --*(ixvec+i);
+}
+
 
 /*
  * Basically a dummy wavelet transform to set up first/last stuff
@@ -6272,10 +6406,25 @@ for(i=0; i<ndata; ++i)
  * Do the wavelet transform
  */
 
+/* MAN The call to simpleWT doesn't know what memory it's using
+and so during the next for loop, *D is being used when we don't know what 
+it contains.  I am going to allocate memory specifically for the input into
+simpleWT.
+*/
+
+firstC=calloc(BigJ+1,sizeof(int));
+lastC=calloc(BigJ+1,sizeof(int));
+offsetC=calloc(BigJ+1,sizeof(int));
+firstD=calloc(BigJ,sizeof(int));
+lastD=calloc(BigJ,sizeof(int));
+offsetD=calloc(BigJ,sizeof(int));
+C=calloc(2*ndata-1,sizeof(double));
+D=calloc(ndata-1,sizeof(double));
+
 simpleWT(TheData, &ndata, H, LengthH,
-    &C, &LengthC, &D, &LengthD, &levels,
-    &firstC, &lastC, &offsetC,
-    &firstD, &lastD, &offsetD,
+    C, &LengthC, D, &LengthD, &levels,
+    firstC, lastC, offsetC,
+    firstD, lastD, offsetD,
     &type, &bc, error);
 
 if (*error != 0)
@@ -6346,6 +6495,22 @@ for(i=1; i<= *J; ++i)   {
 
 free((void *)ixvec);
 free((void *)TheData);
+
+
+/* MAN  Free the memory allocated above for simpleWT. */
+
+/*
+free(tmpcfvec);
+free(lcoefvec);
+*/
+
+free((void *)C);
+free((void *)D);
+free((void *)firstC); free((void *)lastC);
+free((void *)offsetC);
+free((void *)firstD); free((void *)lastD);
+free((void *)offsetD);
+
 }
 
 void rainmatOLD(J, coefvec, ixvec, lvec, fmat, error)
@@ -6474,6 +6639,9 @@ if ((lvec = (int *)malloc((unsigned)*J*sizeof(int)))==NULL)   {
 for(i=0; i<*J; ++i)
     *(lvec+i) = 0;
 
+/* MAN  Init. coefvec? */
+/* coefvec=calloc(*J,sizeof(double*));*/
+
 mkcoef(J, BigJ, H, LengthH, &coefvec, lvec, tol, error); 
 
 if (*error != 0)
@@ -6505,7 +6673,7 @@ int *rlvec;    /* Vector of length J contains lengths of \psi_j    */
 int *error;    /* Error code. Nonzero is an error          */
 {
 register int i;
-int BigJ;  /* The level we must go to to be able to compute
+int BigJ=0;  /* The level we must go to to be able to compute
          * coefficients without error
          */
 double **coefvec;   /* These are the \psi_j (\tau)          */
@@ -6533,6 +6701,10 @@ if ((lvec = (int *)malloc((unsigned)*J*sizeof(int)))==NULL)   {
 
 for(i=0; i<*J; ++i)
     *(lvec+i) = 0;
+
+/* MAN  Init for coefvec? */
+
+/* coefvec=calloc(*J,sizeof(double)); */
 
 mkcoef(J, BigJ, H, LengthH, &coefvec, lvec, tol, error); 
 
@@ -6779,6 +6951,7 @@ double *hhout, *hgout, *ghout, *ggout;  /* Intermediate stores      */
 int nm2;    /* Half of *nm                      */
 
 void SWT2D();   /* Carries out a step of the SWT2D algorithm        */
+void SmallStore();	/* MAN Added call for function used later */
 
 *error = 0;
 

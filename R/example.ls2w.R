@@ -1,9 +1,18 @@
-`example.ls2w`<-function(n=25, size=64)
+`example.ls2w`<-function(n=25,size=64)
 {
-load("images.rda")
-A.stats<- sample.stats(x=A, n, size)
-B.stats<- sample.stats(x=B, n, size)
-C.stats<- sample.stats(x=C, n, size)
+data(textures)
+
+# the lines below (and the x=Aim variable call in sample.stats) make for cleaner
+# local variable manipulation (it avoids confusion if there are multiple variables
+# of the same name in different environments.
+
+Aim<-get("A",.GlobalEnv)
+Bim<-get("B",.GlobalEnv)
+Cim<-get("C",.GlobalEnv)
+
+A.stats<- sample.stats(x=Aim,n,size)
+B.stats<- sample.stats(x=Bim,n,size)
+C.stats<- sample.stats(x=Cim,n,size)
 all.stats<-rbind(A.stats, B.stats, C.stats)
 imlabels<-c(rep("a",n), rep("b",n),rep("c",n))
 all.stats.lda<-lda(all.stats, imlabels)
