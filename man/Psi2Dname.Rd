@@ -26,7 +26,13 @@ A character string containing the name of an object according to a particular na
 \references{
 Eckley, I.A. and  Nason, G.P. (2005). Efficient computation of the inner-product matrix of discrete
 autocorrelation wavelets. Statistics and Computing, 15, 83-92.
+
+Eckley, I.A. and Nason, G.P. (2011). LS2W: Implementing the Locally Stationary 2D Wavelet Process Approach in R, Journal of Statistical Software, 43(3), 1-23.
+URL http://www.jstatsoft.org/v43/i03/.
+
+
 }
+
 \author{Idris Eckley}
 \seealso{\code{\link{D2ACW}},\code{\link{Psi1Dname}}}
 \examples{

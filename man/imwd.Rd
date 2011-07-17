@@ -43,7 +43,12 @@ spatially-ordered non-decimated).
 }
 \references{Mallat, S.G. (1989b). 
 A theory for multiresolution signal decomposition: the wavelet representation. IEEE Trans. Pattn Anal. 
-Mach. Intell., 11, 674-693. }
+Mach. Intell., 11, 674-693.
+
+Eckley, I.A. and Nason, G.P. (2011). LS2W: Implementing the Locally Stationary 2D Wavelet Process Approach in R, Journal of Statistical Software, 43(3), 1-23.
+URL http://www.jstatsoft.org/v43/i03/.
+
+}
 \author{Idris Eckley  and Guy Nason}
 \seealso{\code{\link{cddews}}}
 \examples{

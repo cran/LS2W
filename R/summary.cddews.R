@@ -9,11 +9,11 @@ function (object, ...)
     cat("Locally stationary two-dimensional wavelet decomposition structure\n")
     cat("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
 
-    cat("Levels: ", object$Levels, "\n")
+    cat("Levels: ", object$nlevels, "\n")
     cat("dimension of original image was: ", object$datadim[1],
         "x", object$datadim[2], "pixels.\n")
     cat("Filter family used: ", object$family, "Filter index (N):", object$filter, "\n")
-    cat("Structure adopted:", object$STRUCTURE, "\n")
+    cat("Structure adopted:", object$structure, "\n")
     cat("Date: ", object$date, "\n")
 }
 

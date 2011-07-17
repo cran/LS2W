@@ -14,10 +14,11 @@ This function prints out more information about a \code{cddews}  object in a nic
 \value{
 No value is returned.
 }
-\references{
-Eckley IA, Nason GP, Treloar RL (2010). Locally stationary elds with application to the
-modelling and analysis of image texture. Journal of the Royal Statistical Society (Series
-C), 59, (to appear).
+\references{ 
+Eckley, I.A., Nason, G.P. and Treloar, R.L. (2010) Locally stationary wavelet fields with application to the modelling and analysis of image texture. Journal of the Royal Statistical Society (Series C), 59, 595 - 616. 
+
+Eckley, I.A. and Nason G.P. (2011). LS2W: Implementing the Locally Stationary 2D Wavelet Process Approach in R, Journal of Statistical Software, 43(3), 1-23.
+URL http://www.jstatsoft.org/v43/i03/.
 }
 \author{Idris Eckley}
 \seealso{\code{\link{cddews}}, \code{\link{print.cddews}}}

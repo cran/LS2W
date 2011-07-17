@@ -27,9 +27,11 @@ D2autoplot(J, filter.number = 1, family = "DaubExPhase", direction = 3,main = "2
  
 
 \references{ 
-Eckley IA, Nason GP, Treloar RL (2010). Locally stationary elds with application to the
-modelling and analysis of image texture. Journal of the Royal Statistical Society (Series
-C), 59, (to appear).
+Eckley, I.A., Nason, G.P. and Treloar, R.L. (2010) Locally stationary wavelet fields with application to the modelling and analysis of image texture. Journal of the Royal Statistical Society (Series C), 59, 595 - 616. 
+
+Eckley, I.A. and Nason, G.P. (2011). LS2W: Implementing the Locally Stationary 2D Wavelet Process Approach in R, Journal of Statistical Software, 43(3), 1-23.
+URL http://www.jstatsoft.org/v43/i03/.
+
 }
 \author{Idris Eckley}
 \examples{

@@ -21,8 +21,14 @@ are. }
 \value{
 A matrix of order (-J)x(-J) containing the inner product matrix of the discrete non-decimated autocorrelation matrices. 
 }
-\references{Nason, G.P., von Sachs, R. and Kroisandt, G. (2000) Wavelet processes and adaptive estimation of the evolutionary wavelet 
-spectrum. J. R. Statist. Soc. Series B, 62, 271-292. }
+\references{
+Nason, G.P., von Sachs, R. and Kroisandt, G. (2000) Wavelet processes and adaptive estimation of the evolutionary wavelet 
+spectrum. J. R. Statist. Soc. Series B, 62, 271-292. 
+
+Eckley, I.A. and Nason, G.P. (2011). LS2W: Implementing the Locally Stationary 2D Wavelet Process Approach in R, Journal of Statistical Software, 43(3), 1-23.
+URL http://www.jstatsoft.org/v43/i03/.
+}
+
 \author{Idris Eckley}
 \note{ 
 An equivalent function \code{ipndacw} already exists in WaveThresh. This function is added to help create a consistent naming convention 

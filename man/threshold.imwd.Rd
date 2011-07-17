@@ -65,7 +65,11 @@ object contains the thresholded coefficients. Note that if the
 values 
 will be returned rather than the thresholded object. 
 }
-\references{Please refer to the equivalent wavethresh help page.}
+\references{Please refer to the equivalent wavethresh help page.
+
+Guy Nason (2010). wavethresh: Wavelets statistics and transforms. R package
+  version 4.5. URL http://CRAN.R-project.org/package=wavethresh
+}
 \author{Idris Eckley and Guy Nason}
 \seealso{\code{\link{imwd}}}
 

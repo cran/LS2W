@@ -24,7 +24,12 @@ This function performs exactly the same role as rmname except for objects produc
 \value{
 A character string containing the name of an object according to a particular naming scheme.
 }
-\references{Nason, G.P., von Sachs, R. and Kroisandt, G. (1998). Wavelet processes and adaptive estimation of the evolutionary wavelet spectrum. Technical Report, Department of Mathematics University of Bristol/ Fachbereich Mathematik, Kaiserslautern.}
+\references{Nason, G.P., von Sachs, R. and Kroisandt, G. (1998). Wavelet processes and adaptive estimation of the evolutionary wavelet spectrum. Technical Report, Department of Mathematics University of Bristol/ Fachbereich Mathematik, Kaiserslautern.
+
+Eckley, I.A. and Nason, G.P. (2011). LS2W: Implementing the Locally Stationary 2D Wavelet Process Approach in R, Journal of Statistical Software, 43(3), 1-23.
+URL http://www.jstatsoft.org/v43/i03/.
+
+}
 \author{Idris Eckley}
 \seealso{\code{\link{PsiJ}},\code{\link{Psi1Dname}}}
 \examples{
