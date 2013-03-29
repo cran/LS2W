@@ -1,0 +1,56 @@
+\name{cdtoimwd}
+\alias{cdtoimwd}
+
+\title{
+Convert a cddews type object to an imwd type object
+}
+\description{
+Converting from a cddews object to an imwd object required for simulating an LS2W process.
+}
+\usage{
+cdtoimwd(cddews)
+}
+\arguments{
+  \item{cddews}{
+A cddews object, which may be the output of \code{\link[LS2W]{cddews}}.
+}
+}
+\details{
+Simulation of an LS2W process for Daubechies wavelets requires that our spectral structure is ordered as an \code{imwd} object rather than a \code{cddews} object. This function works by extracting the spectral information from the given \code{cddews} object, determining where in the (null) \code{imwd} object it should be and adding the power to this appropriate location. This function is used within the function \code{\link{LS2Wsim.cddews}} and as such does not need to be made use of directly by the user. 
+}
+
+\value{
+An object of class imwd.
+}
+
+\author{
+Sarah L Taylor
+}
+
+\seealso{ 
+\code{\link{imwd}}, \code{\link{cddews}}, \code{\link{LS2Wsim.cddews}} 
+}
+
+\examples{
+#
+#Obtain a cddews type object from an image X
+#
+X<-matrix(rnorm(32*32),nrow=32,ncol=32)
+#
+CDDEWS <- cddews(X,correct=FALSE,smooth=FALSE)
+#
+#Verify the class of Matxcddews
+#
+class(CDDEWS)
+#
+#Convert to imwd
+#
+CDDEWSimwd<-cdtoimwd(CDDEWS)
+#
+#Verify new class
+#
+class(CDDEWSimwd) 
+#
+}
+
+\keyword{classes}

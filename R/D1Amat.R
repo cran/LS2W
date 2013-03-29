@@ -29,7 +29,7 @@ if(!is.null(rm.there)) {
    rmnexists <- rmname(J =  - rm.there, filter.number = 
    filter.number, family = family)
    tmp <- get(rmnexists)[1.:( - J), 1.:( - J)]
-   assign(rmnorig, tmp, pos = 1.)
+#   assign(rmnorig, tmp, pos = 1.)
    return(tmp)
 }
 #
@@ -67,7 +67,7 @@ if(J != -1.) {
          speed <- proc.time()[1.:2.] - now
          if(verbose == TRUE)
             cat("Took ", sum(speed), " seconds\n")
-         assign(rmnorig, m, pos = 1.)
+#         assign(rmnorig, m, pos = 1.)
          return(m)
          }
       }
@@ -92,7 +92,7 @@ cat("Took ", sum(speed), " seconds\n")
 m <- matrix(answer$fmat, nrow =  - J)
 nm <- as.character(-1.:J)
 dimnames(m) <- list(nm, nm)
-assign(rmnorig, m, pos = 1.)
+#assign(rmnorig, m, pos = 1.)
 m
 }
 

@@ -120,7 +120,7 @@ else
     verbose=0;
 
 if (verbose)    {
-    printf("Entered WaveletCV\n");
+    Rprintf("Entered WaveletCV\n");
     }
 if (fabs(cx - bx) > fabs(bx - ax))  {
     x1 = bx;
@@ -187,9 +187,10 @@ if (*error != 0)    {
 
 while(fabs(x3-x0) > *tol*(fabs(x1) + fabs(x2))) {
     if (verbose)    {
-    printf("x0=%lf, x1=%lf, x2=%lf, x3=%lf\n", x0,x1,x2,x3);
-    printf("f1=%lf, f2=%lf\n", f1,f2);
-    fflush(stdout);
+    Rprintf("x0=%lf, x1=%lf, x2=%lf, x3=%lf\n", x0,x1,x2,x3);
+    Rprintf("f1=%lf, f2=%lf\n", f1,f2);
+/* MAN 01/03/12. Removed fflush(stdout) call 
+    fflush(stdout);	*/
         }
     if (f2 < f1)    {
         x0 = x1;
@@ -334,10 +335,10 @@ void waverecons();
 void Cthreshold();
 
 /*
-printf("Crsswav\n");
-printf("LengthH is %ld\n", *LengthH);
-printf("levels is %ld\n", *levels);
-printf("ll is %ld\n", *ll); 
+Rprintf("Crsswav\n");
+Rprintf("LengthH is %ld\n", *LengthH);
+Rprintf("levels is %ld\n", *levels);
+Rprintf("ll is %ld\n", *ll); 
 fflush(stdout);
 */
 
@@ -372,7 +373,7 @@ type = (int)WAVELET;    /* Only for wavelet transform */
 
 for(i=0; i<nodd; ++i)   {
     *(C+i) = *(noisy+(2*i));
-    /* printf("Copied %lf to C[%d]\n", *(C+i), i); */
+    /* Rprintf("Copied %lf to C[%d]\n", *(C+i), i); */
     }
 
 /*
@@ -384,12 +385,12 @@ wavedecomp(C, D, H, LengthH, &local_levels,
     firstD, lastD, offsetD,
     &type, bc, error); 
 
-/*printf("Done wavelet decomposition\n");
+/*Rprintf("Done wavelet decomposition\n");
 for(i=0; i< *LengthC; ++i)
-    printf("C[%d] is %lf\n", i, *(C+i));
+    Rprintf("C[%d] is %lf\n", i, *(C+i));
 for(i=0; i< *LengthD; ++i)
-    printf("D[%d] is %lf\n", i, *(D+i));
-printf("-------\n"); */
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n"); */
 
 if (*error != 0)    {
     *error += 10;
@@ -406,10 +407,10 @@ if (*error != 0)    {
     return;
     }
 /*
-printf("Done thresholding\n");
+Rprintf("Done thresholding\n");
 for(i=0; i< *LengthD; ++i)
-    printf("D[%d] is %lf\n", i, *(D+i));
-printf("-------\n");
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n");
 
 */
 /* Reconstruct */
@@ -423,10 +424,10 @@ if (*error != 0)    {
     return;
     }
 /*
-printf("Done reconstruction\n");
+Rprintf("Done reconstruction\n");
 for(i=0; i< *LengthC; ++i)
-    printf("C[%d] is %lf\n", i, *(C+i));
-printf("-----\n");
+    Rprintf("C[%d] is %lf\n", i, *(C+i));
+Rprintf("-----\n");
 */
 
 /* Now work out interpolated evens from noisy */
@@ -438,7 +439,7 @@ for(i=0; i<nodd-1; ++i) {
 
 /*
 for(i=0; i<nodd; ++i)
-    printf("interps[%d] is %lf\n", i, *(interps+i));
+    Rprintf("interps[%d] is %lf\n", i, *(interps+i));
 */
 
 /* Now form sum of squares */
@@ -446,7 +447,7 @@ for(i=0; i<nodd; ++i)
 for(i=0; i<nodd; ++i)   {
     tmp = *(interps+i) - *(C+i);
     ssq1 += tmp*tmp;
-    /*printf("ssq1[%d] is %lf\n", i, ssq1); */
+    /*Rprintf("ssq1[%d] is %lf\n", i, ssq1); */
     }
 
 *ssq = ssq1;
@@ -458,7 +459,7 @@ for(i=0; i<nodd; ++i)   {
 
 for(i=0; i<nodd; ++i)   {
     *(C+i) = *(noisy+(2*i+1));
-    /* printf("Copied %lf to C[%d]\n", *(C+i), i); */
+    /* Rprintf("Copied %lf to C[%d]\n", *(C+i), i); */
     }
 
 /*
@@ -471,12 +472,12 @@ wavedecomp(C, D, H, LengthH, &local_levels,
     &type, bc, error); 
 
 /*
-printf("Done wavelet decomposition\n");
+Rprintf("Done wavelet decomposition\n");
 for(i=0; i< *LengthC; ++i)
-    printf("C[%d] is %lf\n", i, *(C+i));
+    Rprintf("C[%d] is %lf\n", i, *(C+i));
 for(i=0; i< *LengthD; ++i)
-    printf("D[%d] is %lf\n", i, *(D+i));
-printf("-------\n");
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n");
 */
 if (*error != 0)    {
     *error += 40;
@@ -493,10 +494,10 @@ if (*error != 0)    {
     return;
     }
 /*
-printf("Done thresholding\n");
+Rprintf("Done thresholding\n");
 for(i=0; i< *LengthD; ++i)
-    printf("D[%d] is %lf\n", i, *(D+i));
-printf("-------\n");
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n");
 */
 
 /* Reconstruct */
@@ -524,7 +525,7 @@ ssq1 = 0.0;
 for(i=0; i<nodd; ++i)   {
     tmp = *(interps+i) - *(C+i);
     ssq1 += tmp*tmp;
-/*  printf("ssq1[%d] is %lf\n", i, ssq1); */
+/*  Rprintf("ssq1[%d] is %lf\n", i, ssq1); */
     }
 
 *ssq = (*ssq + ssq1)/2.0;
@@ -580,10 +581,10 @@ void waverecons();
 void Cthreshold();
 
 /*
-printf("Crsswav\n");
-printf("LengthH is %ld\n", *LengthH);
-printf("levels is %ld\n", *levels);
-printf("ll is %ld\n", *ll); 
+Rprintf("Crsswav\n");
+Rprintf("LengthH is %ld\n", *LengthH);
+Rprintf("levels is %ld\n", *levels);
+Rprintf("ll is %ld\n", *ll); 
 fflush(stdout);
 */
 
@@ -618,7 +619,7 @@ type = (int)WAVELET;    /* Only for wavelet transform */
 
 for(i=0; i<nodd; ++i)   {
     *(C+i) = *(noisy+(2*i));
-    /* printf("Copied %lf to C[%d]\n", *(C+i), i); */
+    /* Rprintf("Copied %lf to C[%d]\n", *(C+i), i); */
     }
 
 /*
@@ -630,12 +631,12 @@ wavedecomp(C, D, H, LengthH, &local_levels,
     firstD, lastD, offsetD,
     &type, bc, error); 
 
-/*printf("Done wavelet decomposition\n");
+/*Rprintf("Done wavelet decomposition\n");
 for(i=0; i< *LengthC; ++i)
-    printf("C[%d] is %lf\n", i, *(C+i));
+    Rprintf("C[%d] is %lf\n", i, *(C+i));
 for(i=0; i< *LengthD; ++i)
-    printf("D[%d] is %lf\n", i, *(D+i));
-printf("-------\n"); */
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n"); */
 
 if (*error != 0)    {
     *error += 10;
@@ -652,10 +653,10 @@ if (*error != 0)    {
     return;
     }
 /*
-printf("Done thresholding\n");
+Rprintf("Done thresholding\n");
 for(i=0; i< *LengthD; ++i)
-    printf("D[%d] is %lf\n", i, *(D+i));
-printf("-------\n");
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n");
 
 */
 /* Reconstruct */
@@ -669,10 +670,10 @@ if (*error != 0)    {
     return;
     }
 /*
-printf("Done reconstruction\n");
+Rprintf("Done reconstruction\n");
 for(i=0; i< *LengthC; ++i)
-    printf("C[%d] is %lf\n", i, *(C+i));
-printf("-----\n");
+    Rprintf("C[%d] is %lf\n", i, *(C+i));
+Rprintf("-----\n");
 */
 
 /* This bit is different to Crsswav.
@@ -686,7 +687,7 @@ for(i=0; i<nodd-1; ++i) {
 
 /*
 for(i=0; i<nodd; ++i)
-    printf("interps[%d] is %lf\n", i, *(interps+i));
+    Rprintf("interps[%d] is %lf\n", i, *(interps+i));
 */
 
 /* Now form sum of squares */
@@ -694,7 +695,7 @@ for(i=0; i<nodd; ++i)
 for(i=0; i<nodd; ++i)   {
     tmp = *(interps+i) - *(noisy+2*i+1);
     ssq1 += tmp*tmp;
-    /*printf("ssq1[%d] is %lf\n", i, ssq1); */
+    /*Rprintf("ssq1[%d] is %lf\n", i, ssq1); */
     }
 
 *ssq = ssq1;
@@ -706,7 +707,7 @@ for(i=0; i<nodd; ++i)   {
 
 for(i=0; i<nodd; ++i)   {
     *(C+i) = *(noisy+(2*i+1));
-    /* printf("Copied %lf to C[%d]\n", *(C+i), i); */
+    /* Rprintf("Copied %lf to C[%d]\n", *(C+i), i); */
     }
 
 /*
@@ -719,12 +720,12 @@ wavedecomp(C, D, H, LengthH, &local_levels,
     &type, bc, error); 
 
 /*
-printf("Done wavelet decomposition\n");
+Rprintf("Done wavelet decomposition\n");
 for(i=0; i< *LengthC; ++i)
-    printf("C[%d] is %lf\n", i, *(C+i));
+    Rprintf("C[%d] is %lf\n", i, *(C+i));
 for(i=0; i< *LengthD; ++i)
-    printf("D[%d] is %lf\n", i, *(D+i));
-printf("-------\n");
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n");
 */
 if (*error != 0)    {
     *error += 40;
@@ -741,10 +742,10 @@ if (*error != 0)    {
     return;
     }
 /*
-printf("Done thresholding\n");
+Rprintf("Done thresholding\n");
 for(i=0; i< *LengthD; ++i)
-    printf("D[%d] is %lf\n", i, *(D+i));
-printf("-------\n");
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n");
 */
 
 /* Reconstruct */
@@ -772,7 +773,7 @@ ssq1 = 0.0;
 for(i=0; i<nodd; ++i)   {
     tmp = *(interps+i) - *(noisy+2*i);
     ssq1 += tmp*tmp;
-/*  printf("ssq1[%d] is %lf\n", i, ssq1); */
+/*  Rprintf("ssq1[%d] is %lf\n", i, ssq1); */
     }
 
 *ssq = (*ssq + ssq1)/2.0;
@@ -807,11 +808,11 @@ int reflect();
 double SoftThreshold();
 
 /*
-printf("Cthreshold\n");
-printf("LengthD is %ld\n", *LengthD);
-printf("ntt is %ld\n", *ntt);
-printf("value is %lf\n", *value);
-printf("qlevels is %ld\n", *qlevels);
+Rprintf("Cthreshold\n");
+Rprintf("LengthD is %ld\n", *LengthD);
+Rprintf("ntt is %ld\n", *ntt);
+Rprintf("value is %lf\n", *value);
+Rprintf("qlevels is %ld\n", *qlevels);
 */
 
 *error = 0;
@@ -946,7 +947,7 @@ void waverecons();
 int LargerPowerOfTwo(); /* A function that returns next larger  */
                 /* power of two than it's argument  */
 
-/* MAN  Added the stuff below so that the lengths of simpleWT inputs
+/* MAN 7/12/10.  Added the stuff below so that the lengths of simpleWT inputs
 can be calculated
 */
 int tmp;
@@ -1014,7 +1015,7 @@ for(i=0; i< (nrightExtend-2*nright); ++i)
  * Now we can work out the wavelet transforms of leftExtend and rightExtend
  */
 
-/* MAN  The call to simpleWT doesn't know what memory it's using
+/* MAN 7/12/10.  The call to simpleWT doesn't know what memory it's using
 and so during the next for loop, *D is being used when we don't know what 
 it contains.  I am going to allocate memory specifically for the input into
 simpleWT.
@@ -1093,7 +1094,7 @@ free((void *)C);    free((void *)D);
 free((void *)firstC);   free((void *)lastC);    free((void *)offsetC);
 free((void *)firstD);   free((void *)lastD);    free((void *)offsetD);
 
-/* MAN  The call to simpleWT doesn't know what memory it's using
+/* MAN 7/12/10.  The call to simpleWT doesn't know what memory it's using
 and so during the next for loop, *D is being used when we don't know what 
 it contains.  I am going to allocate memory specifically for the input into
 simpleWT.
@@ -1243,7 +1244,7 @@ else
     verbose=0;
 
 if (verbose)    {
-    printf("Entered FullWaveletCV\n");
+    Rprintf("Entered FullWaveletCV\n");
     }
 if (fabs(cx - bx) > fabs(bx - ax))  {
     x1 = bx;
@@ -1256,14 +1257,14 @@ else    {
 
 
 if (verbose)    {
-    printf("About to enter GetRSS for the first time\n");
+    Rprintf("About to enter GetRSS for the first time\n");
     }
 
 /* NOT NEEDED 
 
 GetRSS(noisy, nnoisy, &ax, H, LengthH, ntt, ll, &ssq, &mRi, &verbose, error);
 if (verbose)    {
-    printf("Just left GetRSS for the first time\n");
+    Rprintf("Just left GetRSS for the first time\n");
     }
 fa = ssq;
 
@@ -1308,9 +1309,10 @@ if (*error != 0)    {
 
 while(fabs(x3-x0) > *tol*(fabs(x1) + fabs(x2))) {
     if (verbose)    {
-    printf("x0=%lf, x1=%lf, x2=%lf, x3=%lf\n", x0,x1,x2,x3);
-    printf("f1=%lf, f2=%lf\n", f1,f2);
-    fflush(stdout);
+    Rprintf("x0=%lf, x1=%lf, x2=%lf, x3=%lf\n", x0,x1,x2,x3);
+    Rprintf("f1=%lf, f2=%lf\n", f1,f2);
+/* MAN 01/03/12. Removed fflush(stdout) call 
+    fflush(stdout);	*/
         }
     if (f2 < f1)    {
         x0 = x1;
@@ -1403,7 +1405,7 @@ for(removed=GRSTART; removed<= *Lynoise-GRSTART+1; ++removed)   {
         }
 
     if (*verbose>1)
-      printf("GetRSS: Removed is %d, ynoise[%d] is %lf RSS is %lf\n",     /*MAN: changed %ld to %d since declared as int (L1329) */
+      Rprintf("GetRSS: Removed is %d, ynoise[%d] is %lf RSS is %lf\n",     /*MAN: changed %ld to %d since declared as int (L1329) */
         removed, removed, *(ynoise+removed-1), *rss);
 
     }
@@ -1649,7 +1651,7 @@ free((char *)dcopy_out);
 free((char *)ccopy_out);
 free((char *)ccopy);
 
-/* MAN  extra frees and out vectors*/
+/* MAN  6/12/10 extra frees and out vectors*/
 
 int tmp;
 void mycpyd();
@@ -1700,7 +1702,7 @@ double *cc_out, *cd_out, *dc_out, *dd_out;
 
 void ImageDecomposeStep();
 
-/* MAN I think the out vectors should be alloc'd - see frees at 
+/* MAN 7/12/10.  I think the out vectors should be alloc'd - see frees at 
 the end 
 */
 
@@ -1726,7 +1728,7 @@ for(i=0; i<(int)*LengthDout; ++i)   {
     for(j=0; j<(int)*LengthCout; ++j)
         ACCESS(ImDC, (int)*LengthDout, j,i) = ACCESS(dc_out,
             *LengthDout, j,i);
-    }
+}
 
 for(i=0; i<(int)*LengthCout; ++i)   {
     for(j=0; j<(int)*LengthDout; ++j)
@@ -1736,9 +1738,9 @@ for(i=0; i<(int)*LengthCout; ++i)   {
     for(j=0; j<(int)*LengthCout; ++j)
         ACCESS(ImCC, (int)*LengthCout,j,i) = ACCESS(cc_out,
             *LengthCout, j,i);
-    }
+}
 
-/* MAN  With the allocs above, the frees now make sense. */
+/* MAN 7/12/10.  With the allocs above, the frees now make sense. */
 
 free((void *)cc_out);
 free((void *)cd_out);
@@ -1896,7 +1898,7 @@ for(i=0; i<LengthCout; ++i) {
         ACCESS(ImOut, (int)LengthCout, i, j)  = *(c_out+j);
     }
 
-/* MAN : there should be some frees here, though it might complain */
+/* MAN 7/12/10 : there should be some frees here, though it might complain */
 
 free(c_in);
 free(c_out);
@@ -2091,7 +2093,7 @@ else    {
 for(i=0; i<LengthC; ++i)
     *(cl+i) = ((double)0.5)*( *(cl+i) + *(cr+i) );
 
-/* MAN  Free cr.  Probably won't make much difference. */
+/* MAN 7/12/10.  Free cr.  Probably won't make much difference. */
 
 free(cr);
 
@@ -2452,10 +2454,15 @@ else if (n<0)   {
         */
         n = n%lengthC + lengthC*((n%lengthC)!=0);
         if (n < 0)      {
-            fprintf(stderr, "reflect: access error (%d,%d)\n",
+		/* MAN 01/03/12. Remove stderr write x 2 
+            fRprintf(stderr, "reflect: access error (%d,%d)\n",
                 n,lengthC);
-            fprintf(stderr, "reflect: left info from right\n");
-            exit(2);
+            fRprintf(stderr, "reflect: left info from right\n"); */
+            Rprintf("reflect: access error (%d,%d)\n",
+                n,lengthC);
+            Rprintf("reflect: left info from right\n");
+		/* MAN 01/03/12.  Remove C exit
+            exit(2);	*/
             }
         else
             return(n);
@@ -2464,36 +2471,49 @@ else if (n<0)   {
     else if (bc==SYMMETRIC) {
         n = -1-n;
         if (n >= lengthC)       {
-            fprintf(stderr, "reflect: access error (%d,%d)\n",
+		/* MAN 01/03/12. Remove stderr write x 1
+            fRprintf(stderr, "reflect: access error (%d,%d)\n",
+                n,lengthC);	*/
+            Rprintf("reflect: access error (%d,%d)\n",
                 n,lengthC);
-            exit(3);
+		/* MAN 01/03/12.  Remove C exit
+            exit(3);	*/
             }
         else
             return(n);
         }
 
     else    {
-        fprintf(stderr, "reflect: Unknown boundary correction");
-        fprintf(stderr, " value of %d\n", bc);
-        exit(4);
+		/* MAN 01/03/12. Remove stderr write x 2
+        fRprintf(stderr, "reflect: Unknown boundary correction");
+        fRprintf(stderr, " value of %d\n", bc);	*/
+        Rprintf("reflect: Unknown boundary correction");
+        Rprintf(" value of %d\n", bc);
+		/* MAN 01/03/12.  Remove C exit
+            exit(4);	*/
         }
 
     }
 else    {
     if (bc==PERIODIC)   {
         /*
-        printf("periodic extension, was %d (%d) now ",n,lengthC);
+        Rprintf("periodic extension, was %d (%d) now ",n,lengthC);
         n = n - lengthC; 
         */
         n %= lengthC;
         /*
-        printf("%d\n", n);
+        Rprintf("%d\n", n);
         */
         if (n >= lengthC)   {
-            fprintf(stderr, "reflect: access error (%d,%d)\n",
+		/* MAN 01/03/12. Remove stderr write x 2
+            fRprintf(stderr, "reflect: access error (%d,%d)\n",
                 n,lengthC);
-            fprintf(stderr, "reflect: right info from left\n");
-            exit(5);
+            fRprintf(stderr, "reflect: right info from left\n");	*/
+            Rprintf("reflect: access error (%d,%d)\n",
+                n,lengthC);
+            Rprintf("reflect: right info from left\n");
+		/* MAN 01/03/12.  Remove C exit
+            exit(5);	*/
             }
         else
             return(n);
@@ -2501,23 +2521,33 @@ else    {
     else if (bc==SYMMETRIC) {
         n = 2*lengthC - n - 1;
         if (n<0)        {
-            fprintf(stderr, "reflect: access error (%d,%d)\n",
+		/* MAN 01/03/12. Remove stderr write x 1
+            fRprintf(stderr, "reflect: access error (%d,%d)\n",
+                n,lengthC);	*/
+            Rprintf("reflect: access error (%d,%d)\n",
                 n,lengthC);
-            exit(6);
+		/* MAN 01/03/12.  Remove C exit
+            exit(6);    */
             }
         else
             return(n);
         }
     else    {
-        fprintf(stderr, "reflect: Unknown boundary correction\n");
-        exit(7);
+		/* MAN 01/03/12. Remove stderr write x 1
+        fRprintf(stderr, "reflect: Unknown boundary correction\n");	*/
+        Rprintf("reflect: Unknown boundary correction\n");
+		/* MAN 01/03/12.  Remove C exit
+            exit(7);    */
         }
 
 
     }
 /* Safety */
-fprintf(stderr, "reflect: SHOULD NOT HAVE REACHED THIS POINT\n");
-exit(8);
+/* MAN 01/03/12. Remove stderr write x 1
+fRprintf(stderr, "reflect: SHOULD NOT HAVE REACHED THIS POINT\n");	*/
+Rprintf("reflect: SHOULD NOT HAVE REACHED THIS POINT\n");
+/* MAN 01/03/12.  Remove C exit
+            exit(8);    */
 return(0); /* for lint only */
 }
 
@@ -2757,7 +2787,7 @@ mycpyd(lD,&tmp,D);
 
 /* That's it, time to go home */
 
-/* MAN frees: <-> mycpyi, d above */
+/* MAN frees: 7/12/10 <-> mycpyi, d above */
 
 free(lC);
 free(lD);
@@ -2803,15 +2833,15 @@ else
 switch(*bc) {
 
     case PERIODIC:  /* Periodic boundary conditions */
-        if (verbose) printf("Periodic boundary method\n");
+        if (verbose) Rprintf("Periodic boundary method\n");
         break;
 
     case SYMMETRIC: /* Symmetric boundary conditions */
-        if (verbose) printf("Symmetric boundary method\n");
+        if (verbose) Rprintf("Symmetric boundary method\n");
         break;
 
     default:    /* The bc must be one of the above */
-        printf("Unknown boundary correction method\n");
+        Rprintf("Unknown boundary correction method\n");
         *error = 1;
         return;
     }
@@ -2819,20 +2849,20 @@ switch(*bc) {
 switch(*type)   {
 
     case WAVELET:   /* Standard wavelets */
-        if (verbose) printf("Standard wavelet decomposition\n");
+        if (verbose) Rprintf("Standard wavelet decomposition\n");
         break;
 
     case STATION:   /* Stationary wavelets */
-        if (verbose) printf("Stationary wavelet decomposition\n");
+        if (verbose) Rprintf("Stationary wavelet decomposition\n");
         break;
 
     default:    /* The type must be of one the above */
-        if (verbose) printf("Unknown decomposition type\n");
+        if (verbose) Rprintf("Unknown decomposition type\n");
         *error = 2;
         return;
     }
         
-if (verbose) printf("Decomposing into level: ");
+if (verbose) Rprintf("Decomposing into level: ");
 
 *error = 0;
 
@@ -2844,7 +2874,7 @@ step_factor = 1;    /* This variable should *always* be 1 for standard
 for(next_level = *levels - 1; next_level >= 0; --next_level)    {
 
     if (verbose)
-        printf("%d ", next_level);
+        Rprintf("%d ", next_level);
 
     at_level = next_level + 1;
 
@@ -2878,7 +2908,7 @@ for(next_level = *levels - 1; next_level >= 0; --next_level)    {
                      * know what to do here ! */
     }
 if (verbose)
-    printf("\n");
+    Rprintf("\n");
 return;
 }
 
@@ -2929,13 +2959,13 @@ int i,j;
 void wvpkr();
 
 /*
-printf("This routine is wavepackde\n");
-printf("Length of data is %ld\n", *LengthData);
-printf("Number of levels is %ld\n", *levels);
-printf("Data array is:\n");
+Rprintf("This routine is wavepackde\n");
+Rprintf("Length of data is %ld\n", *LengthData);
+Rprintf("Number of levels is %ld\n", *levels);
+Rprintf("Data array is:\n");
 for(i= (int)*levels; i>=0; --i)
     for(j=0; j< *LengthData; ++j)   {
-        printf("Level %d, Item %d is %lf\n", i,j, ACCESSD(i,j));
+        Rprintf("Level %d, Item %d is %lf\n", i,j, ACCESSD(i,j));
         }
 */
 
@@ -3045,7 +3075,7 @@ void rotateback();
  */
 
 /*
-printf("Rvector is %d\n", (int)*rvector);
+Rprintf("Rvector is %d\n", (int)*rvector);
 */
 
 /* First let's generate the MSB */
@@ -3101,11 +3131,11 @@ for(i=0; i< (int)*nrsteps; ++i) {
        that the lengths match */
 
     /*
-    printf("LengthCout is %d\n", LengthCout);
-    printf("i is %d\n", i);
-    printf("nrsteps is %d\n", (int)*nrsteps);
+    Rprintf("LengthCout is %d\n", LengthCout);
+    Rprintf("i is %d\n", i);
+    Rprintf("nrsteps is %d\n", (int)*nrsteps);
     */
-    /*printf("ldata+i+2 is %d\n", (int)*(ldata+i+2));*/
+    /*Rprintf("ldata+i+2 is %d\n", (int)*(ldata+i+2));*/
     if (i+1 != (int)*nrsteps && LengthCout != (int)*(ldata+i+2))    {
         *error = 1;
         return;
@@ -3115,13 +3145,13 @@ for(i=0; i< (int)*nrsteps; ++i) {
 
     if (msb & (int)*rvector)    {
         /*
-        printf("Rotating\n");
+        Rprintf("Rotating\n");
         */
         rotateback(c_out, LengthCout);
         }
 
     /*
-    printf("msb is: %d\n", msb);
+    Rprintf("msb is: %d\n", msb);
     */
 
     msb >>= 1;
@@ -3173,13 +3203,13 @@ void wvpkstr();
 *error = 0;
 
 /*
-printf("This routine is wavepackst\n");
-printf("Length of data is %ld\n", *LengthData);
-printf("Number of levels is %ld\n", *levels);
-printf("Data array is:\n");
+Rprintf("This routine is wavepackst\n");
+Rprintf("Length of data is %ld\n", *LengthData);
+Rprintf("Number of levels is %ld\n", *levels);
+Rprintf("Data array is:\n");
 for(i= (int)*levels; i>=0; --i)
     for(j=0; j< *LengthData; ++j)   {
-        printf("Level %d, Item %d is %lf\n", i,j, ACCESSD(i,j));
+        Rprintf("Level %d, Item %d is %lf\n", i,j, ACCESSD(i,j));
         }
 */
 
@@ -3234,8 +3264,8 @@ void convolveD();
 void rotater();
 
 /*
-printf("wvpkstr entry\n");
-printf("lengthout is %d\n", lengthout);
+Rprintf("wvpkstr entry\n");
+Rprintf("lengthout is %d\n", lengthout);
 */
 
 lengthout = lengthin/2;
@@ -3260,10 +3290,10 @@ for(i=0; i < lengthout; ++i)
     * POINTC(level-1, (outstart1+i)) = *(book1+i);
 
 /*
-printf("book1 coefficients \n");
+Rprintf("book1 coefficients \n");
 for(i=0; i<lengthout; ++i)
-    printf("%lf ", *(book1+i));;
-printf("\n");
+    Rprintf("%lf ", *(book1+i));;
+Rprintf("\n");
 */
 
 convolveD( book, lengthin, 0, H, LengthH,
@@ -3297,10 +3327,10 @@ for(i=0; i < lengthout; ++i)
     *POINTC(level-1, (outstart2+i)) = *(book2+i);
 
 /*
-printf("book2 coefficients \n");
+Rprintf("book2 coefficients \n");
 for(i=0; i<lengthout; ++i)
-    printf("%lf ", *(book2+i));
-printf("\n");
+    Rprintf("%lf ", *(book2+i));
+Rprintf("\n");
 */
 
 
@@ -3366,15 +3396,15 @@ else
 switch(*bc) {
 
     case PERIODIC:  /* Periodic boundary conditions */
-        if (verbose) printf("Periodic boundary method\n");
+        if (verbose) Rprintf("Periodic boundary method\n");
         break;
 
     case SYMMETRIC: /* Symmetric boundary conditions */
-        if (verbose) printf("Symmetric boundary method\n");
+        if (verbose) Rprintf("Symmetric boundary method\n");
         break;
 
     default:    /* The bc must be one of the above */
-        printf("Unknown boundary correction method\n");
+        Rprintf("Unknown boundary correction method\n");
         *error = 1;
         return;
     }
@@ -3382,20 +3412,20 @@ switch(*bc) {
 switch(*type)   {
 
     case WAVELET:   /* Standard wavelets */
-        if (verbose) printf("Standard wavelet decomposition\n");
+        if (verbose) Rprintf("Standard wavelet decomposition\n");
         break;
 
     case STATION:   /* Stationary wavelets */
-        if (verbose) printf("Stationary wavelet decomposition\n");
+        if (verbose) Rprintf("Stationary wavelet decomposition\n");
         break;
 
     default:    /* The type must be of one the above */
-        if (verbose) printf("Unknown decomposition type\n");
+        if (verbose) Rprintf("Unknown decomposition type\n");
         *error = 2;
         return;
     }
 
-if (verbose) printf("Building level: ");
+if (verbose) Rprintf("Building level: ");
 
 *error = 0;
 
@@ -3403,7 +3433,7 @@ for(next_level = 1; next_level <= *levels; ++next_level)    {
 
     
     if (verbose)
-        printf("%d ", next_level);
+        Rprintf("%d ", next_level);
 
     at_level = next_level - 1; 
 
@@ -3423,7 +3453,7 @@ for(next_level = 1; next_level <= *levels; ++next_level)    {
         (int)(*bc) );
     }
 if (verbose)
-    printf("\n");
+    Rprintf("\n");
 
 return;
 }
@@ -3736,7 +3766,7 @@ for(k=firstDout; k<=lastDout; ++k)  {
         d = ACCESSC(c_inI, firstCin, LengthCin,
                 (cfactor*k+(step_factor*(1-m))),bc);
 
-        printf("%d: (%lf, %lf)* (%lf, %lf)\n", a,b,c,d);
+        Rprintf("%d: (%lf, %lf)* (%lf, %lf)\n", a,b,c,d);
         */
         commul(a,b,c,d,&e,&f);
 
@@ -3791,15 +3821,15 @@ else
 switch(*bc) {
 
     case PERIODIC:  /* Periodic boundary conditions */
-        if (verbose) printf("Periodic boundary method\n");
+        if (verbose) Rprintf("Periodic boundary method\n");
         break;
 
     case SYMMETRIC: /* Symmetric boundary conditions */
-        if (verbose) printf("Symmetric boundary method\n");
+        if (verbose) Rprintf("Symmetric boundary method\n");
         break;
 
     default:    /* The bc must be one of the above */
-        printf("Unknown boundary correction method\n");
+        Rprintf("Unknown boundary correction method\n");
         *error = 1;
         return;
         break;
@@ -3808,21 +3838,21 @@ switch(*bc) {
 switch(*type)   {
 
     case WAVELET:   /* Standard wavelets */
-        if (verbose) printf("Standard wavelet decomposition\n");
+        if (verbose) Rprintf("Standard wavelet decomposition\n");
         break;
 
     case STATION:   /* Stationary wavelets */
-        if (verbose) printf("Stationary wavelet decomposition\n");
+        if (verbose) Rprintf("Stationary wavelet decomposition\n");
         break;
 
     default:    /* The type must be of one the above */
-        if (verbose) printf("Unknown decomposition type\n");
+        if (verbose) Rprintf("Unknown decomposition type\n");
         *error = 2;
         return;
         break;
     }
         
-if (verbose) printf("Decomposing into level: ");
+if (verbose) Rprintf("Decomposing into level: ");
 
 *error = 0;
 
@@ -3834,7 +3864,7 @@ step_factor = 1;    /* This variable should *always* be 1 for standard
 for(next_level = *levels - 1; next_level >= 0; --next_level)    {
 
     if (verbose)
-        printf("%d ", next_level);
+        Rprintf("%d ", next_level);
 
     at_level = next_level + 1;
 
@@ -3874,7 +3904,7 @@ for(next_level = *levels - 1; next_level >= 0; --next_level)    {
                      * know what to do here ! */
     }
 if (verbose)
-    printf("\n");
+    Rprintf("\n");
 return;
 }
 /*
@@ -3916,15 +3946,15 @@ else
 switch(*bc) {
 
     case PERIODIC:  /* Periodic boundary conditions */
-        if (verbose) printf("Periodic boundary method\n");
+        if (verbose) Rprintf("Periodic boundary method\n");
         break;
 
     case SYMMETRIC: /* Symmetric boundary conditions */
-        if (verbose) printf("Symmetric boundary method\n");
+        if (verbose) Rprintf("Symmetric boundary method\n");
         break;
 
     default:    /* The bc must be one of the above */
-        printf("Unknown boundary correction method\n");
+        Rprintf("Unknown boundary correction method\n");
         *error = 1;
         return;
         break;
@@ -3933,21 +3963,21 @@ switch(*bc) {
 switch(*type)   {
 
     case WAVELET:   /* Standard wavelets */
-        if (verbose) printf("Standard wavelet decomposition\n");
+        if (verbose) Rprintf("Standard wavelet decomposition\n");
         break;
 
     case STATION:   /* Stationary wavelets */
-        if (verbose) printf("Stationary wavelet decomposition\n");
+        if (verbose) Rprintf("Stationary wavelet decomposition\n");
         break;
 
     default:    /* The type must be of one the above */
-        if (verbose) printf("Unknown decomposition type\n");
+        if (verbose) Rprintf("Unknown decomposition type\n");
         *error = 2;
         return;
         break;
     }
 
-if (verbose) printf("Building level: ");
+if (verbose) Rprintf("Building level: ");
 
 *error = 0;
 
@@ -3955,7 +3985,7 @@ for(next_level = 1; next_level <= *levels; ++next_level)    {
 
     
     if (verbose)
-        printf("%d ", next_level);
+        Rprintf("%d ", next_level);
 
     at_level = next_level - 1; 
 
@@ -3980,7 +4010,7 @@ for(next_level = 1; next_level <= *levels; ++next_level)    {
         (int)(*bc) );
     }
 if (verbose)
-    printf("\n");
+    Rprintf("\n");
 
 return;
 }
@@ -4045,13 +4075,13 @@ double xmin, xmax; /* Note these are not the same as maxx and minx */
 double SFYscale, WVYscale; /* I forgot to multiply by p^{1/2} etc. */
 
 if (*verbose > 1)
-    printf("Entered CWavDE function\n");
+    Rprintf("Entered CWavDE function\n");
 
 *kmin = (int)floor(*minx - *phiRH/ *PrimRes);
 *kmax = (int)ceil(*maxx - *phiLH/ *PrimRes);
 
 if (*verbose > 1)
-    printf("kmin is %d, kmax is %d\n", *kmin, *kmax);       /*MAN: changed %ld to %d since declared as int (L1329) */
+    Rprintf("kmin is %d, kmax is %d\n", *kmin, *kmax);       /*MAN: changed %ld to %d since declared as int (L1329) */
 
 la = (int)(*kmax - *kmin) + 1;
 
@@ -4147,7 +4177,7 @@ free((void *)a);
 
 for(j=0; j<(int)*Jmax; ++j) {
     if (*verbose > 0)
-        printf("Wavelet step: level %d\n", j);
+        Rprintf("Wavelet step: level %d\n", j);
 
         twopowjp1 = 1 << (j+1);           /* MAN: added parentheses for bit shift */
 
@@ -4630,7 +4660,7 @@ void ShannonEntropy();  /* Computes entropy             */
 zilchtol = ZILCHTOL;
 
 if (*verbose == 1)
-    printf("Cmnv: function entered\n");
+    Rprintf("Cmnv: function entered\n");
 
 nll = (int)*LengthData;
 nul = nll >> 1;
@@ -4639,11 +4669,11 @@ nul = nll >> 1;
 
 for(i=0; i <= *nlevels-1; ++i)  {
     if (*verbose==1)
-        printf("Cmnv: Packets. Lower: %d Upper %d\n", nll, nul);
+        Rprintf("Cmnv: Packets. Lower: %d Upper %d\n", nll, nul);
 
     for(j=0; j<nul; ++j)    {
         if (*verbose==1)
-            printf("Upper level index: %d\n", j);
+            Rprintf("Upper level index: %d\n", j);
         kl = j << 1;
         kr = kl + 1;
 
@@ -4749,7 +4779,7 @@ for(i=0; i <= *nlevels-1; ++i)  {
         else    {   /* We're not at the bottom */
 
             if (*verbose==1)
-              printf("Left Ent C contrib %lf\n",
+              Rprintf("Left Ent C contrib %lf\n",
                 ACCESSU(upperl,firstl, i-1, kl));
 
             pktl = getpacket(wst, 1+(int)*nlevels, i, kl, error);
@@ -4775,7 +4805,7 @@ for(i=0; i <= *nlevels-1; ++i)  {
             /* now the right daughter */
 
             if (*verbose==1)
-              printf("Right Ent C contrib %lf\n",
+              Rprintf("Right Ent C contrib %lf\n",
                 ACCESSU(upperl,firstl, i-1, kr));
 
             pktr = getpacket(wst, 1+(int)*nlevels, i, kr, error);
@@ -4799,9 +4829,9 @@ for(i=0; i <= *nlevels-1; ++i)  {
             }
 
         if (*verbose==1)    {
-            printf("Mother ent.: %lf\n", mpE);
-            printf("Daug. l. ent.: %lf\n", dlE);
-            printf("Daug. r. ent.: %lf\n", drE);
+            Rprintf("Mother ent.: %lf\n", mpE);
+            Rprintf("Daug. l. ent.: %lf\n", dlE);
+            Rprintf("Daug. r. ent.: %lf\n", drE);
             }
 
 
@@ -4824,7 +4854,7 @@ for(i=0; i <= *nlevels-1; ++i)  {
             }
 
         if (*verbose==1)
-          printf("\tSelected %d %lf\n", ACCESSU(upperctrl,firstl,i,j),
+          Rprintf("\tSelected %d %lf\n", ACCESSU(upperctrl,firstl,i,j),
             ACCESSU(upperl, firstl, i, j));
         }
 
@@ -4870,7 +4900,7 @@ void ShannonEntropy();  /* Computes entropy             */
 zilchtol = ZILCHTOL;
 
 if (*verbose == 1)
-    printf("wpCmnv: function entered\n");
+    Rprintf("wpCmnv: function entered\n");
 
 nll = (int)*LengthData;
 nul = nll >> 1;
@@ -4879,11 +4909,11 @@ nul = nll >> 1;
 
 for(i=0; i <= *nlevels-1; ++i)  {
     if (*verbose==1)
-        printf("wpCmnv: Packets. Lower: %d Upper %d\n", nll, nul);
+        Rprintf("wpCmnv: Packets. Lower: %d Upper %d\n", nll, nul);
 
     for(j=0; j<nul; ++j)    {
         if (*verbose==1)
-            printf("Upper level index: %d\n", j);
+            Rprintf("Upper level index: %d\n", j);
         kl = j << 1;
         kr = kl + 1;
 
@@ -4959,8 +4989,8 @@ for(i=0; i <= *nlevels-1; ++i)  {
         }
 
         if (*verbose==1)    {
-            printf("Mother ent.: %lf\n", mpE);
-            printf("Daug. ent.: %lf\n", dE);
+            Rprintf("Mother ent.: %lf\n", mpE);
+            Rprintf("Daug. ent.: %lf\n", dE);
             }
 
 
@@ -4974,7 +5004,7 @@ for(i=0; i <= *nlevels-1; ++i)  {
             }
 
         if (*verbose==1)
-          printf("\tSelected %d %lf\n", ACCESSU(upperctrl,firstl,i,j),
+          Rprintf("\tSelected %d %lf\n", ACCESSU(upperctrl,firstl,i,j),
             ACCESSU(upperl, firstl, i, j));
         }
 
@@ -5389,8 +5419,8 @@ int putSigma(struct sigmastruct *Sigma, int i, int j, double s)
   if((i>=Sigma->n)||(j>=Sigma->n))
     {
     return(-1);
-    /*
-    puts("Error: This element does not exist.");
+    /*  MAN 21/01/13 change  to Rprintf due to CHECK note.
+    Rprintf("Error: This element does not exist.");
         */
     }
   else
@@ -5455,7 +5485,8 @@ void computec(int *n,double *c,int *gridn,double *Gmatrix,int *Gindex,
 
   if(*LengthH>20)
     {
-    puts("Sorry, you can not use this procedure with more than 20 filter coefficients!");
+	/* MAN 01/03/12.  Change below to Rprintf */
+    Rprintf("Sorry, you can not use this procedure with more than 20 filter coefficients!\n");
     *error = 1;
     return; 
     }
@@ -5776,7 +5807,8 @@ void computec(int *n,double *c,int *gridn,double *Gmatrix,int *Gindex,
               for(l=k+1;l<LengthH2;l++)
                 { 
                 if((iiH<0)||(jjH<0))
-                  puts("ERROR");
+		/* MAN 01/03/12.  Changed to Rprintf. */
+                  Rprintf("ERROR\n");
                 dH=abs(iiH-jjH);
                 dG=abs(iiG-jjG);
                 if(dH==0)
@@ -6091,7 +6123,7 @@ KeepGoing = TRUE;
 
 while(KeepGoing)    {
 
-/*     printf("Entered loop BigJ is %d\n", *BigJ); */
+/*     Rprintf("Entered loop BigJ is %d\n", *BigJ); */
 
     ndata = (int)0x01 << *BigJ;
 
@@ -6110,9 +6142,10 @@ while(KeepGoing)    {
      * Do the wavelet transform
      */
 
-/* MAN:  allocate memory for the inputs into simpleWT. 
+/* MAN: 7/12/10. allocate memory for the inputs into simpleWT. 
   The allocation should cover the present sizes (w.r.t the while
-loop).  
+loop).  This allocation should be done especially since the memory for
+the objects are free'd later on!  
 Maybe the D ones should be the same size as the Cs just in case.
 */
 
@@ -6311,7 +6344,7 @@ if ((lvec = (int *)malloc((unsigned)*J*sizeof(int)))==NULL)   {
 for(i=0; i<*J; ++i)
     *(lvec+i) = 0;
 
-/* MAN  coefvec initialization? */
+/* MAN 7/12/10.  coefvec initialization? */
 
 /* coefvec=calloc(*J,sizeof(double*));*/
 
@@ -6406,7 +6439,7 @@ for(i=0; i<ndata; ++i)
  * Do the wavelet transform
  */
 
-/* MAN The call to simpleWT doesn't know what memory it's using
+/* MAN 7/12/10.  The call to simpleWT doesn't know what memory it's using
 and so during the next for loop, *D is being used when we don't know what 
 it contains.  I am going to allocate memory specifically for the input into
 simpleWT.
@@ -6497,7 +6530,7 @@ free((void *)ixvec);
 free((void *)TheData);
 
 
-/* MAN  Free the memory allocated above for simpleWT. */
+/* MAN 7/12/10.  Free the memory allocated above for simpleWT. */
 
 /*
 free(tmpcfvec);
@@ -6639,7 +6672,7 @@ if ((lvec = (int *)malloc((unsigned)*J*sizeof(int)))==NULL)   {
 for(i=0; i<*J; ++i)
     *(lvec+i) = 0;
 
-/* MAN  Init. coefvec? */
+/* MAN 7/12/10.  Init. coefvec? */
 /* coefvec=calloc(*J,sizeof(double*));*/
 
 mkcoef(J, BigJ, H, LengthH, &coefvec, lvec, tol, error); 
@@ -6702,7 +6735,7 @@ if ((lvec = (int *)malloc((unsigned)*J*sizeof(int)))==NULL)   {
 for(i=0; i<*J; ++i)
     *(lvec+i) = 0;
 
-/* MAN  Init for coefvec? */
+/* MAN 7/12/10.  Init for coefvec? */
 
 /* coefvec=calloc(*J,sizeof(double)); */
 
@@ -6951,7 +6984,7 @@ double *hhout, *hgout, *ghout, *ggout;  /* Intermediate stores      */
 int nm2;    /* Half of *nm                      */
 
 void SWT2D();   /* Carries out a step of the SWT2D algorithm        */
-void SmallStore();	/* MAN Added call for function used later */
+void SmallStore();	/* MAN 7/12/10. Added call for function used later */
 
 *error = 0;
 
@@ -6986,14 +7019,14 @@ if ((ggout = (double *)malloc((size_t)(mlength* sizeof(double))))==NULL){
 SWT2D(m, nm, hhout, hgout, ghout, ggout, H, LengthH, error);
 
 #ifdef PRINTON
-printf("First hhout matrix\n");
+Rprintf("First hhout matrix\n");
 {
 int i,j;
 for(i=0; i<*nm; ++i)    {
-    printf("[%d, ] ", i);
+    Rprintf("[%d, ] ", i);
     for(j=0; j<*nm; ++j)
-      printf("%lf ", ACCESS(hhout, *nm, i,j));
-    printf("\n");
+      Rprintf("%lf ", ACCESS(hhout, *nm, i,j));
+    Rprintf("\n");
     }
 }
 #endif
@@ -7057,7 +7090,7 @@ void SWT2Drec();
 *error = 0;
 
 #ifdef PRINTON
-printf("SWT2Drec: x=%ld, y=%ld, TWOsl=%ld, sl=%ld, J=%ld\n",x,y,TWOsl,sl,J);
+Rprintf("SWT2Drec: x=%ld, y=%ld, TWOsl=%ld, sl=%ld, J=%ld\n",x,y,TWOsl,sl,J);
 #endif
 
 mlength = TWOsl * TWOsl;
@@ -7104,12 +7137,12 @@ if (*error != 0)
     return;
 
 #ifdef PRINTON
-printf("HH matrix for level %ld\n", J); 
+Rprintf("HH matrix for level %ld\n", J); 
 for(i=0; i<TWOsl; ++i)  {
- printf("[%d,] ",i);
+ Rprintf("[%d,] ",i);
  for(j=0; j<TWOsl; ++j)
-  printf("%lf ", ACCESS(hhout, TWOsl, i, j));
- printf("\n");
+  Rprintf("%lf ", ACCESS(hhout, TWOsl, i, j));
+ Rprintf("\n");
  }
 #endif
 
@@ -7538,26 +7571,26 @@ else    {
  */
 
 #ifdef PRINTON
-printf("This is ggout\n");
+Rprintf("This is ggout\n");
 for(i=0; i<sl; ++i) {
-  printf("[%d,] ", i);
+  Rprintf("[%d,] ", i);
   for(j=0; j<sl; ++j)
-    printf("%lf ", ACCESS(ggout, sl, i, j));
-  printf("\n");
+    Rprintf("%lf ", ACCESS(ggout, sl, i, j));
+  Rprintf("\n");
   }
-printf("This is hgout\n");
+Rprintf("This is hgout\n");
 for(i=0; i<sl; ++i) {
-  printf("[%d,] ", i);
+  Rprintf("[%d,] ", i);
   for(j=0; j<sl; ++j)
-    printf("%lf ", ACCESS(hgout, sl, i, j));
-  printf("\n");
+    Rprintf("%lf ", ACCESS(hgout, sl, i, j));
+  Rprintf("\n");
   }
-printf("This is ghout\n");
+Rprintf("This is ghout\n");
 for(i=0; i<sl; ++i) {
-  printf("[%d,] ", i);
+  Rprintf("[%d,] ", i);
   for(j=0; j<sl; ++j)
-    printf("%lf ", ACCESS(ghout, sl, i, j));
-  printf("\n");
+    Rprintf("%lf ", ACCESS(ghout, sl, i, j));
+  Rprintf("\n");
   }
 #endif
 
@@ -7572,13 +7605,13 @@ ImageReconstructStep(hhout, hgout, ghout, ggout, sl, 0, sl, 0,
     H, *LengthH, 2*sl, 0, 2*sl-1, out, &bc, error);
 
 #ifdef PRINTON
-printf("Immediate IRS\n");
+Rprintf("Immediate IRS\n");
 for(i=0; i<2*sl; ++i)   {
-    printf("[%d, ] ", i);
+    Rprintf("[%d, ] ", i);
     for(j=0; j<2*sl; ++j)   {
-        printf("%lf ", ACCESS(out, 2*sl, i,j));
+        Rprintf("%lf ", ACCESS(out, 2*sl, i,j));
         }
-    printf("\n");
+    Rprintf("\n");
     }
 #endif
 
@@ -7741,34 +7774,34 @@ for(j=0; j<sl; ++j) {
         }
     }
 #ifdef PRINTON
-printf("This is for level %ld\n", levj);
-printf("r0\n");
+Rprintf("This is for level %ld\n", levj);
+Rprintf("r0\n");
 for(i=0; i<sl; ++i) {
-  printf("[%d,] ", i);
+  Rprintf("[%d,] ", i);
   for(j=0; j<sl; ++j)
-    printf("%lf ", ACCESS(rc0, sl, i, j));
-  printf("\n");
+    Rprintf("%lf ", ACCESS(rc0, sl, i, j));
+  Rprintf("\n");
   }
-printf("r1\n");
+Rprintf("r1\n");
 for(i=0; i<sl; ++i) {
-  printf("[%d,] ",i );
+  Rprintf("[%d,] ",i );
   for(j=0; j<sl; ++j)
-    printf("%lf ", ACCESS(rc1, sl, i, j));
-  printf("\n");
+    Rprintf("%lf ", ACCESS(rc1, sl, i, j));
+  Rprintf("\n");
   }
-printf("r2\n");
+Rprintf("r2\n");
 for(i=0; i<sl; ++i) {
-  printf("[%d,] ", i);
+  Rprintf("[%d,] ", i);
   for(j=0; j<sl; ++j)
-    printf("%lf ", ACCESS(rc2, sl, i, j));
-  printf("\n");
+    Rprintf("%lf ", ACCESS(rc2, sl, i, j));
+  Rprintf("\n");
   }
-printf("r3\n");
+Rprintf("r3\n");
 for(i=0; i<sl; ++i) {
-  printf("[%d,] ", i);
+  Rprintf("[%d,] ", i);
   for(j=0; j<sl; ++j)
-    printf("%lf ", ACCESS(rc3, sl, i, j));
-  printf("\n");
+    Rprintf("%lf ", ACCESS(rc3, sl, i, j));
+  Rprintf("\n");
   }
 #endif
 
@@ -7792,17 +7825,17 @@ for(i=0; i<sl; ++i)
                   ACCESS(rc3,sl,i,j))/4.0;
 
 #ifdef PRINTON
-printf("Transposed TheSmooth\n");
+Rprintf("Transposed TheSmooth\n");
 /*
 tpose(TheSmooth, sl);
 */
 
 for(i=0; i<sl; ++i) {
-    printf("[%d, ] ", i);
+    Rprintf("[%d, ] ", i);
     for(j=0; j<sl; ++j) {
-        printf("%lf ", ACCESS(TheSmooth, sl, i,j));
+        Rprintf("%lf ", ACCESS(TheSmooth, sl, i,j));
         }
-    printf("\n");
+    Rprintf("\n");
     }
 #endif
 
@@ -8795,12 +8828,12 @@ Filter temp, temp1;
 maxscale = (int)(log(Size)/log(2));
 
 if (MinScale >= maxscale) {
-printf("MinScale must be less than log2(Size).\nNo transformation performed.\n");
+Rprintf("MinScale must be less than log2(Size).\nNo transformation performed.\n");
 return;
 }
 
 if (FilterNumber < 1 || FilterNumber > Nmax) {
-printf("Filter no %d not implemented.\nNo transformation performed.\n", FilterNumber);
+Rprintf("Filter no %d not implemented.\nNo transformation performed.\n", FilterNumber);
 return;
 }
 
@@ -8878,7 +8911,7 @@ for (j = 0; j < Nmax; j++)
 temp.PreLeft[i][j] = temp.PreInvLeft[i][j] = temp.PreRight[i][j] = temp.PreInvRight[i][j] = 0;
 
 if (N < 1 || N > Nmax) {
-printf("Filter no %d not implemented.", N);
+Rprintf("Filter no %d not implemented.", N);
 return temp;
 }
 
@@ -9112,7 +9145,7 @@ for(c=0; c< *size; ++c)
             *(c_in+r) = ACCESSW3D(Carray, (int)*truesize,
                 (int)*truesize, r, c, s);
             /*
-            printf("Carray[%d, %d, %d] = %lf\n",
+            Rprintf("Carray[%d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(Carray,
                 (int)*truesize, (int)*truesize,
                                 r, c, s));
@@ -9137,7 +9170,7 @@ for(c=0; c< *size; ++c)
                 *(c_out+r);
 
             /*
-            printf("Ha[ %d, %d, %d] = %lf\n",
+            Rprintf("Ha[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(Ha, (int)halfsize,
                     (int)*size, r,c,s));
             */
@@ -9146,7 +9179,7 @@ for(c=0; c< *size; ++c)
             ACCESSW3D(Ga, (int)halfsize, (int)*size, r, c, s) =
                 *(d_out+r);
             /*
-            printf("Ga[ %d, %d, %d] = %lf\n",
+            Rprintf("Ga[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(Ga, (int)halfsize,
                     (int)*size, r,c,s));
             */
@@ -9207,7 +9240,7 @@ for(r=0; r < halfsize; ++r)
             ACCESSW3D(HH, (int)halfsize, (int)halfsize, r, c, s) =
                 *(c_out+c);
             /*
-            printf("HH[ %d, %d, %d] = %lf\n",
+            Rprintf("HH[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(HH, (int)halfsize,
                     (int)halfsize, r,c,s));
             */
@@ -9217,7 +9250,7 @@ for(r=0; r < halfsize; ++r)
             ACCESSW3D(GH, (int)halfsize, (int)halfsize, r, c, s) =
                 *(d_out+c);
             /*
-            printf("GH[ %d, %d, %d] = %lf\n",
+            Rprintf("GH[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(GH, (int)halfsize,
                     (int)halfsize, r,c,s));
             */
@@ -9258,7 +9291,7 @@ for(r=0; r < halfsize; ++r)
                 *(c_out+c);
 
             /*
-            printf("HG[ %d, %d, %d] = %lf\n",
+            Rprintf("HG[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(HG, (int)halfsize,
                     (int)halfsize, r,c,s));
             */
@@ -9267,7 +9300,7 @@ for(r=0; r < halfsize; ++r)
             ACCESSW3D(GG, (int)halfsize, (int)halfsize, r, c, s) =
                 *(d_out+c);
             /*
-            printf("GG[ %d, %d, %d] = %lf\n",
+            Rprintf("GG[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(HG, (int)halfsize,
                     (int)halfsize, r,c,s));
             */
@@ -9349,7 +9382,7 @@ for(r=0; r < halfsize; ++r)
             ACCESSW3D(HHH, (int)halfsize, (int)halfsize, r, c, s) =
                 *(c_out+s);
             /*
-            printf("HHH[ %d, %d, %d] = %lf\n",
+            Rprintf("HHH[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(HHH, (int)halfsize,
                     (int)halfsize, r,c,s));
             */
@@ -9392,7 +9425,7 @@ for(r=0; r < halfsize; ++r)
             ACCESSW3D(HGH, (int)halfsize, (int)halfsize, r, c, s) =
                 *(c_out+s);
             /*
-            printf("HGH[ %d, %d, %d] = %lf\n",
+            Rprintf("HGH[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(HGH, (int)halfsize,
                     (int)halfsize, r,c,s));
             */
@@ -9401,7 +9434,7 @@ for(r=0; r < halfsize; ++r)
             ACCESSW3D(GGH, (int)halfsize, (int)halfsize, r, c, s) =
                 *(d_out+s);
             /*
-            printf("GGH[ %d, %d, %d] = %lf\n",
+            Rprintf("GGH[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(GGH, (int)halfsize,
                     (int)halfsize, r,c,s));
             */
@@ -9510,7 +9543,7 @@ for(r=0; r < (int)halfsize; ++r)
         ACCESSW3D(HHH, (int)halfsize, (int)halfsize, r, c, s);
 
     /*
-    printf("Carray[%d %d %d] = %lf (from HHH)\n",
+    Rprintf("Carray[%d %d %d] = %lf (from HHH)\n",
         r,c,s,tmpf);
     */
     }
@@ -9528,7 +9561,7 @@ for(r=0; r < (int)halfsize; ++r)
         ACCESSW3D(HGH, (int)halfsize, (int)halfsize, r, c, s);
 
     /*
-    printf("HGH[ %d, %d, %d] = %lf\n", r,c,s, ACCESSW3D(HGH, (int)halfsize,
+    Rprintf("HGH[ %d, %d, %d] = %lf\n", r,c,s, ACCESSW3D(HGH, (int)halfsize,
             (int)halfsize, r,c,s));
     */
 
@@ -9539,7 +9572,7 @@ for(r=0; r < (int)halfsize; ++r)
         ACCESSW3D(GGH, (int)halfsize, (int)halfsize, r, c, s);
 
     /*
-    printf("GGH[ %d, %d, %d] = %lf\n", r,c,s, ACCESSW3D(GGH, (int)halfsize,
+    Rprintf("GGH[ %d, %d, %d] = %lf\n", r,c,s, ACCESSW3D(GGH, (int)halfsize,
             (int)halfsize, r,c,s));
     */
 
@@ -9609,7 +9642,7 @@ insize = *size;
 while(insize >= 2)  {
 
     /*
-    printf("Outsize is %ld\n", insize*2);
+    Rprintf("Outsize is %ld\n", insize*2);
     */
 
     wd3Dstep(Carray, size, &insize, H, LengthH, error);
@@ -9652,7 +9685,7 @@ if (*truesize < sizeout)    {
 while(sizeout <= *truesize) {
 
     /*
-    printf("Outsize is %ld\n", sizeout);
+    Rprintf("Outsize is %ld\n", sizeout);
     */
 
     wr3Dstep(Carray, truesize, &sizeout, H, LengthH, error);
@@ -9763,7 +9796,7 @@ for(r=0; r < (int)halfsize; ++r)
         ACCESSW3D(Carray, (int)*truesize, (int)*truesize,
             r, c+(int)halfsize, s);
     /*
-    printf("HGH[ %d, %d, %d] = %lf\n", r,c,s, ACCESSW3D(HGH, (int)halfsize,
+    Rprintf("HGH[ %d, %d, %d] = %lf\n", r,c,s, ACCESSW3D(HGH, (int)halfsize,
             (int)halfsize, r,c,s));
     */
 
@@ -9774,7 +9807,7 @@ for(r=0; r < (int)halfsize; ++r)
             r+(int)halfsize, c+(int)halfsize, s);
 
     /*
-    printf("GGH[ %d, %d, %d] = %lf\n", r,c,s, ACCESSW3D(GGH, (int)halfsize,
+    Rprintf("GGH[ %d, %d, %d] = %lf\n", r,c,s, ACCESSW3D(GGH, (int)halfsize,
             (int)halfsize, r,c,s));
     */
 
@@ -9876,7 +9909,7 @@ for(r=0; r < (int)halfsize; ++r)
             ACCESSW3D(HH, (int)halfsize, (int)halfsize, r, c, s) =
                 *(c_out+s);
             /*
-            printf("HH[ %d, %d, %d] = %lf\n",
+            Rprintf("HH[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(HH, (int)halfsize,
                     (int)halfsize, r,c,s));
             */
@@ -9915,7 +9948,7 @@ for(r=0; r < (int)halfsize; ++r)
             ACCESSW3D(GH, (int)halfsize, (int)halfsize, r, c, s) =
                 *(c_out+s);
             /*
-            printf("GH[ %d, %d, %d] = %lf\n",
+            Rprintf("GH[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(GH, (int)halfsize,
                     (int)halfsize, r,c,s));
             */
@@ -10045,7 +10078,7 @@ for(r=0; r < (int)halfsize; ++r)
             ACCESSW3D(Ha, (int)halfsize, (int)*sizeout, r, c, s) =
                 *(c_out+c);
             /*
-            printf("Ha[ %d, %d, %d] = %lf\n",
+            Rprintf("Ha[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(Ha, (int)halfsize,
                     (int)*sizeout, r,c,s));
             */
@@ -10084,7 +10117,7 @@ for(r=0; r < (int)halfsize; ++r)
             ACCESSW3D(Ga, (int)halfsize, (int)*sizeout, r, c, s) =
                 *(c_out+c);
             /*
-            printf("Ga[ %d, %d, %d] = %lf\n",
+            Rprintf("Ga[ %d, %d, %d] = %lf\n",
                 r,c,s, ACCESSW3D(Ga, (int)halfsize,
                     (int)*sizeout, r,c,s));
             */
@@ -10162,7 +10195,7 @@ int halfsize;
 halfsize = 1 << *level;
 
 /*
-printf("Halfsize is %ld\n", halfsize);
+Rprintf("Halfsize is %ld\n", halfsize);
 */
 
 for(r=0; r < (int)halfsize; ++r)
@@ -10239,7 +10272,7 @@ switch(*Iarrayix)   {
 
   case IX_HHH:
 
-    printf("Inserting HHH\n");
+    Rprintf("Inserting HHH\n");
 
     ACCESSW3D(Carray, (int)*truesize, (int)*truesize, 0, 0, 0) =
         ACCESSW3D(Iarray, (int)halfsize, (int)halfsize, 0, 0, 0);
@@ -10249,7 +10282,7 @@ switch(*Iarrayix)   {
 
   case IX_GHH:
 
-    printf("Inserting GHH\n");
+    Rprintf("Inserting GHH\n");
 
     for(r=0; r < (int)halfsize; ++r)
       for(c=0; c < (int)halfsize; ++c)
@@ -10263,7 +10296,7 @@ switch(*Iarrayix)   {
 
   case IX_HGH:
 
-    printf("Inserting HGH\n");
+    Rprintf("Inserting HGH\n");
 
     for(r=0; r < (int)halfsize; ++r)
       for(c=0; c < (int)halfsize; ++c)
@@ -10277,7 +10310,7 @@ switch(*Iarrayix)   {
 
   case IX_GGH:
 
-    printf("Inserting GGH\n");
+    Rprintf("Inserting GGH\n");
 
     for(r=0; r < (int)halfsize; ++r)
       for(c=0; c < (int)halfsize; ++c)
@@ -10291,7 +10324,7 @@ switch(*Iarrayix)   {
 
   case IX_HHG:
 
-    printf("Inserting HHG\n");
+    Rprintf("Inserting HHG\n");
 
     for(r=0; r < (int)halfsize; ++r)
       for(c=0; c < (int)halfsize; ++c)
@@ -10305,7 +10338,7 @@ switch(*Iarrayix)   {
 
   case IX_GHG:
 
-    printf("Inserting GHG\n");
+    Rprintf("Inserting GHG\n");
 
     for(r=0; r < (int)halfsize; ++r)
       for(c=0; c < (int)halfsize; ++c)
@@ -10320,7 +10353,7 @@ switch(*Iarrayix)   {
 
   case IX_HGG:
 
-    printf("Inserting HGG\n");
+    Rprintf("Inserting HGG\n");
 
     for(r=0; r < (int)halfsize; ++r)
       for(c=0; c < (int)halfsize; ++c)
@@ -10334,7 +10367,7 @@ switch(*Iarrayix)   {
 
   case IX_GGG:
 
-    printf("Inserting GGG\n");
+    Rprintf("Inserting GGG\n");
 
     for(r=0; r < (int)halfsize; ++r)
       for(c=0; c < (int)halfsize; ++c)
@@ -10347,7 +10380,7 @@ switch(*Iarrayix)   {
     break;
   default:
 
-    printf("Unknown insertion type\n");
+    Rprintf("Unknown insertion type\n");
     break;
   }
 }
@@ -10577,9 +10610,13 @@ else
 void TRDerror(s)
 char *s;
 {
-fprintf(stderr, "Module TRDerror in WaveThresh\n");
-fprintf(stderr, "%s", s);
-exit(1);
+/* MAN 01/03/12. Remove stderr write x 2
+fRprintf(stderr, "Module TRDerror in WaveThresh\n");
+fRprintf(stderr, "%s", s);	*/
+Rprintf("Module TRDerror in WaveThresh\n");
+Rprintf("%s", s);
+/* MAN 01/03/12.  Remove C exit
+            exit(1);    */
 }
 
 /* Following functions are to do Complex-valued non-decimated
@@ -10622,13 +10659,13 @@ void comwvpkstr();
 *error = 0;
 
 /*
-printf("This routine is wavepackst\n");
-printf("Length of data is %ld\n", *LengthData);
-printf("Number of levels is %ld\n", *levels);
-printf("Data array is:\n");
+Rprintf("This routine is wavepackst\n");
+Rprintf("Length of data is %ld\n", *LengthData);
+Rprintf("Number of levels is %ld\n", *levels);
+Rprintf("Data array is:\n");
 for(i= (int)*levels; i>=0; --i)
     for(j=0; j< *LengthData; ++j)   {
-        printf("Level %d, Item %d is %lf\n", i,j, ACCESSD(i,j));
+        Rprintf("Level %d, Item %d is %lf\n", i,j, ACCESSD(i,j));
         }
 */
 
@@ -10704,8 +10741,8 @@ void comrotater();
 void comwvpkstr();
 
 /*
-printf("wvpkstr entry\n");
-printf("lengthout is %d\n", lengthout);
+Rprintf("wvpkstr entry\n");
+Rprintf("lengthout is %d\n", lengthout);
 */
 
 lengthout = lengthin/2;
@@ -10740,10 +10777,10 @@ for(i=0; i < lengthout; ++i)    {
     }
 
 /*
-printf("book1 coefficients \n");
+Rprintf("book1 coefficients \n");
 for(i=0; i<lengthout; ++i)
-    printf("%lf ", *(book1+i));;
-printf("\n");
+    Rprintf("%lf ", *(book1+i));;
+Rprintf("\n");
 */
 
 comconD(bookR, bookI, lengthin, 0, GR, GI, LengthH,
@@ -10781,10 +10818,10 @@ for(i=0; i < lengthout; ++i)    {
     }
 
 /*
-printf("book2 coefficients \n");
+Rprintf("book2 coefficients \n");
 for(i=0; i<lengthout; ++i)
-    printf("%lf ", *(book2+i));
-printf("\n");
+    Rprintf("%lf ", *(book2+i));
+Rprintf("\n");
 */
 
 

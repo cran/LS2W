@@ -61,7 +61,7 @@ m <- vector("list",  - J)
 lj <- c(0., cumsum(2. * answer$rlvec - 1.))
 for(j in 1.:( - J))
    m[[j]] <- answer$wout[(lj[j] + 1.):lj[j + 1.]]
-assign(Psiorig, m, pos = 1.)
+#assign(Psiorig, m, pos = 1.)
 m
 }
 

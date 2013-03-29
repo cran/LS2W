@@ -149,7 +149,7 @@ for(i=0; i<ndata; ++i)
  * Do the wavelet transform
  */
 
-/* MAN  The call to simpleWT doesn't know what memory it's using
+/* MAN 6/12/10.  The call to simpleWT doesn't know what memory it's using
 and so during the next for loop, *D is being used when we don't know what 
 it contains.  I am going to allocate memory specifically for the input into
 simpleWT.
@@ -247,7 +247,7 @@ for(i=1; i <=*J; ++i)	{
 free((void *)ixvec);
 free((void *)TheData);
 
-/* MAN Free the memory allocated above for simpleWT. 
+/* MAN 6/12/10.  Free the memory allocated above for simpleWT. 
  and the other vectors from the loop
 */
 
@@ -314,7 +314,7 @@ if ((lvec = (int *)calloc(*J,sizeof(int)))==NULL)	{
 for(i=0; i<*J; ++i)
 	*(lvec+i) = 0;
 
-/* MAN  coefvec needs to be alloc'd some memory. 
+/* MAN 6/12/10.  coefvec needs to be alloc'd some memory. 
 
 Let's try and give it something sensible.
 */
@@ -344,7 +344,7 @@ for(i=0; i<*J; ++i)
 
 free((void *)lvec);
 
-/* MAN Remove free? */
+/* MAN 6/12/10 Remove free? */
 
 for(i=0; i<*J; ++i)
 	free((void *)*(coefvec+i));
@@ -476,15 +476,15 @@ else
 switch(*bc)	{
 
 	case PERIODIC:	/* Periodic boundary conditions */
-		if (verbose) printf("Periodic boundary method\n");
+		if (verbose) Rprintf("Periodic boundary method\n");
 		break;
 
 	case SYMMETRIC: /* Symmetric boundary conditions */
-		if (verbose) printf("Symmetric boundary method\n");
+		if (verbose) Rprintf("Symmetric boundary method\n");
 		break;
 
 	default:	/* The bc must be one of the above */
-		printf("Unknown boundary correction method\n");
+		Rprintf("Unknown boundary correction method\n");
 		*error = 1;
 		return;
 	}
@@ -492,20 +492,20 @@ switch(*bc)	{
 switch(*type)	{
 
 	case WAVELET:	/* Standard wavelets */
-		if (verbose) printf("Standard wavelet decomposition\n");
+		if (verbose) Rprintf("Standard wavelet decomposition\n");
 		break;
 
 	case STATION:	/* Stationary wavelets */
-		if (verbose) printf("Stationary wavelet decomposition\n");
+		if (verbose) Rprintf("Stationary wavelet decomposition\n");
 		break;
 
 	default:	/* The type must be of one the above */
-		if (verbose) printf("Unknown decomposition type\n");
+		if (verbose) Rprintf("Unknown decomposition type\n");
 		*error = 2;
 		return;
 	}
 
-if (verbose) printf("Building level: ");
+if (verbose) Rprintf("Building level: ");
 
 *error = 0l;
 
@@ -513,7 +513,7 @@ for(next_level = *start_level+1; next_level <= *levels; ++next_level)	{
 
 	
 	if (verbose)
-		printf("%d ", next_level);
+		Rprintf("%d ", next_level);
 
 	at_level = next_level - 1; 
 
@@ -533,7 +533,7 @@ for(next_level = *start_level+1; next_level <= *levels; ++next_level)	{
 		(int)(*bc) );
 	}
 if (verbose)
-	printf("\n");
+	Rprintf("\n");
 
 return;
 }

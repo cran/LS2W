@@ -11,13 +11,17 @@ curdate <- read.dcf(file.path(lib, pkg, "DESCRIPTION"), "Date")
 
 # Welcome message (MAN):
 
-cat("\n")
-cat("***********************************************************\n")
-cat("LS2W: a package for 2D Locally Stationary Wavelet processes\n\n")
-cat("--- Written by Idris Eckley and Guy Nason ---\n")
-cat(" Current package version: ",ver," (",curdate,") \n\n",sep="")
-cat("\n")
-cat("***********************************************************\n")
-cat("\n")
+packageStartupMessage(paste(
+"\n",
+"***********************************************************\n",
+"LS2W: a package for 2D Locally Stationary Wavelet processes\n\n",
+"      --- Written by Idris Eckley and Guy Nason ---\n",
+"  --- Contributions from Sarah Taylor and Matt Nunes ---\n",
+"   Current package version: ",ver," (",curdate,") \n\n",
+"\n",
+"***********************************************************\n",
+"\n")
+)
 
 }
+

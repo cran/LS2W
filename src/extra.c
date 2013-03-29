@@ -13,12 +13,12 @@ int *len;
 {
 int i;
 
-/* printf("i (mycpyd):"); */
+/* Rprintf("i (mycpyd):"); */
 for(i=0;i<*len;i++){
-/* printf("%d ",i);*/
+/* Rprintf("%d ",i);*/
 *(b+i)=*(a+i);
 }
-/* printf("\n"); */
+/* Rprintf("\n"); */
 
 }
 
@@ -29,12 +29,12 @@ int *len;
 {
 int i;
 
-/* printf("i (mycpyi):"); */
+/* Rprintf("i (mycpyi):"); */
 for(i=0;i<*len;i++){
-/* printf("%d ",i); */
+/* Rprintf("%d ",i); */
 *(b+i)=*(a+i);
 }
-/* printf("\n"); */
+/* Rprintf("\n"); */
 
 
 }

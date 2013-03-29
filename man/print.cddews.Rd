@@ -34,7 +34,7 @@ URL http://www.jstatsoft.org/v43/i03/.
 #
 # Generate a cddews object for a HaarMontage realisation 
 #
-monty <- HaarMontage("diagonal")
+monty <- HaarMontage(direction="diagonal")
 tmp <- cddews(monty, filter.number=1, family="DaubExPhase", switch="direction",correct=FALSE)
 #
 # Now get R to use print.cddews

@@ -22,8 +22,8 @@ WaveThresh package developed by Nason (1998).
 \tabular{ll}{
 Package: \tab LS2W\cr
 Type: \tab Package\cr
-Version: \tab 1.0\cr
-Date: \tab 2010-06-01\cr
+Version: \tab 1.3-1\cr
+Date: \tab 2012-03-01\cr
 License: \tab GPL version 2 or newer\cr
 }
 
@@ -47,7 +47,7 @@ within the R session, using a naming convention governed by Phi1Dname.
 \code{PsiiJ:} Computes discrete autocorrelation mother wavelets. These are automatically
 stored within the R session, using a naming convention governed by Psi1Dname.
 
-\code{D2ACW:} Computes two-dimensional autocorrelation wavelets. These are autmoatically
+\code{D2ACW:} Computes two-dimensional autocorrelation wavelets. These are automatically
 stored within the R session, using a naming convention governed by Psi2Dname.
 
 \code{D2autoplot:} Can be used to generate images of two-dimensional discrete autocorrelation
@@ -70,7 +70,7 @@ Haar MA process (for an example, see Fig 3 of Eckley and Nason 2009).
 }
 
 \author{
-Idris Eckley and Guy Nason.
+Idris Eckley and Guy Nason, with contributions from Sarah Taylor and Matt Nunes
 Maintainer: Who to complain to <i.eckley@lancs.ac.uk> 
 }
 

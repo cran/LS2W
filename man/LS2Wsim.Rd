@@ -1,0 +1,42 @@
+\name{LS2Wsim}
+\alias{LS2Wsim}
+
+
+\title{
+Generic method for simulation of LS2W processes
+}
+
+\description{
+Simulates a realisation of an LS2W process of a given spectral structure
+}
+
+\usage{
+LS2Wsim(spectrum,...)
+}
+
+\arguments{
+  \item{spectrum}{
+True spectrum from which to simulate data.
+}
+  \item{...}{
+Any other arguments passed into the simulation function methods, such as the distribution of the LS2W innovations.
+}
+}
+
+\details{
+Generic method for simulating LS2W processes as defined by Eckley et al. (2010). 
+}
+
+\value{
+Returns a single image matrix
+}
+
+\references{
+Eckley, I.A., Nason, G.P., and Treloar, R.L. (2010) Locally stationary wavelet fields with application to the modelling and analysis of image texture \emph{Journal of the Royal Statistical Society Series C}, \bold{59}, 595-616.
+}
+
+\author{
+Aimee Gott
+}
+
+\keyword{datagen}

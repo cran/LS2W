@@ -1,0 +1,64 @@
+\name{convertimwd}
+\alias{convertimwd}
+
+\title{
+Convert a non-decimated imwd object to a wst2D object.
+}
+\description{
+Converting from a spatially ordered \code{imwd} object to a packet-ordered \code{wst2D} object. 
+}
+\usage{
+convertimwd(imwd, ...)
+}
+
+\arguments{
+  \item{imwd}{
+A imwd type object obtained by a stationary wavelet transform, i.e. \code{imwd$type} must be \code{"station"}.
+}
+\item{...}{
+Any additional arguments.
+} 
+}
+\details{
+Inverting a 2-D non-decimated wavelet transform requires that the output is structured as a packet ordered transform. This function allows us to convert from the non-decimated (time ordered) \code{imwd} object to the packet ordered \code{wst2D} object. The function extracts information at a given scale/direction from the \code{imwd} object, converts it into the appropriate format and inserts it in the appropriate location of a (null) \code{wst2D} object. This function is used when simulating an LS2W process within the function \code{LS2Wsim.cddews} and does not need to be used separately. 
+}
+\value{
+An object of class \code{wst2D}
+}
+
+%\references{
+%Taylor, S.L., Eckley, I.A., and Nunes, M.A. (2011) A test of stationarity for locally stationary wavelet fields with application to image texture. Paper submitted.
+%}
+
+\author{
+Matt Nunes
+}
+
+\seealso{
+\code{\link{imwd}}, \code{\link[wavethresh]{wst2D}}, \code{\link{packetj}}
+}
+
+\examples{
+#
+#Obtain an imwd class object
+#
+testimage <- HaarMontage(256, "diagonal")
+#
+IMWDobject<- imwd(testimage, type="station")
+
+# Verify the class of this object
+#
+class(IMWDobject) 
+#
+#Convert to packet ordered
+#
+IMWDconverted<-convertimwd(IMWDobject)
+#
+#Verify new class
+#
+class(IMWDconverted)
+#
+}
+
+\keyword{classes}
+

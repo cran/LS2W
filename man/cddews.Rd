@@ -82,7 +82,7 @@ URL http://www.jstatsoft.org/v43/i03/.
 \examples{
 # Apply the cddews estimate function to a HaarMontage realisation
 #
-monty <- HaarMontage("diagonal")
+monty <- HaarMontage(direction="diagonal")
 monty.cddews <- cddews(monty, filter.number=1, family="DaubExPhase")
 monty.cddews
 }

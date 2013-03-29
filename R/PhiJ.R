@@ -63,7 +63,7 @@ Phi1Dname(J = J, filter.number = filter.number, family = family)
    lj <- c(0., cumsum(2. * answer$rlvec - 1.))
    for(j in 1.:( - J))
       m[[j]] <- answer$wout[(lj[j] + 1.):lj[j + 1.]]
-   assign(Phiorig, m, pos = 1.)
+#   assign(Phiorig, m, pos = 1.)
    m
    }
 }

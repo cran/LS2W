@@ -76,7 +76,7 @@ for(i in 1.:(3. * J)) {
 }
 nm <- as.character(0.:( - (3. * J) + 1.))
 dimnames(A) <- list(nm, nm)
-assign(Aorig, A, pos = 1.)
+#assign(Aorig, A, pos = 1.)
 A
 }
 

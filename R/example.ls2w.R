@@ -1,14 +1,14 @@
 `example.ls2w`<-function(n=25,size=64)
 {
-data(textures)
+data(textures,envir=environment())
 
 # the lines below (and the x=Aim variable call in sample.stats) make for cleaner
 # local variable manipulation (it avoids confusion if there are multiple variables
 # of the same name in different environments.
 
-Aim<-get("A",.GlobalEnv)
-Bim<-get("B",.GlobalEnv)
-Cim<-get("C",.GlobalEnv)
+Aim<-get("A")
+Bim<-get("B")
+Cim<-get("C")
 
 A.stats<- sample.stats(x=Aim,n,size)
 B.stats<- sample.stats(x=Bim,n,size)

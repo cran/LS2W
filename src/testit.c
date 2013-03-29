@@ -309,7 +309,7 @@ free((char *)dcopy_out);
 free((char *)ccopy_out);
 free((char *)ccopy);
 
-/* MAN  extra frees */
+/* MAN  6/12/10 extra frees */
 
 int tmp;
 
@@ -363,7 +363,7 @@ void ImageDecomposeStepIE();
 
 step_factor = *stepfactor;
 
-/* MAN  I think the out vectors should be alloc'd - see frees at 
+/* MAN 7/12/10.  I think the out vectors should be alloc'd - see frees at 
 the end 
 */
 
@@ -401,7 +401,7 @@ for(i=0; i<(int)*LengthCout; ++i)	{
 			*LengthCout, j,i);
 	}
 
-/* MAN  unnec. frees now make sense */
+/* MAN  6/12/10 unnec. frees now make sense */
 
 free((void *)cc_out);
 free((void *)cd_out);

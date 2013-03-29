@@ -66,7 +66,7 @@ if(switch == "direction") {
       outer(temp2[[j]], temp1[[j]])
       mat[[-2. * J + j]] <- outer(temp1[[j]], temp1[[j]])
    }
-   assign(Wavorig2, mat, pos = 1.)
+#   assign(Wavorig2, mat, pos = 1.)
 }
 if(switch == "level") {
    now <- proc.time()[1.:2.]
@@ -107,7 +107,7 @@ if(switch == "level") {
       outer(temp2[[j]], temp1[[j]])
       mat[[3. * j]] <- outer(temp1[[j]], temp1[[j]])
    }
-   assign(Wavorig2, mat, pos = 1.)
+#   assign(Wavorig2, mat, pos = 1.)
 }
 else if(switch != "level" && switch != "direction") {
    stop("FOOL - switch must either be direction or level!!!")
