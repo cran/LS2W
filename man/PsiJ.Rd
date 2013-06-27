@@ -7,7 +7,8 @@ This function computes discrete autocorrelation wavelets.
 The inner products of the discrete autocorrelation wavelets are computed by the routine ipndacw. 
 }
 \usage{
-PsiJ(J, filter.number = 10, family = "DaubLeAsymm", tol = 1e-100, OPLENGTH = 2000, verbose = FALSE)
+PsiJ(J, filter.number = 10, family = "DaubLeAsymm", tol = 1e-100, 
+OPLENGTH = 2000, verbose = FALSE)
 }
 \arguments{
   \item{J}{Discrete autocorrelation wavelets will be computed for scales -1 up to scale J. This number should be a negative integer.}
@@ -22,7 +23,7 @@ This function computes the discrete autocorrelation wavelets. It does not have a
 
 Horizontal scale. This routine returns only the values of the discrete autocorrelation wavelets and not their horizontal positions. Each discrete autocorrelation wavelet is compactly supported with the support determined from the compactly supported wavelet that generates it. See the paper by Nason, von Sachs and Kroisandt which defines the horizontal scale (but basically the finer scale discrete autocorrelation wavelets are interpolated versions of the coarser ones. When one goes from scale j to j-1 (negative j remember) an extra point is inserted between all of the old points and the discrete autocorrelation wavelet value is computed there. Thus as J tends to negative infinity the numerical approximation tends towards the continuous autocorrelation wavelet.
 
-%This function stores any discrete autocorrelation wavelet sets that it computes. The storage mechanism is not as advanced as that for ipndacw and its subsidiary routines rmget and firstdot but helps a little bit. The Psiname function defines the naming convention for objects returned by this function.
+This function stores any discrete autocorrelation wavelet sets that it computes. The storage mechanism is not as advanced as that for ipndacw and its subsidiary routines rmget and firstdot but helps a little bit. The Psiname function defines the naming convention for objects returned by this function.
 
 Sometimes it is useful to have the discrete autocorrelation wavelets stored in matrix form. The PsiJmat does this. 
 }
@@ -44,8 +45,10 @@ URL http://www.jstatsoft.org/v43/i03/.
 # Let us create the discrete autocorrelation wavelets for the Haar wavelet.
 # We shall create up to scale 4.
 #
-D1Psi.4.1.DaubExPhase<-PsiJ(-4, filter.number=1, family="DaubExPhase", verbose=TRUE)
+haardw4<-PsiJ(-4, filter.number=1, family="DaubExPhase", verbose=TRUE)
+haardw4
 #Computing PsiJ
+#Returning precomputed version
 #Took  0.00999999  seconds
 #
 #[[1]]:
@@ -68,9 +71,14 @@ D1Psi.4.1.DaubExPhase<-PsiJ(-4, filter.number=1, family="DaubExPhase", verbose=T
 # You can plot the fourth component to get an idea of what the
 # autocorrelation wavelet looks like.
 #
+# Note that the previous call stores the autocorrelation wavelet
+# in D1Psi.4.1.DaubExPhase in the environment DWEnv. This is mainly so that it doesn't have to
+# be recomputed.  
+#
 # Note that the x-coordinates in the following are approximate.
 #
- plot(seq(from=-1, to=1, length=length(D1Psi.4.1.DaubExPhase[[4]])),D1Psi.4.1.DaubExPhase[[4]], type="l",xlab = "t", ylab = "Haar Autocorrelation Wavelet")
+ plot(seq(from=-1, to=1, length=length(haardw4[[4]])),haardw4[[4]], type="l",
+xlab = "t", ylab = "Haar Autocorrelation Wavelet")
 #
 #
 # Now let us repeat the above for the Daubechies Least-Asymmetric wavelet
@@ -78,7 +86,7 @@ D1Psi.4.1.DaubExPhase<-PsiJ(-4, filter.number=1, family="DaubExPhase", verbose=T
 # We shall create up to scale 6, a higher resolution version than last
 # time.
 #
-D1Psi.6.10.DaubLeAsymm<-PsiJ(-6, filter.number=10, family="DaubLeAsymm", OPLENGTH=5000)
+PsiJ(-6, filter.number=10, family="DaubLeAsymm", OPLENGTH=5000)
 #[[1]]:
 # [1]  3.537571e-07  5.699601e-16 -7.512135e-06 -7.705013e-15  7.662378e-05
 # [6]  5.637163e-14 -5.010016e-04 -2.419432e-13  2.368371e-03  9.976593e-13
@@ -110,11 +118,16 @@ D1Psi.6.10.DaubLeAsymm<-PsiJ(-6, filter.number=10, family="DaubLeAsymm", OPLENGT
 # Let's now plot the 6th component (6th scale, this is the finest
 # resolution, all the other scales will be coarser representations)
 #
+# Note that the previous call stores the autocorrelation wavelet
+# in D1Psi.6.10.DaubLeAsymm in the DWEnv environment.
 #
 # Note that the x-coordinates in the following are non-existant!
 #
  #
- plot(seq(from=-1, to=1, length=length(D1Psi.6.10.DaubLeAsymm[[6]])),D1Psi.6.10.DaubLeAsymm[[6]], type="l", xlab="t", ylab ="Daubechies N=10 least-asymmetric Autocorrelation Wavelet") 
+LA10l6<-get("D1Psi.6.10.DaubLeAsymm",envir=DWEnv)
+
+ plot(seq(from=-1, to=1, length=length(LA10l6[[6]])),LA10l6[[6]], type="l", 
+xlab="t", ylab ="Daubechies N=10 least-asymmetric Autocorrelation Wavelet") 
 
 }
 

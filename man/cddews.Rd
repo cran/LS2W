@@ -4,8 +4,10 @@
 \description{This function computes the local wavelet spectrum (LWS) estimate of an image (or non-decimated wavelet transform of a time series). The estimate is computed by taking the non-decimated wavelet transform of the image, squaring the detail coefficients, smoothing using wavelet shrinkage and then correcting the redundancy caused by use of the non-decimated wavelet transform.
 }
 \usage{
-cddews(data, filter.number = 1, family = "DaubExPhase", switch = "direction", correct = TRUE, verbose = FALSE, smooth = TRUE, sm.filter.number = 4, 
-sm.family = "DaubExPhase", levels = 3:6, type = "hard", policy = "LSuniversal", by.level = FALSE, value = 0, dev = var)
+cddews(data, filter.number = 1, family = "DaubExPhase", switch = "direction", 
+correct = TRUE, verbose = FALSE, smooth = TRUE, 
+sm.filter.number = 4, sm.family = "DaubExPhase", levels = 3:6, type = "hard", 
+policy = "LSuniversal", by.level = FALSE, value = 0, dev = var)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

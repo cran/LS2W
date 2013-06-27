@@ -7,7 +7,8 @@
 This function computes two-dimensional discrete autocorrelation wavelets, but results in a matrix form, rather than a list.
 }
 \usage{
-D2ACWmat(J, filter.number = 10, family = "DaubLeAsymm", switch = "direction", OPLENGTH = 1e+05)
+D2ACWmat(J, filter.number = 10, family = "DaubLeAsymm", switch = "direction", 
+OPLENGTH = 1e+05)
 }
 \arguments{
   \item{J}{Discrete autocorrelation wavelets will be computed for scales -1 up to scale J within each decomposition direction (horiznotal, vertical and diagonal). This number should be a negative integer.}

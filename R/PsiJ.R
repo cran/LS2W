@@ -32,7 +32,7 @@ if(exists(Psiorig)) {
       speed <- proc.time()[1.:2.] - now
       cat("Took ", sum(speed), " seconds\n")
    }
-   return(get(Psiorig))
+   return(get(Psiorig,envir=DWEnv))
 }
 H <- filter.select(filter.number = filter.number, family = family)$H
 wout <- rep(0., OPLENGTH)
@@ -61,7 +61,7 @@ m <- vector("list",  - J)
 lj <- c(0., cumsum(2. * answer$rlvec - 1.))
 for(j in 1.:( - J))
    m[[j]] <- answer$wout[(lj[j] + 1.):lj[j + 1.]]
-#assign(Psiorig, m, pos = 1.)
+assign(Psiorig, m, envir=DWEnv)
 m
 }
 

@@ -5,7 +5,8 @@
   This function computes discrete autocorrelation scaling function.
 }
 \usage{
-PhiJ(J, filter.number = 10, family = "DaubLeAsymm", tol = 1e-100, OPLENGTH = 2000, verbose = FALSE)
+PhiJ(J, filter.number = 10, family = "DaubLeAsymm", tol = 1e-100, 
+OPLENGTH = 2000, verbose = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -18,11 +19,11 @@ PhiJ(J, filter.number = 10, family = "DaubLeAsymm", tol = 1e-100, OPLENGTH = 200
   \item{verbose}{A logical variable. If set to \code{TRUE} certain helpful statements are printed to screen during execution of this  fundcion. }
 }
 \details{
-This function computes the discrete autocorrelation scalingfunction. It does not have any direct use for location-scale analysis (e.g. ewspec). However, it is useful to be able to numerically compute the discrete autocorrelation wavelets for arbitrary wavelets and scales as there are still unanswered theoretical questions concerning the wavelets. The method is a brute force -- a more elegant solution would probably be based on interpolatory schemes.
+This function computes the discrete autocorrelation scaling function. It does not have any direct use for location-scale analysis (e.g. ewspec). However, it is useful to be able to numerically compute the discrete autocorrelation wavelets for arbitrary wavelets and scales as there are still unanswered theoretical questions concerning the wavelets. The method is a brute force -- a more elegant solution would probably be based on interpolatory schemes.
 
 Horizontal scale. This routine returns only the values of the discrete autocorrelation scaling function and not their horizontal positions. Each discrete autocorrelation scaling function is compactly supported with the support determined from the compactly supported wavelet that generates it. See the paper by Nason, von Sachs and Kroisandt which defines the horizontal scale (but basically the finer scale discrete autocorrelation scaling function are interpolated versions of the coarser ones. When one goes from scale j to j-1 (negative j remember) an extra point is inserted between all of the old points and the discrete autocorrelation scaling function value is computed there. Thus as J tends to negative infinity the numerical approximation tends towards the continuous autocorrelation scaling function.
 
-%This function stores any discrete autocorrelation wavelet sets that it computes. The storage mechanism is not as advanced as that for ipndacw and its subsidiary routines rmget and firstdot but helps a little bit. The PhinameIE function defines the naming convention for objects returned by this function.
+This function stores any discrete autocorrelation wavelet sets that it computes. The storage mechanism is not as advanced as that for ipndacw and its subsidiary routines rmget and firstdot but helps a little bit. The PhinameIE function defines the naming convention for objects returned by this function.
 
 Sometimes it is useful to have the discrete autocorrelation scaling functions stored in matrix form. The PhiJmat does this. 
 }
@@ -45,7 +46,8 @@ URL http://www.jstatsoft.org/v43/i03/.
 # Let us create the discrete autocorrelation wavelets for the Haar wavelet.
 # We shall create up to scale 4.
 #
-D1Phi.4.1.DaubExPhase<- PhiJ(-4, filter.number=1, family="DaubExPhase")
+haardw4<- PhiJ(-4, filter.number=1, family="DaubExPhase")
+haardw4
 #[[1]]:
 #[1] 0.5  1.0 0.5
 #
@@ -65,10 +67,14 @@ D1Phi.4.1.DaubExPhase<- PhiJ(-4, filter.number=1, family="DaubExPhase")
 # You can plot the fourth component to get an idea of what the
 # autocorrelation wavelet looks like.
 #
+# Note that the previous call stores the autocorrelation wavelet
+# in D1.Phi.4.1.DaubExPhase in the environment DWEnv. This is mainly so that 
+# it doesn't have to be recomputed. 
 #
 # Note that the x-coordinates in the following are approximate.
 #
- plot(seq(from=-1, to=1, length=length(D1Phi.4.1.DaubExPhase[[4]])),D1Phi.4.1.DaubExPhase[[4]], type="l",xlab = "t", ylab = "Haar Autocorrelation Scaling function")
+ plot(seq(from=-1, to=1, length=length(haardw4[[4]])),haardw4[[4]], type="l",
+xlab = "t", ylab = "Haar Autocorrelation Scaling function")
 }
 
 \keyword{models}

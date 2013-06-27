@@ -28,8 +28,8 @@ if(!is.null(rm.there)) {
       cat("Took ", sum(speed), " seconds\n")
    rmnexists <- rmname(J =  - rm.there, filter.number = 
    filter.number, family = family)
-   tmp <- get(rmnexists)[1.:( - J), 1.:( - J)]
-#   assign(rmnorig, tmp, pos = 1.)
+   tmp <- get(rmnexists,envir=DWEnv)[1.:( - J), 1.:( - J)]
+   assign(rmnorig, tmp, envir=DWEnv)
    return(tmp)
 }
 #
@@ -61,13 +61,13 @@ if(J != -1.) {
          if(answer$error != 0.)
            stop(paste("Error code was ", answer$error))
          m <- matrix(answer$fmat, nrow =  - J)
-         m[1.:( - j), 1.:( - j)] <- get(rmn)
+         m[1.:( - j), 1.:( - j)] <- get(rmn,envir=DWEnv)
          nm <- as.character(-1.:J)
          dimnames(m) <- list(nm, nm)
          speed <- proc.time()[1.:2.] - now
          if(verbose == TRUE)
             cat("Took ", sum(speed), " seconds\n")
-#         assign(rmnorig, m, pos = 1.)
+         assign(rmnorig, m, envir=DWEnv)
          return(m)
          }
       }
@@ -92,7 +92,7 @@ cat("Took ", sum(speed), " seconds\n")
 m <- matrix(answer$fmat, nrow =  - J)
 nm <- as.character(-1.:J)
 dimnames(m) <- list(nm, nm)
-#assign(rmnorig, m, pos = 1.)
+assign(rmnorig, m, pos = DWEnv)
 m
 }
 

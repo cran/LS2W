@@ -11,7 +11,8 @@ shifted versions of the DWT. The order of computation of the DWT is O(n), and it
 NDWT if n is the number of pixels. 
 }
 \usage{
-imwd(image, filter.number = 10, family = "DaubLeAsymm", type = "wavelet", bc = "periodic", RetFather = TRUE, verbose = FALSE)
+imwd(image, filter.number = 10, family = "DaubLeAsymm", type = "wavelet", 
+bc = "periodic", RetFather = TRUE, verbose = FALSE)
 }
 \arguments{
   \item{image}{A square matrix containing the image data you wish to decompose. The sidelength of this 

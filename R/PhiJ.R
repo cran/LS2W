@@ -33,7 +33,7 @@ Phi1Dname(J = J, filter.number = filter.number, family = family)
          speed <- proc.time()[1.:2.] - now
       cat("Took ", sum(speed), " seconds \n")
       }
-      return(get(Phiorig)) 
+      return(get(Phiorig,envir=DWEnv)) 
    }
    H <- filter.select(filter.number = filter.number, family = 
    family)$H
@@ -63,7 +63,7 @@ Phi1Dname(J = J, filter.number = filter.number, family = family)
    lj <- c(0., cumsum(2. * answer$rlvec - 1.))
    for(j in 1.:( - J))
       m[[j]] <- answer$wout[(lj[j] + 1.):lj[j + 1.]]
-#   assign(Phiorig, m, pos = 1.)
+   assign(Phiorig, m, envir=DWEnv)
    m
    }
 }

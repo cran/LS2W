@@ -5,7 +5,8 @@
 Plots a 2-D autocorrelation wavelet for a given wavelet ata specific scale and decomposition direction. 
 }
 \usage{
-D2autoplot(J, filter.number = 1, family = "DaubExPhase", direction = 3,main = "2-D Autocorrelation Wavelet", OPLENGTH = 10000, scaling = "other", box="TRUE")
+D2autoplot(J, filter.number = 1, family = "DaubExPhase", direction = 3,
+main = "2-D Autocorrelation Wavelet", OPLENGTH = 10000, scaling = "other", box="TRUE")
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -36,7 +37,8 @@ URL http://www.jstatsoft.org/v43/i03/.
 \author{Idris Eckley}
 \examples{
 #
-# To produce the Haar 2-D discrete autocorrelation wavelet at level -6 in the     diagonal horizontal direction type
+# To produce the Haar 2-D discrete autocorrelation wavelet at level -6 
+# in the diagonal horizontal direction type
 #
  D2ACW(J=-6, filter.number=1, family="DaubExPhase")
 #

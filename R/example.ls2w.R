@@ -6,9 +6,9 @@ data(textures,envir=environment())
 # local variable manipulation (it avoids confusion if there are multiple variables
 # of the same name in different environments.
 
-Aim<-get("A")
-Bim<-get("B")
-Cim<-get("C")
+Aim<-get("A",envir=environment())
+Bim<-get("B",envir=environment())
+Cim<-get("C",envir=environment())
 
 A.stats<- sample.stats(x=Aim,n,size)
 B.stats<- sample.stats(x=Bim,n,size)

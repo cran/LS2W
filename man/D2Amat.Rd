@@ -5,7 +5,8 @@
 This function creates the matrix used to correct the raw periodogram of a LS2W process.
 }
 \usage{
-D2Amat(J, filter.number = 10, family = "DaubLeAsymm", OPLENGTH = 10000, switch = "direction", verbose = FALSE)
+D2Amat(J, filter.number = 10, family = "DaubLeAsymm", OPLENGTH = 10000, 
+switch = "direction", verbose = FALSE)
 }
 \arguments{
   \item{J}{The level to which the decomposition must extend. This number should be a positive integer. }

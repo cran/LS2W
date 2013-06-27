@@ -5,8 +5,8 @@
 This function displays the LWP associated with a cddews object, allowing the user to dictate display type.
 }
 \usage{
-specplot(cddews, scaling = "by.level", arrangement = c(3, 3), page = TRUE, dataname = "Image", verbose = 
-FALSE, display = "persp", reset = TRUE, wtitle="TRUE")
+specplot(cddews, scaling = "by.level", arrangement = c(3, 3), page = TRUE, 
+dataname = "Image", verbose =  FALSE, display = "persp", reset = TRUE, wtitle="TRUE")
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -44,11 +44,13 @@ URL http://www.jstatsoft.org/v43/i03/.
 #
 # First let us create a textured image and create a cddews object.
 #
+\dontrun{
 monty <- HaarMontage(direction="diagonal")
 monty.cddews <- cddews(monty, filter.number=1, family="DaubExPhase")
 #
 # Finally let's view this using a perspective plot.
 #
 specplot(monty.cddews, display = "persp")
+}
 }
 \keyword{models}

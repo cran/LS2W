@@ -5,7 +5,8 @@
 This function computes two-dimensional discrete autocorrelation wavelets.  The inner products of these wavelets are required for correction of the (biased) raw wavelet periodograms.
 }
 \usage{
-D2ACW(J, filter.number = 1, family = "DaubExPhase", switch = "direction", tol = 1e-100, OPLENGTH = 2000, verbose = FALSE)
+D2ACW(J, filter.number = 1, family = "DaubExPhase", switch = "direction", 
+tol = 1e-100, OPLENGTH = 2000, verbose = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

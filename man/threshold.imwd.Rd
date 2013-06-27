@@ -7,8 +7,9 @@ object. It contains a minor variation of the equivalent WaveThresh
 function, which is necessary for the LS2W package.
 }
 \usage{
-\method{threshold}{imwd}(x, levels = 3:(x$nlevels - 1), type = "hard", policy = "universal", by.level = FALSE, value = 0, dev = var, verbose = 
-FALSE, return.threshold = FALSE, compression = TRUE, Q = 0.05, ...)
+\method{threshold}{imwd}(x, levels = 3:(x$nlevels - 1), type = "hard", policy = "universal", 
+by.level = FALSE, value = 0, dev = var, verbose = FALSE, 
+return.threshold = FALSE, compression = TRUE, Q = 0.05, ...)
 }
 \arguments{
   \item{x}{The two-dimensional wavelet decomposition object that 

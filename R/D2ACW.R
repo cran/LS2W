@@ -41,7 +41,7 @@ if(switch == "direction") {
       speed <- proc.time()[1.:2.] - now
       if(verbose)
          cat("Took ", sum(speed), " seconds \n")
-      return(get(Wavorig2))
+      return(get(Wavorig2,envir=DWEnv))
    }
    temp1 <- PsiJ(J = J, filter.number = filter.number, family = 
    family, tol = tol, OPLENGTH = OPLENGTH, verbose = verbose)
@@ -66,7 +66,7 @@ if(switch == "direction") {
       outer(temp2[[j]], temp1[[j]])
       mat[[-2. * J + j]] <- outer(temp1[[j]], temp1[[j]])
    }
-#   assign(Wavorig2, mat, pos = 1.)
+   assign(Wavorig2, mat, envir=DWEnv)
 }
 if(switch == "level") {
    now <- proc.time()[1.:2.]
@@ -82,7 +82,7 @@ if(switch == "level") {
       speed <- proc.time()[1.:2.] - now
       if(verbose)
          cat("Took ", sum(speed), " seconds \n")
-      return(get(Wavorig2))
+      return(get(Wavorig2,envir=DWEnv))
    }
    temp1 <- PsiJ(J = J, filter.number = filter.number, family = 
    family, tol = tol, OPLENGTH = OPLENGTH, verbose = 
@@ -107,7 +107,7 @@ if(switch == "level") {
       outer(temp2[[j]], temp1[[j]])
       mat[[3. * j]] <- outer(temp1[[j]], temp1[[j]])
    }
-#   assign(Wavorig2, mat, pos = 1.)
+   assign(Wavorig2, mat, envir=DWEnv)
 }
 else if(switch != "level" && switch != "direction") {
    stop("FOOL - switch must either be direction or level!!!")
