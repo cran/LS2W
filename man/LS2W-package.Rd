@@ -19,14 +19,6 @@ et al. (2010) for such processes. Note that LS2W should be used in conjunction w
 WaveThresh package developed by Nason (1998).
 }
 \details{
-\tabular{ll}{
-Package: \tab LS2W\cr
-Type: \tab Package\cr
-Version: \tab 1.3-1\cr
-Date: \tab 2012-03-01\cr
-License: \tab GPL version 2 or newer\cr
-}
-
 Note that this package should be used in conjunction with the WaveThresh package. It is
 advised that WaveThresh should be loaded first, followed by LS2W. This is because LS2W
 currently overwrites a couple of WaveThresh functions to, e.g.,  provide consistent naming structures

@@ -38,7 +38,7 @@ H <- filter.select(filter.number = filter.number, family = family)$H
 wout <- rep(0., OPLENGTH)
 rlvec <- rep(0.,  - J)
 error <- 0.
-answer <- .C("PsiJ",
+answer <- .C("PsiJ_impl",
 J = as.integer( - J),
 H = as.double(H),
 LengthH = as.integer(length(H)),

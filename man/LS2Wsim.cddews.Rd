@@ -53,7 +53,7 @@ Spectrum$S[1,,]<-matrix(1,64,64)
 #                                                          
 # Simulate an LS2W process with this structure
 #           
-testimage<- LS2Wsim.cddews(Spectrum)
+testimage<- LS2Wsim(Spectrum)
 #
   }
   

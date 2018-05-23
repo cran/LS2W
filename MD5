@@ -1,5 +1,5 @@
-10abd4060c98e25a64df2386668733c8 *DESCRIPTION
-700cea9a2d47aed51ffd2841ccf80215 *NAMESPACE
+0d402a4f0af13f00c6a07d3e868fcee2 *DESCRIPTION
+e16613dffdab93e8cb06c54306f70874 *NAMESPACE
 72dac140eca2c088fe9417bbb5764f6a *R/A2name.R
 3ae0f092bf0148e610d9851dfcff95e3 *R/AvBasis.wst2D.R
 7d229d0ca4343f7865a830b0b78503d3 *R/D1Amat.R
@@ -16,10 +16,10 @@ f6a285f297027b62e16f4b5b6c56ea0f *R/HaarMontage.R
 2a95241c5fb57234b8f00efcc223cd19 *R/LS2Wsim.R
 f557e63112ab10378f706fcbbedd5f15 *R/LS2Wsim.cddews.R
 35372e33af8d1869e986a6d753bb86e7 *R/Phi1Dname.R
-660bf9ad49069c892e6032721a781f29 *R/PhiJ.R
+e313f3471d3f286a45613831a6205a11 *R/PhiJ.R
 68867c33e20a8b60b8cc89f503602035 *R/Psi1Dname.R
 f586ec153fcca85e74331fb9f15b0c47 *R/Psi2Dname.R
-631c056cc0d30cd022d96eb243dc5e55 *R/PsiJ.R
+49eddf3940194047565f8f9b19c3744e *R/PsiJ.R
 0580ec6ae697cc93631d74d8bd41b864 *R/cddews.R
 1a3d600ecb061c36ebea7ccd806032dc *R/cdtoimwd.R
 ca751b82a8eac0a50e2e71150ef8f534 *R/convert.imwd.R
@@ -33,7 +33,7 @@ ae50c35f04b17e3079403ef8ee56cca2 *R/imwr.imwd.R
 63f15380d476bc90dace2b366bfc81b8 *R/specplot.R
 580ea4700d34860f50320c42c7a89dfd *R/summary.cddews.R
 aa5881b9f5c2f7c6c7a6973b4582a027 *R/threshold.imwd.R
-41cd905b66b9aa7e7d5fb3ead292afd2 *R/zzz.R
+7659700a708f6cd1a09f0823cb0f4a55 *R/zzz.R
 6ba1f6eaa7013a5c74386e196cb26fb9 *data/textures.rda
 7d8d43fba9d245633f289376b57dabdb *inst/CITATION
 7f327e4abcb82e360537e10f1d4c2e2f *man/A.Rd
@@ -49,9 +49,9 @@ f4d31851eda4ae197b5eb38aa2db1359 *man/Haar2MA.diag.Rd
 c9eaba5b392f094a512e2432f66fb58d *man/Haar2MA.horiz.Rd
 973e6a42f283856b82d4e5a4858794cf *man/Haar2MA.vert.Rd
 38822fae27d54fc6fd57aebca00bd871 *man/HaarMontage.Rd
-793c1e34f9874878f9077b967b8c306a *man/LS2W-package.Rd
+1e93e10d45b382273a91293b2ee3762e *man/LS2W-package.Rd
 54c3cbd65163f29abefb1ea51798a8da *man/LS2Wsim.Rd
-0fd999fff2e987ba1e95fc39a97d619f *man/LS2Wsim.cddews.Rd
+68035294a5db457e1ec89cfd22f89571 *man/LS2Wsim.cddews.Rd
 a0e75e4c285044757e09bd3813c69da6 *man/Phi1Dname.Rd
 eb3aa002d3528ce9169e59b5f7aeb7c8 *man/PhiJ.Rd
 bd8a1bb999d40be3ed8e714fee8ca88b *man/Psi1Dname.Rd
@@ -71,6 +71,7 @@ a0e556f812b4b9b8506940fd658c181f *man/sample.stats.Rd
 1c7edaf9945ec8987e494f969217dc31 *man/summary.cddews.Rd
 94ff1c6c591764d392194602b8a44463 *man/threshold.imwd.Rd
 cd579b680be2d92aff9a00121326f7d7 *src/extra.c
-7bc17638567221a449e86c05c891f9b6 *src/functionsIE.c
-2e4669c5244bede63191122938f6fc50 *src/phij.c
+9560567bb1bacb4cd41a8d956c0283d5 *src/functionsIE.c
+c386ca548f468653f576fbb5afebe5a6 *src/init.c
+d12c23ee21d5a4fb959bc30a11dea282 *src/phij.c
 713f8648e42e4ccb3999a6e297384efc *src/testit.c

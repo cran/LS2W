@@ -40,7 +40,7 @@ Phi1Dname(J = J, filter.number = filter.number, family = family)
    wout <- rep(0., OPLENGTH)
    rlvec <- rep(0.,  - J)
    error <- 0.
-   answer <- .C("PhiJ",
+   answer <- .C("PhiJ_impl",
    J = as.integer( - J),
    H = as.double(H),
    LengthH = as.integer(length(H)),

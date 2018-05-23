@@ -6695,7 +6695,7 @@ for(i=0; i<*J; ++i)
 free((void *)coefvec);
 }
 
-void PsiJ(J, H, LengthH, tol, wout, lwout, rlvec, error)
+void PsiJ_impl(J, H, LengthH, tol, wout, lwout, rlvec, error)
 int *J;    /* The dimension of the problem             */
 double *H;  /* The wavelet filter coefficients          */
 int *LengthH;  /* The number of wavelet filter coefficients        */
