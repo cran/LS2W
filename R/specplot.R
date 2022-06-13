@@ -4,7 +4,7 @@ function (cddews, scaling = "by.level", arrangement = c(3,
     reset = TRUE, wtitle = TRUE) 
 {
     now <- proc.time()[1:2]
-    if (class(cddews) != "cddews") 
+    if (is(cddews,"cddews")) 
         stop("Sorry! The quantity supplied to this package must be of class cddews.\n")
     if (display != "image" && display != "persp") 
         stop("Can only display these spectra using image and persp!")

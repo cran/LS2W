@@ -9,12 +9,12 @@ citEntry(entry = "Article",
   volume       = "43",
   number       = "3",
   pages        = "1--23",
-  url          = "http://www.jstatsoft.org/v43/i03/",
+  url          = "https://www.jstatsoft.org/v43/i03/",
 
   textVersion  =
   paste("Eckley, I.A.  and  Nason, G.P. (2011).",
         "LS2W: Implementing the Locally Stationary 2D Wavelet Process Approach in R.",
         "Journal of Statistical Software, 43(3), 1-23.",
-        "URL http://www.jstatsoft.org/v43/i03/.")
+        "URL https://www.jstatsoft.org/v43/i03/.")
 )
 

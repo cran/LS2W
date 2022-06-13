@@ -5,6 +5,7 @@ importFrom("graphics", "image", "par", "persp", "plot", "text","title")
 importFrom("stats", "pnorm", "predict", "qnorm", "quantile", "rnorm","var")
 importFrom("utils", "data")
 importFrom("MASS","lda")
+importFrom("methods","is")
 
 S3method(print, cddews)
 S3method(summary, cddews)

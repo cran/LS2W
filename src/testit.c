@@ -357,11 +357,8 @@ int *stepfactor;
 {
 register int i,j;
 double *cc_out, *cd_out, *dc_out, *dd_out;
-int step_factor;
 
 void ImageDecomposeStepIE();
-
-step_factor = *stepfactor;
 
 /* MAN 7/12/10.  I think the out vectors should be alloc'd - see frees at 
 the end 

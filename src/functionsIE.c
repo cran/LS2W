@@ -4177,7 +4177,9 @@ free((void *)a);
 
 for(j=0; j<(int)*Jmax; ++j) {
     if (*verbose > 0)
+      {
         Rprintf("Wavelet step: level %d\n", j);
+      }
 
         twopowjp1 = 1 << (j+1);           /* MAN: added parentheses for bit shift */
 
@@ -4293,8 +4295,8 @@ int b,e;
 
 for(n=0; n< (int)*res; ++n) {
     sum = 0.0;
-    b = MAX(0, (Sint )ceil( ((Sfloat)(n+1- *lengthH))/2.0));
-        e = MIN(*res, (Sint )floor(((Sfloat) n)/2.0));
+    b = MAX(0, (int )ceil( ((float)(n+1- *lengthH))/2.0));
+        e = MIN(*res, (int )floor(((float) n)/2.0));
     for(k=b; k<= e; ++k)    {
         sum += *(H+n-2*k) * *(v+k);
         }
@@ -5372,7 +5374,9 @@ int createSigma(struct sigmastruct *Sigma, int n)
     return(-1);
     }
   for(i=0;i<n;i++)
-    (Sigma->diag)[i]=NULL;
+    {
+      (Sigma->diag)[i]=NULL;
+    }
     return(0);
   }
   
@@ -5443,12 +5447,16 @@ int allocateSigma(struct sigmastruct *Sigma, int *d)
   int i;
   
   for(i=0;i<Sigma->n;i++)
-    if(d[i]==TRUE)
-      if((Sigma->diag[i]=calloc(Sigma->n-i,sizeof(double)))==NULL)  {
-    *d = (Sigma->n - i)*sizeof(double);
-        return(-1);
+    {
+      if(d[i]==TRUE)
+	{
+	  if((Sigma->diag[i]=calloc(Sigma->n-i,sizeof(double)))==NULL)
+	    {
+	      *d = (Sigma->n - i)*sizeof(double);
+	      return(-1);
+	    }
+	}
     }
-
     return(0);
   }
 
@@ -9537,9 +9545,9 @@ for(r=0; r < (int)halfsize; ++r)
 
     /* HHH */
 
-    { double tmpf;
+    {
 
-    tmpf= ACCESSW3D(Carray, (int)*truesize, (int)*truesize, r, c, s) =
+    ACCESSW3D(Carray, (int)*truesize, (int)*truesize, r, c, s) =
         ACCESSW3D(HHH, (int)halfsize, (int)halfsize, r, c, s);
 
     /*
@@ -10414,7 +10422,7 @@ int  *lowerd;    /*for each level the highest C coefficient */
 int  *offsetd;   /*amount to offset to access each level  */
 int  *nbc;        /* boundary conds 1=period 2=symm. */
 {
- int level,prevlvl,prevoffsetc,prevoffsetd,index,base,k,l,m,n;
+  int level,prevlvl,prevoffsetc,index,base,k,l,m,n;
  void TRDerror();
 
 int trd_reflect();      /* MAN: added missing function declaration  */
@@ -10426,7 +10434,6 @@ int trd_module();       /* ...  see L10209,102010 */
 
    prevlvl=level+1;                           /* previous level */
    prevoffsetc=*(offsetc+prevlvl);            /*offset of C for previous level*/
-   prevoffsetd=*(offsetd+prevlvl);            /*offset of D for previous level*/
    for(k=*(lowerc+level);k<=*(upperc+level);k++){ /*k index of new vector */
     for(l=0; l<*nphi;l++){                         /*l index of new elmt   */ 
      C[(*(offsetc+level)+k-*(lowerc+level))*(*nphi)+l]=0.0;
