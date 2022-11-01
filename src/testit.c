@@ -3,67 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
-/*
-#include <curses.h>
-*/
- 
-/* Error condition	*/
-/*#define ERROR		(-1)*/
-#define OK		(0)
 
-/* For boundary condition handling */
-#define PERIODIC        1
-#define SYMMETRIC       2
 
-/* For the type of wavelet decomposition */
-#define	WAVELET		1	/* The standard decomposition */
-#define	STATION		2	/* The stationary decomposition */
-
-/* Threshold types */
-#define HARD    1
-#define SOFT    2
-
-/*
- * ACCESSC handles negative accesses, as well as those that exceed the number
- * of elements
- */
-
-#define ACCESS(image, size, i, j)       *(image + (i)*(size) + (j))
-#define	ACCESSC(c, firstC, lengthC, ix, bc) *(c+reflect(((ix)-(firstC)),(lengthC),(bc)))
-#define ACCESSD(l, i)   *(Data + (*LengthData*(l)) + (i))
-#define POINTD(l,i) (Data + (*LengthData*(l)) + (i))
-#define POINTC(l,i) (Carray +(*LengthData*(l)) + (i))
-
-/*
- * The next three are exclusively for the stationary wavelet packet algorithm
- * WPST
- */
-#define	NPKTS(level, nlev)	(1l << (2l*(nlev-level)))
-#define PKTLENGTH(level)	(1l << level)
-
-#define ACCWPST(a, level, avixstart, pkix, i) *((a) + *(avixstart+(level))+(pkix)*PKTLENGTH(level)+i)
-
-/* Optimiser parameters */
-
-#define	R	0.61803399	/* The golden ratio for bisection searches */
-#define Cons	(1.0-R)		/* For bisection searches		   */
-
-/* These next 3 are for the ipndacw code */
-#define ACCESSW(w,j,k)  *(*(w+j)+k)
-#define max(a,b)        ((a) > (b) ? (a) : (b))
-#define min(a,b)        ((a) > (b) ? (b) : (a))
-
-/*
- * The next 5 are for the swt2d code
- */
- 
-
-#define ACCESS3D(ar, d1, d12, ix1, ix2, ix3)    *(ar + (ix3)*(d12)+ (ix2)*(d1)+(ix1))
-
-#define TYPES	0
-#define TYPEH	1
-#define TYPEV	2
-#define TYPED	3
+#include "functionsIE.h"
+#include "extra.h"
+#include "testit.h"
 
 /*
  * End of the swt2d  macro code
@@ -93,31 +37,28 @@
 
 
 
-void ImageDecomposeStepIE(C, Csize, firstCin, H, LengthH,
-	LengthCout, firstCout, lastCout,
-	LengthDout, firstDout, lastDout,
-	cc_out, cd_out, dc_out, dd_out, bc, type,
-	error, stepfactor)
-double *C;	/* Input data image					*/
-int Csize;	/* Size of image (side length)				*/
-int firstCin;	/* Index number of first element in input "C" image	*/
-double *H;	/* Filter coefficients					*/
-int LengthH;	/* Length of filter					*/
-/* Details about output image */
-int LengthCout;/* Length of C part of output image			*/
-int firstCout;	/* Index number of first element in output "C" image	*/
-int lastCout;	/* Index number of last element				*/
-int LengthDout;/* Length of D part of output image			*/
-int firstDout;	/* Index number of first element in output "D" image	*/
-int lastDout;	/* Index number of last element				*/
-double *cc_out;/* Smoothed output image				*/
-double *cd_out;/* Horizontal detail					*/
-double *dc_out;/* Vertical detail					*/
-double *dd_out;/* Diagonal detail					*/
-int bc;	/* Method of boundary correction			*/
-int type;	/* Type of transform, wavelet or stationary		*/
-int *error;	/* Error code						*/
-int stepfactor;
+void 
+ImageDecomposeStepIE (
+    double *C,	/* Input data image					*/
+    int Csize,	/* Size of image (side length)				*/
+    int firstCin,	/* Index number of first element in input "C" image	*/
+    double *H,	/* Filter coefficients					*/
+    int LengthH,	/* Length of filter					*/
+    int LengthCout,/* Length of C part of output image			*/
+    int firstCout,	/* Index number of first element in output "C" image	*/
+    int lastCout,	/* Index number of last element				*/
+    int LengthDout,/* Length of D part of output image			*/
+    int firstDout,	/* Index number of first element in output "D" image	*/
+    int lastDout,	/* Index number of last element				*/
+    double *cc_out,/* Smoothed output image				*/
+    double *cd_out,/* Horizontal detail					*/
+    double *dc_out,/* Vertical detail					*/
+    double *dd_out,/* Diagonal detail					*/
+    int bc,	/* Method of boundary correction			*/
+    int type,	/* Type of transform, wavelet or stationary		*/
+    int *error,	/* Error code						*/
+    int stepfactor
+)
 {
 register int j,row,col;
 double *ccopy;	/* Used to copy input data to convolution routines	*/
@@ -128,10 +69,6 @@ double *afterD;	/* Temporary store for image data after D convolution	*/
 double *afterCC,*afterCD,*afterDC,*afterDD;	/* Results		*/
 int step_factor;	/* This should always be 1 for the WAVELET trans*/
 
-void convolveC();
-void convolveD();
-
-void mycpyd();
 
 *error = 0l;
 
@@ -332,33 +269,12 @@ return;
 }
 
 
-void StoIDSIE(C, Csize, firstCin, H, LengthH,
-	LengthCout, firstCout, lastCout,
-	LengthDout, firstDout, lastDout,
-	ImCC, ImCD, ImDC, ImDD, bc, type,
-	error, stepfactor)
-	
-double *C;
-int *Csize;
-int *firstCin;
-double *H;
-int *LengthH;
-int *LengthCout;
-int *firstCout;
-int *lastCout;
-int *LengthDout;
-int *firstDout;
-int *lastDout;
-double *ImCC,*ImCD,*ImDC,*ImDD;
-int *bc;
-int *type;
-int *error;
-int *stepfactor;
+void 
+StoIDSIE (double *C, int *Csize, int *firstCin, double *H, int *LengthH, int *LengthCout, int *firstCout, int *lastCout, int *LengthDout, int *firstDout, int *lastDout, double *ImCC, double *ImCD, double *ImDC, double *ImDD, int *bc, int *type, int *error, int *stepfactor)
 {
 register int i,j;
 double *cc_out, *cd_out, *dc_out, *dd_out;
 
-void ImageDecomposeStepIE();
 
 /* MAN 7/12/10.  I think the out vectors should be alloc'd - see frees at 
 the end 

@@ -1,4 +1,4 @@
-398d3d11cf2622e57e09c1a2f6c7d119 *DESCRIPTION
+04e9338c13265c1be760604e3de6d920 *DESCRIPTION
 bc04c893932855f2b338a1602979159b *NAMESPACE
 72dac140eca2c088fe9417bbb5764f6a *R/A2name.R
 3ae0f092bf0148e610d9851dfcff95e3 *R/AvBasis.wst2D.R
@@ -30,7 +30,7 @@ ae50c35f04b17e3079403ef8ee56cca2 *R/imwr.imwd.R
 6eb35bf332eecdb80e5dad5b4f459300 *R/packetj.R
 39ee0ba1d076711b3fc072d752d21a6e *R/print.cddews.R
 59a93f4ceb85125d08fb86b9feb68ada *R/sample.stats.R
-e772b21e187dff3d22fd1471e1f65dce *R/specplot.R
+1745406dd839801517734e6ce3a25777 *R/specplot.R
 580ea4700d34860f50320c42c7a89dfd *R/summary.cddews.R
 aa5881b9f5c2f7c6c7a6973b4582a027 *R/threshold.imwd.R
 7659700a708f6cd1a09f0823cb0f4a55 *R/zzz.R
@@ -70,8 +70,12 @@ d0e488f1d5afa48714b5ce3ce872ecad *man/sample.stats.Rd
 545a7c29fe82c887c6a669354dc03cbe *man/specplot.Rd
 a5965fd26f2832173a668d0ba030fa61 *man/summary.cddews.Rd
 1cd329e2757841d5fa20959906fa8cbf *man/threshold.imwd.Rd
-cd579b680be2d92aff9a00121326f7d7 *src/extra.c
-e58baea1e6b44bd497a07b3d9a0e483f *src/functionsIE.c
+83b45ae71f98f797121286b0aedfa36d *src/extra.c
+b446078cf9efdccc42f3de281f09536d *src/extra.h
+286a8f8a5c46f37e64334659abd01818 *src/functionsIE.c
+b44c633897122e995f119d63d494316c *src/functionsIE.h
 c386ca548f468653f576fbb5afebe5a6 *src/init.c
-d12c23ee21d5a4fb959bc30a11dea282 *src/phij.c
-8e11066eb51faedf6be832720de65ece *src/testit.c
+bda06321c8226bab3354c99f4d29b48b *src/phij.c
+ccdbe80c33279ac29244a659048c451e *src/phij.h
+9641a18e9639d2031ae389a9d9779cdb *src/testit.c
+abccfa861558c8bb5eb7fed94f03e795 *src/testit.h

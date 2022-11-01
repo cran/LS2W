@@ -1,40 +1,27 @@
-#include <R.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
 
 
 
-void mycpyd(a,len,b)
 
-double *a,*b;
-int *len;
+void mycpyd(double* a,int* len,double* b)
 {
 int i;
 
-/* Rprintf("i (mycpyd):"); */
 for(i=0;i<*len;i++){
-/* Rprintf("%d ",i);*/
+
 *(b+i)=*(a+i);
 }
-/* Rprintf("\n"); */
+
 
 }
 
-void mycpyi(a,len,b)
-
-int *a,*b;
-int *len;
+void mycpyi(int* a,int* len,int* b)
 {
 int i;
-
-/* Rprintf("i (mycpyi):"); */
 for(i=0;i<*len;i++){
-/* Rprintf("%d ",i); */
+
 *(b+i)=*(a+i);
 }
-/* Rprintf("\n"); */
+
 
 
 }

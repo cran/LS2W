@@ -3,86 +3,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
+
+#include "functionsIE.h"
+#include "phij.h"
+
 /*
 #include <curses.h>
 */
 
 
-/* Error condition	*/
-/*#define ERROR		(-1)*/
-#define OK		(0)
-
-/* For boundary condition handling */
-#define PERIODIC        1
-#define SYMMETRIC       2
-
-/* For the type of wavelet decomposition */
-#define	WAVELET		1	/* The standard decomposition */
-#define	STATION		2	/* The stationary decomposition */
-
-/* Threshold types */
-#define HARD    1
-#define SOFT    2
-
-/*
- * ACCESSC handles negative accesses, as well as those that exceed the number
- * of elements
- */
-
-#define ACCESS(image, size, i, j)       *(image + (i)*(size) + (j))
-#define	ACCESSC(c, firstC, lengthC, ix, bc) *(c+reflect(((ix)-(firstC)),(lengthC),(bc)))
-#define ACCESSD(l, i)   *(Data + (*LengthData*(l)) + (i))
-#define POINTD(l,i) (Data + (*LengthData*(l)) + (i))
-#define POINTC(l,i) (Carray +(*LengthData*(l)) + (i))
-
-/*
- * The next three are exclusively for the stationary wavelet packet algorithm
- * WPST
- */
-#define	NPKTS(level, nlev)	(1l << (2l*(nlev-level)))
-#define PKTLENGTH(level)	(1l << level)
-
-#define ACCWPST(a, level, avixstart, pkix, i) *((a) + *(avixstart+(level))+(pkix)*PKTLENGTH(level)+i)
-
-/* Optimiser parameters */
-
-#define	R	0.61803399	/* The golden ratio for bisection searches */
-#define Cons	(1.0-R)		/* For bisection searches		   */
-
-/* These next 3 are for the ipndacw code */
-#define ACCESSW(w,j,k)  *(*(w+j)+k)
-#define max(a,b)        ((a) > (b) ? (a) : (b))
-#define min(a,b)        ((a) > (b) ? (b) : (a))
-
-/*
- * The next 5 are for the swt2d code
- */
- 
-
-#define ACCESS3D(ar, d1, d12, ix1, ix2, ix3)    *(ar + (ix3)*(d12)+ (ix2)*(d1)+(ix1))
-
-#define TYPES	0
-#define TYPEH	1
-#define TYPEV	2
-#define TYPED	3
-
-/*
- * End of the swt2d  macro code
- */
-
 
 /* Make \Psi_j(\tau) components	*/
 
-void mkcoefIE(J, BigJ, H, LengthH, coefvec, lvec, tol, error)
-int *J;	/* Dimension of the problem				*/
-int BigJ;	/* The maximum depth that we have to go to		*/
-double *H;	/* Wavelet filter coefficients				*/
-int *LengthH;	/* Number of wavelet filter coefficients		*/
-double ***coefvec; /* Coefficients of \Psi_j(\tau)			*/
-int *lvec;	/* Vector of length *J that will contain length of
+void 
+mkcoefIE (
+    int *J,	/* Dimension of the problem				*/
+    int BigJ,	/* The maximum depth that we have to go to		*/
+    double *H,	/* Wavelet filter coefficients				*/
+    int *LengthH,	/* Number of wavelet filter coefficients		*/
+    double ***coefvec, /* Coefficients of \Psi_j(\tau)			*/
+    int *lvec,	/* Vector of length *J that will contain length of
 		 * each component of coefvec */
-double *tol;	/* Elements smaller than this will be deleted		*/
-int *error;	/* Error code						*/
+    double *tol,	/* Elements smaller than this will be deleted		*/
+    int *error	/* Error code						*/
+)
 {
 register int i,j;
 register int large_ones;
@@ -100,12 +44,7 @@ int type,bc;
 int n_to_rotate;
 int start_level;
 
-void simpleWT();
-int idlastzero();
-void rotateleft();
-void IEwaverecons();
 
-void mycpyd();
 
 ndata = (int)0x01 << BigJ;
 
@@ -274,15 +213,17 @@ free((void *)offsetD);
 }
 
 
-void PhiJ_impl(J, H, LengthH, tol, wout, lwout, rlvec, error)
-int *J;	/* The dimension of the problem				*/
-double *H;	/* The wavelet filter coefficients			*/
-int *LengthH;	/* The number of wavelet filter coefficients		*/
-double *tol;	/* Elements smaller than this will be deleted		*/
-double *wout;	/* Answers for \Psi_j(\tau)				*/
-int *lwout;	/* Length of previous array				*/
-int *rlvec;	/* Vector of length J contains lengths of \psi_j	*/
-int *error;	/* Error code. Nonzero is an error			*/
+void 
+PhiJ_impl (
+    int *J,	/* The dimension of the problem				*/
+    double *H,	/* The wavelet filter coefficients			*/
+    int *LengthH,	/* The number of wavelet filter coefficients		*/
+    double *tol,	/* Elements smaller than this will be deleted		*/
+    double *wout,	/* Answers for \Psi_j(\tau)				*/
+    int *lwout,	/* Length of previous array				*/
+    int *rlvec,	/* Vector of length J contains lengths of \psi_j	*/
+    int *error	/* Error code. Nonzero is an error			*/
+)
 {
 register int i;
 int BigJ;	/* The level we must go to to be able to compute
@@ -293,9 +234,7 @@ int *lvec;		/* Vector of length *J contains the length
 			 * of each vector in coefvec
 			 */
 
-void wlpart();	/* Substitute for whichlevel function			*/
-void mkcoefIE();
-void PsiJonlyIE();
+
 
 /* whichlevel */
 
@@ -353,17 +292,19 @@ free((void *)coefvec);
 
 }
 
-void PsiJonlyIE(J, coefvec, lvec, wout, lwout, error)
-int *J;		/* The desired maximum level (positive)		*/
-double **coefvec;	/* The \psi_{jk} stacked into one vector	*/
-int *lvec;		/* A vector of lengths of each \psi_j vector in
+void 
+PsiJonlyIE (
+    int *J,		/* The desired maximum level (positive)		*/
+    double **coefvec,	/* The \psi_{jk} stacked into one vector	*/
+    int *lvec,		/* A vector of lengths of each \psi_j vector in
 			   coefvec. The jth element is the length of the
 			   jth \psi_j in coefvec
 			 */
-double *wout;		/* Output contains the \Psi_j(\tau)		*/
-int *lwout;		/* Length of this vector. If it is not int
+    double *wout,		/* Output contains the \Psi_j(\tau)		*/
+    int *lwout,		/* Length of this vector. If it is not int
 			 * enough an error code is returned		*/
-int *error;		/* Error code					*/
+    int *error		/* Error code					*/
+)
 {
 
 /* First we compute the w. One for each j			*/
@@ -444,29 +385,29 @@ free((void *)w);
  * waverecons:	Do 1D wavelet reconstruction
  */
 
-void IEwaverecons(C, D, H, LengthH, levels,
-	firstC, lastC, offsetC, firstD, lastD, offsetD, start_level,
-	type, bc, error)
-double *C;              /* Input data, and the subsequent smoothed data */
-double *D;              /* The wavelet coefficients                     */
-double *H;              /* The smoothing filter H                       */
-int *LengthH;          /* Length of smoothing filter                   */
-int *levels;           /* The number of levels in this decomposition   */
-int *firstC;           /* The first possible C coef at a given level   */
-int *lastC;            /* The last possible C coef at a given level    */
-int *offsetC;          /* Offset from C[0] for certain level's coeffs  */
-int *firstD;           /* The first possible D coef at a given level   */
-int *lastD;            /* The last possible D coef at a given level    */
-int *offsetD;          /* Offset from D[0] for certain level's coeffs  */
-int *start_level;	/* Start level to start synthesis (==at_level)	*/
-int *type;		/* The type of wavelet decomposition		*/
-int *bc;		/* Which boundary handling are we doing		*/
-int *error;            /* Error code                                   */
+void 
+IEwaverecons (
+    double *C,              /* Input data, and the subsequent smoothed data */
+    double *D,              /* The wavelet coefficients                     */
+    double *H,              /* The smoothing filter H                       */
+    int *LengthH,          /* Length of smoothing filter                   */
+    int *levels,           /* The number of levels in this decomposition   */
+    int *firstC,           /* The first possible C coef at a given level   */
+    int *lastC,            /* The last possible C coef at a given level    */
+    int *offsetC,          /* Offset from C[0] for certain level's coeffs  */
+    int *firstD,           /* The first possible D coef at a given level   */
+    int *lastD,            /* The last possible D coef at a given level    */
+    int *offsetD,          /* Offset from D[0] for certain level's coeffs  */
+    int *start_level,	/* Start level to start synthesis (==at_level)	*/
+    int *type,		/* The type of wavelet decomposition		*/
+    int *bc,		/* Which boundary handling are we doing		*/
+    int *error            /* Error code                                   */
+)
 {
 register int next_level, at_level;
 register int verbose;	/* Printing messages, passed in error		*/
 
-void conbar();
+
 
 if (*error == 1l)
 	verbose = 1;

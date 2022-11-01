@@ -6,8011 +6,11 @@
 #include <string.h>
 
 
-/* For boundary condition handling */
-#define PERIODIC        1
-#define SYMMETRIC       2
+#include "functionsIE.h"
+#include "extra.h"
 
-/* For the type of wavelet decomposition */
-#define WAVELET     1   /* The standard decomposition */
-#define STATION     2   /* The stationary decomposition */
 
-/* Threshold types */
-#define HARD    1
-#define SOFT    2
 
-/*
- * ACCESSC handles negative accesses, as well as those that exceed the number
- * of elements
- */
-
-#define ACCESS(image, size, i, j)       *(image + (i)*(size) + (j))
-#define ACCESSC(c, firstC, lengthC, ix, bc) *(c+reflect(((ix)-(firstC)),(lengthC),(bc)))
-#define ACCESSD(l, i)   *(Data + (*LengthData*(l)) + (i))
-#define POINTD(l,i) (Data + (*LengthData*(l)) + (i))
-#define POINTC(l,i) (Carray +(*LengthData*(l)) + (i))
-
-/*
- * The next three are exclusively for the stationary wavelet packet algorithm
- * WPST
- */
-#define NPKTS(level, nlev)  (1 << (2*(nlev-level)))
-#define PKTLENGTH(level)    (1 << level)
-
-#define ACCWPST(a, level, avixstart, pkix, i) *((a) + *(avixstart+(level))+(pkix)*PKTLENGTH(level)+i)
-
-/* Optimiser parameters */
-
-#define R   0.61803399  /* The golden ratio for bisection searches */
-#define Cons    (1.0-R)     /* For bisection searches          */
-
-/* These next 3 are for the ipndacw code */
-#define ACCESSW(w,j,k)  *(*(w+j)+k)
-#define max(a,b)        ((a) > (b) ? (a) : (b))
-#define min(a,b)        ((a) > (b) ? (b) : (a))
-
-/*
- * The next 5 are for the swt2d code
- */
- 
-
-#define ACCESS3D(ar, d1, d12, ix1, ix2, ix3)    *(ar + (ix3)*(d12)+ (ix2)*(d1)+(ix1))
-
-#define TYPES   0
-#define TYPEH   1
-#define TYPEV   2
-#define TYPED   3
-
-/*
- * End of the swt2d  macro code
- */
-
-
-/* The code starts here !! */
-
-/*
- * Do wavelet cross-validation in C
- */
-
-void CWaveletCV(noisy, nnoisy, UniversalThresh,
-    C, D, LengthD, H, LengthH,
-    levels, firstC, lastC, offsetC,
-    firstD, lastD, offsetD,
-    ntt, ll, bc, tol, xvthresh, interptype, error)
-double *noisy;
-int *nnoisy;
-double *UniversalThresh;
-double *C;
-double *D;
-int *LengthD;
-double *H;  /* The wavelets to use                  */
-int *LengthH;   /* The length of the filter             */
-int *levels;
-int *firstC, *lastC, *offsetC;
-int *firstD, *lastD, *offsetD;
-int *ntt;   /* The threshold type                   */
-int *ll;    /* The lowest level to threshold; all levels above too  */
-int *bc;    /* The boundary conditions              */
-double *tol;
-double *xvthresh;
-int *interptype; /* 1=noise interpolated, 2=standard interpolation  */
-int *error; /* There was an error!                  */
-{
-register int verbose=0;
-double ax, bx,cx;
-double x0, x1, x2, x3;
-/* NOT NEEDED
-double fa,fb,fc
- * END */
-double f1,f2;
-double ssq, tmp;
-
-void Call_Crsswav();
-
-ax = 0.0;
-bx = *UniversalThresh/2.0;
-cx = *UniversalThresh;
-x0 = ax;
-x3 = cx;
-
-if (*error != 0)    {
-    verbose=1;
-    *error = 0;
-    }
-else
-    verbose=0;
-
-if (verbose)    {
-    Rprintf("Entered WaveletCV\n");
-    }
-if (fabs(cx - bx) > fabs(bx - ax))  {
-    x1 = bx;
-    x2 = bx + Cons*(cx-bx);
-    }
-else    {
-    x2 = bx;
-    x1 = bx - Cons*(bx-ax);
-    }
-
-/* NOT NEEDED 
-
-Call_Crsswav(noisy, nnoisy, &ax, C, D, LengthD, H,
-    LengthH, levels, firstC, lastC, offsetC, firstD,
-    lastD, offsetD, ntt, ll, bc, &ssq, interptype, error);
- 
-fa = ssq;
-
-if (*error != 0)    {
-    *error += 1000;
-    return;
-    }
-
-Call_Crsswav(noisy, nnoisy, &bx, C, D, LengthD, H, LengthH, levels,
-    firstC, lastC, offsetC, firstD, lastD, offsetD,
-    ntt, ll, bc, &ssq, interptype, error);
-fb = ssq;
-
-if (*error != 0)    {
-    *error += 1100;
-    return;
-    }
-
-Call_Crsswav(noisy, nnoisy, &cx, C, D, LengthD, H, LengthH, levels,
-    firstC, lastC, offsetC, firstD, lastD, offsetD,
-    ntt, ll, bc, &ssq, interptype, error);
-fc = ssq;
-
-if (*error != 0)    {
-    *error += 1200;
-    return;
-    }
- * END OF NOT NEEDED */
-
-Call_Crsswav(noisy, nnoisy, &x1, C, D, LengthD, H, LengthH, levels,
-    firstC, lastC, offsetC, firstD, lastD, offsetD,
-    ntt, ll, bc, &ssq, interptype, error);
-f1 = ssq;
-
-if (*error != 0)    {
-    *error += 1300;
-    return;
-    }
-
-Call_Crsswav(noisy, nnoisy, &x2, C, D, LengthD, H, LengthH, levels,
-    firstC, lastC, offsetC, firstD, lastD, offsetD,
-    ntt, ll, bc, &ssq, interptype, error);
-f2 = ssq;
-
-if (*error != 0)    {
-    *error += 1400;
-    return;
-    }
-
-while(fabs(x3-x0) > *tol*(fabs(x1) + fabs(x2))) {
-    if (verbose)    {
-    Rprintf("x0=%lf, x1=%lf, x2=%lf, x3=%lf\n", x0,x1,x2,x3);
-    Rprintf("f1=%lf, f2=%lf\n", f1,f2);
-/* MAN 01/03/12. Removed fflush(stdout) call 
-    fflush(stdout);	*/
-        }
-    if (f2 < f1)    {
-        x0 = x1;
-        x1 = x2;
-        x2 = R*x1 + Cons*x3;
-        f1 = f2;
-        Call_Crsswav(noisy, nnoisy, &x2, C, D, LengthD, H,
-            LengthH, levels, firstC, lastC, offsetC, firstD, lastD,
-            offsetD, ntt, ll, bc, &ssq, interptype, error);
-        f2 = ssq;
-
-        if (*error != 0)    {
-            *error += 1500;
-            return;
-            }
-    }
-
-    else    {
-        x3 = x2;
-        x2 = x1;
-        x1 = R*x2 + Cons*x0;
-        f2 = f1;
-        Call_Crsswav(noisy, nnoisy, &x1, C, D, LengthD, H,
-            LengthH, levels, firstC, lastC, offsetC, firstD, lastD,
-            offsetD, ntt, ll, bc, &ssq, interptype, error);
-        f1 = ssq;
-
-        if (*error != 0)    {
-            *error += 1600;
-            return;
-            }
-    }
-  }
-
-if (f1 < f2)
-    tmp = x1;
-else
-    tmp = x2;
-
-x1 = tmp/sqrt(1 - log(2.0)/log((double)*nnoisy));
-
-*xvthresh = x1;
-return;
-}
-/*
- * Wrapper to call Crsswav or Crsswav2 depending on the value of interptype
- * This allows one to easily change which type of interpolation one does. 
- *
- */
-
-void Call_Crsswav(noisy, nnoisy, value,
-    C, D, LengthD,
-    H, LengthH,
-    levels, firstC, lastC, offsetC,
-    firstD, lastD, offsetD,
-    ntt, ll, bc, ssq, interptype, error)
-double *noisy;  /* The noisy data - power of 2              */
-int *nnoisy;    /* The number of noisy data elements, must be power of 2*/
-double *value;  /* The threshold value at which to estimate CV Score    */
-double *C;
-double *D;
-int *LengthD;
-double *H;  /* The wavelets to use                  */
-int *LengthH;   /* The length of the filter             */
-int *levels;
-int *firstC, *lastC, *offsetC;
-int *firstD, *lastD, *offsetD;
-int *ntt;   /* The threshold type                   */
-int *ll;    /* The lowest level to threshold; all levels above too  */
-int *bc;    /* The boundary conditions              */
-double *ssq;    /* The answer!                      */
-int *interptype;
-int *error; /* There was an error!                  */
-{
-void Crsswav();
-void Crsswav2();
-
-switch(*interptype) {
-
-    case 1:
-        Crsswav(noisy, nnoisy, value, C, D, LengthD,
-            H, LengthH, levels, firstC, lastC, offsetC, firstD,
-            lastD, offsetD, ntt, ll, bc, ssq, error);
-        break;
-    case 2:
-        Crsswav2(noisy, nnoisy, value, C, D, LengthD,
-            H, LengthH, levels, firstC, lastC, offsetC, firstD,
-            lastD, offsetD, ntt, ll, bc, ssq, error);
-        break;
-
-    default:
-        *error += 3000;
-        break;
-    }
-return;
-}
-/*
- * Do rsswav in C
- *
- * This version interpolates the noisy data and compares it to the
- * function values at the index points. (Crsswav2.c does it the other way
- * round - i.e. interpolates the reconstructed function and compares these
- * to the noisy values. Maybe this function is not as good as Crsswav2.c
- * because we smooth the noise before comparison.
- */
-
-void Crsswav(noisy, nnoisy, value,
-    C, D, LengthD,
-    H, LengthH,
-    levels, firstC, lastC, offsetC,
-    firstD, lastD, offsetD,
-    ntt, ll, bc, ssq, error)
-double *noisy;  /* The noisy data - power of 2              */
-int *nnoisy;    /* The number of noisy data elements, must be power of 2*/
-double *value;  /* The threshold value at which to estimate CV Score    */
-double *C;
-double *D;
-int *LengthD;
-double *H;  /* The wavelets to use                  */
-int *LengthH;   /* The length of the filter             */
-int *levels;
-int *firstC, *lastC, *offsetC;
-int *firstD, *lastD, *offsetD;
-int *ntt;   /* The threshold type                   */
-int *ll;    /* The lowest level to threshold; all levels above too  */
-int *bc;    /* The boundary conditions              */
-double *ssq;    /* The answer!                      */
-int *error; /* There was an error!                  */
-{
-register int nodd,i;
-int type;
-int Dlevels;
-int *levs_to_do;
-int qlevels;
-int local_levels;
-double *interps;
-double ssq1=0.0;
-double tmp;
-
-void wavedecomp();
-void waverecons();
-void Cthreshold();
-
-/*
-Rprintf("Crsswav\n");
-Rprintf("LengthH is %ld\n", *LengthH);
-Rprintf("levels is %ld\n", *levels);
-Rprintf("ll is %ld\n", *ll); 
-fflush(stdout);
-*/
-
-/* Get memory for levels to do array */
-
-local_levels = *levels-1; 
-
-qlevels = local_levels - *ll;
-
-if ((levs_to_do = (int *)malloc((unsigned)qlevels*sizeof(int)))==NULL){
-    *error = 1;
-    return;
-    }
-else    for(i=0; i < qlevels; ++i)
-        *(levs_to_do+i) = *ll+i;
-
-/* Get memory for interps */
-
-nodd = *nnoisy/2; 
-
-if ((interps = (double *)malloc((unsigned)nodd*sizeof(double)))==NULL)  {
-    *error = 2;
-    return;
-    }
-
-type = (int)WAVELET;    /* Only for wavelet transform */
-
-/* Do the ODD analysis and reconstruction */
-/*
- * Now copy odd elements to C array 
- */
-
-for(i=0; i<nodd; ++i)   {
-    *(C+i) = *(noisy+(2*i));
-    /* Rprintf("Copied %lf to C[%d]\n", *(C+i), i); */
-    }
-
-/*
- * Do wavelet decomposition of odd, then threshold, then reconstruction.
- */
-
-wavedecomp(C, D, H, LengthH, &local_levels,
-    firstC, lastC, offsetC,
-    firstD, lastD, offsetD,
-    &type, bc, error); 
-
-/*Rprintf("Done wavelet decomposition\n");
-for(i=0; i< *LengthC; ++i)
-    Rprintf("C[%d] is %lf\n", i, *(C+i));
-for(i=0; i< *LengthD; ++i)
-    Rprintf("D[%d] is %lf\n", i, *(D+i));
-Rprintf("-------\n"); */
-
-if (*error != 0)    {
-    *error += 10;
-    return;
-    }
-/* Threshold */
-
-Dlevels = local_levels - 1;
-Cthreshold(D, LengthD, firstD, lastD, offsetD, &Dlevels, ntt, value,
-    levs_to_do, &qlevels, bc, error);
-
-if (*error != 0)    {
-    *error += 20;
-    return;
-    }
-/*
-Rprintf("Done thresholding\n");
-for(i=0; i< *LengthD; ++i)
-    Rprintf("D[%d] is %lf\n", i, *(D+i));
-Rprintf("-------\n");
-
-*/
-/* Reconstruct */
-
-waverecons(C, D, H, LengthH, &local_levels,
-    firstC, lastC, offsetC, firstD, lastD, offsetD,
-    &type, bc, error);
-
-if (*error != 0)    {
-    *error += 30;
-    return;
-    }
-/*
-Rprintf("Done reconstruction\n");
-for(i=0; i< *LengthC; ++i)
-    Rprintf("C[%d] is %lf\n", i, *(C+i));
-Rprintf("-----\n");
-*/
-
-/* Now work out interpolated evens from noisy */
-
-for(i=0; i<nodd-1; ++i) {
-    *(interps+i+1) = (*(noisy+2*i+1) + *(noisy+2*i+3))/2;
-    }
-*(interps) = *(noisy+1);
-
-/*
-for(i=0; i<nodd; ++i)
-    Rprintf("interps[%d] is %lf\n", i, *(interps+i));
-*/
-
-/* Now form sum of squares */
-
-for(i=0; i<nodd; ++i)   {
-    tmp = *(interps+i) - *(C+i);
-    ssq1 += tmp*tmp;
-    /*Rprintf("ssq1[%d] is %lf\n", i, ssq1); */
-    }
-
-*ssq = ssq1;
-
-/* Do the EVEN analysis and reconstruction */
-/*
- * Now copy even elements to C array 
- */
-
-for(i=0; i<nodd; ++i)   {
-    *(C+i) = *(noisy+(2*i+1));
-    /* Rprintf("Copied %lf to C[%d]\n", *(C+i), i); */
-    }
-
-/*
- * Do wavelet decomposition of even, then threshold, then reconstruction.
- */
-
-wavedecomp(C, D, H, LengthH, &local_levels,
-    firstC, lastC, offsetC,
-    firstD, lastD, offsetD,
-    &type, bc, error); 
-
-/*
-Rprintf("Done wavelet decomposition\n");
-for(i=0; i< *LengthC; ++i)
-    Rprintf("C[%d] is %lf\n", i, *(C+i));
-for(i=0; i< *LengthD; ++i)
-    Rprintf("D[%d] is %lf\n", i, *(D+i));
-Rprintf("-------\n");
-*/
-if (*error != 0)    {
-    *error += 40;
-    return;
-    }
-/* Threshold */
-
-Dlevels = local_levels - 1;
-Cthreshold(D, LengthD, firstD, lastD, offsetD, &Dlevels, ntt, value,
-    levs_to_do, &qlevels, bc, error);
-
-if (*error != 0)    {
-    *error += 50;
-    return;
-    }
-/*
-Rprintf("Done thresholding\n");
-for(i=0; i< *LengthD; ++i)
-    Rprintf("D[%d] is %lf\n", i, *(D+i));
-Rprintf("-------\n");
-*/
-
-/* Reconstruct */
-
-waverecons(C, D, H, LengthH, &local_levels,
-    firstC, lastC, offsetC, firstD, lastD, offsetD,
-    &type, bc, error);
-
-if (*error != 0)    {
-    *error += 60;
-    return;
-    }
-
-/* Now work out interpolated odds from noisy */
-
-for(i=0; i<nodd-1; ++i) {
-    *(interps+i+1) = (*(noisy+2*i) + *(noisy+2*i+2))/2;
-    }
-*(interps) = *(noisy);
-
-/* Now form sum of squares */
-
-ssq1 = 0.0;
-
-for(i=0; i<nodd; ++i)   {
-    tmp = *(interps+i) - *(C+i);
-    ssq1 += tmp*tmp;
-/*  Rprintf("ssq1[%d] is %lf\n", i, ssq1); */
-    }
-
-*ssq = (*ssq + ssq1)/2.0;
-free((char *)levs_to_do);
-free((char *)interps);
-}
-/*
- * Do rsswav in C
- *
- * This version interpolates the reconstructed function and compares it to the
- * noisy data at the noisy data index points. (Crsswav.c does it the other way
- * round - i.e. interpolates the noise and compares this to the reconstruced
- * function on the index points of the reconstruced function
- * Maybe this function is better than Crsswav.c
- * because we don't smooth the noise before comparison.
- */
-
-void Crsswav2(noisy, nnoisy, value,
-    C, D, LengthD,
-    H, LengthH,
-    levels, firstC, lastC, offsetC,
-    firstD, lastD, offsetD,
-    ntt, ll, bc, ssq, error)
-double *noisy;  /* The noisy data - power of 2              */
-int *nnoisy;    /* The number of noisy data elements, must be power of 2*/
-double *value;  /* The threshold value at which to estimate CV Score    */
-double *C;
-double *D;
-int *LengthD;
-double *H;  /* The wavelets to use                  */
-int *LengthH;   /* The length of the filter             */
-int *levels;
-int *firstC, *lastC, *offsetC;
-int *firstD, *lastD, *offsetD;
-int *ntt;   /* The threshold type                   */
-int *ll;    /* The lowest level to threshold; all levels above too  */
-int *bc;    /* The boundary conditions              */
-double *ssq;    /* The answer!                      */
-int *error; /* There was an error!                  */
-{
-register int nodd,i;
-int type;
-int Dlevels;
-int *levs_to_do;
-int qlevels;
-int local_levels;
-double *interps;
-double ssq1=0.0;
-double tmp;
-
-void wavedecomp();
-void waverecons();
-void Cthreshold();
-
-/*
-Rprintf("Crsswav\n");
-Rprintf("LengthH is %ld\n", *LengthH);
-Rprintf("levels is %ld\n", *levels);
-Rprintf("ll is %ld\n", *ll); 
-fflush(stdout);
-*/
-
-/* Get memory for levels to do array */
-
-local_levels = *levels-1; 
-
-qlevels = local_levels - *ll;
-
-if ((levs_to_do = (int *)malloc((unsigned)qlevels*sizeof(int)))==NULL){
-    *error = 1;
-    return;
-    }
-else    for(i=0; i < qlevels; ++i)
-        *(levs_to_do+i) = *ll+i;
-
-/* Get memory for interps */
-
-nodd = *nnoisy/2; 
-
-if ((interps = (double *)malloc((unsigned)nodd*sizeof(double)))==NULL)  {
-    *error = 2;
-    return;
-    }
-
-type = (int)WAVELET;    /* Only for wavelet transform */
-
-/* Do the ODD analysis and reconstruction */
-/*
- * Now copy odd elements to C array 
- */
-
-for(i=0; i<nodd; ++i)   {
-    *(C+i) = *(noisy+(2*i));
-    /* Rprintf("Copied %lf to C[%d]\n", *(C+i), i); */
-    }
-
-/*
- * Do wavelet decomposition of odd, then threshold, then reconstruction.
- */
-
-wavedecomp(C, D, H, LengthH, &local_levels,
-    firstC, lastC, offsetC,
-    firstD, lastD, offsetD,
-    &type, bc, error); 
-
-/*Rprintf("Done wavelet decomposition\n");
-for(i=0; i< *LengthC; ++i)
-    Rprintf("C[%d] is %lf\n", i, *(C+i));
-for(i=0; i< *LengthD; ++i)
-    Rprintf("D[%d] is %lf\n", i, *(D+i));
-Rprintf("-------\n"); */
-
-if (*error != 0)    {
-    *error += 10;
-    return;
-    }
-/* Threshold */
-
-Dlevels = local_levels - 1;
-Cthreshold(D, LengthD, firstD, lastD, offsetD, &Dlevels, ntt, value,
-    levs_to_do, &qlevels, bc, error);
-
-if (*error != 0)    {
-    *error += 20;
-    return;
-    }
-/*
-Rprintf("Done thresholding\n");
-for(i=0; i< *LengthD; ++i)
-    Rprintf("D[%d] is %lf\n", i, *(D+i));
-Rprintf("-------\n");
-
-*/
-/* Reconstruct */
-
-waverecons(C, D, H, LengthH, &local_levels,
-    firstC, lastC, offsetC, firstD, lastD, offsetD,
-    &type, bc, error);
-
-if (*error != 0)    {
-    *error += 30;
-    return;
-    }
-/*
-Rprintf("Done reconstruction\n");
-for(i=0; i< *LengthC; ++i)
-    Rprintf("C[%d] is %lf\n", i, *(C+i));
-Rprintf("-----\n");
-*/
-
-/* This bit is different to Crsswav.
- * We interpolate the reconstructed function returned in C
- */
-
-for(i=0; i<nodd-1; ++i) {
-    *(interps+i) = (*(C+i+1) + *(C+i))/2.0;
-    }
-*(interps+nodd-1) = (*C + *(C+nodd-1))/2.0;
-
-/*
-for(i=0; i<nodd; ++i)
-    Rprintf("interps[%d] is %lf\n", i, *(interps+i));
-*/
-
-/* Now form sum of squares */
-
-for(i=0; i<nodd; ++i)   {
-    tmp = *(interps+i) - *(noisy+2*i+1);
-    ssq1 += tmp*tmp;
-    /*Rprintf("ssq1[%d] is %lf\n", i, ssq1); */
-    }
-
-*ssq = ssq1;
-
-/* Do the EVEN analysis and reconstruction */
-/*
- * Now copy even elements to C array 
- */
-
-for(i=0; i<nodd; ++i)   {
-    *(C+i) = *(noisy+(2*i+1));
-    /* Rprintf("Copied %lf to C[%d]\n", *(C+i), i); */
-    }
-
-/*
- * Do wavelet decomposition of even, then threshold, then reconstruction.
- */
-
-wavedecomp(C, D, H, LengthH, &local_levels,
-    firstC, lastC, offsetC,
-    firstD, lastD, offsetD,
-    &type, bc, error); 
-
-/*
-Rprintf("Done wavelet decomposition\n");
-for(i=0; i< *LengthC; ++i)
-    Rprintf("C[%d] is %lf\n", i, *(C+i));
-for(i=0; i< *LengthD; ++i)
-    Rprintf("D[%d] is %lf\n", i, *(D+i));
-Rprintf("-------\n");
-*/
-if (*error != 0)    {
-    *error += 40;
-    return;
-    }
-/* Threshold */
-
-Dlevels = local_levels - 1;
-Cthreshold(D, LengthD, firstD, lastD, offsetD, &Dlevels, ntt, value,
-    levs_to_do, &qlevels, bc, error);
-
-if (*error != 0)    {
-    *error += 50;
-    return;
-    }
-/*
-Rprintf("Done thresholding\n");
-for(i=0; i< *LengthD; ++i)
-    Rprintf("D[%d] is %lf\n", i, *(D+i));
-Rprintf("-------\n");
-*/
-
-/* Reconstruct */
-
-waverecons(C, D, H, LengthH, &local_levels,
-    firstC, lastC, offsetC, firstD, lastD, offsetD,
-    &type, bc, error);
-
-if (*error != 0)    {
-    *error += 60;
-    return;
-    }
-
-/* Now work out interpolated odds from noisy */
-
-for(i=0; i<nodd-1; ++i) {
-    *(interps+i) = (*(C+i+1) + *(C+i))/2.0;
-    }
-*(interps+nodd-1) = (*C + *(C+nodd-1))/2.0;
-
-/* Now form sum of squares */
-
-ssq1 = 0.0;
-
-for(i=0; i<nodd; ++i)   {
-    tmp = *(interps+i) - *(noisy+2*i);
-    ssq1 += tmp*tmp;
-/*  Rprintf("ssq1[%d] is %lf\n", i, ssq1); */
-    }
-
-*ssq = (*ssq + ssq1)/2.0;
-free((char *)levs_to_do);
-free((char *)interps);
-}
-/* 
- * Do manual thresholding in C
- */
-
-#define HardThreshold(coef, threshold) (fabs(coef) > (threshold) ? (coef):(0.0))
-
-void Cthreshold(D, LengthD, firstD, lastD, offsetD, Dlevels, ntt, value, levels,
-    qlevels, bc, error)
-double *D;
-int *LengthD;
-int *firstD;
-int *lastD;
-int *offsetD;
-int *Dlevels;
-int *ntt;
-double *value;
-int *levels;
-int *qlevels;
-int *bc;
-int *error;
-{
-register int i,j, local_level;
-double cough;
-double *din;
-int reflect();
-double SoftThreshold();
-
-/*
-Rprintf("Cthreshold\n");
-Rprintf("LengthD is %ld\n", *LengthD);
-Rprintf("ntt is %ld\n", *ntt);
-Rprintf("value is %lf\n", *value);
-Rprintf("qlevels is %ld\n", *qlevels);
-*/
-
-*error = 0;
-
-/*
- * Check that threshold value is positive or zero
- */
-
-if (*value < 0.0)   {
-    *error = 3;
-    return;
-    }
-
-/*
- * Check to see that the levels we are asked to look at are legal
- */
-
-for(i=0; i<*qlevels; ++i)   {
-    if (*(levels+i) > *Dlevels) {
-        *error = 1;
-        return;
-        }
-    }
-/*
- * Now do the thresholding
- */
-
-if (*ntt == HARD)   {
-    for(i=0; i<*qlevels; ++i)   {
-        local_level =  *(levels+i);
-
-        /*
-         * Make din point to correct place in D array
-         */
-
-        din = D+*(offsetD+local_level);
-
-        /*
-         * Now go through this array doing the thresholding
-         */
-
-        for(j= *(firstD+local_level); j<= *(lastD+local_level); ++j){
-            cough = ACCESSC(din, (int)*firstD, (int)*LengthD, j,
-                (int)*bc);
-            cough = HardThreshold(cough, *value);
-            ACCESSC(din, (int)*firstD, (int)*LengthD, j, (int)*bc)
-                = cough;
-            }
-        }
-    }
-else if (*ntt == SOFT)  {
-    for(i=0; i<*qlevels; ++i)   {
-        local_level =  *(levels+i);
-
-        /*
-         * Make din point to correct place in D array
-         */
-
-        din = D+*(offsetD+local_level);
-
-        /*
-         * Now go through this array doing the thresholding
-         */
-
-        for(j= *(firstD+local_level); j<= *(lastD+local_level); ++j){
-            cough = ACCESSC(din, (int)*firstD, (int)*LengthD, j,
-                (int)*bc);
-            cough = SoftThreshold(cough, *value);
-            ACCESSC(din, (int)*firstD, (int)*LengthD, j, (int)*bc)
-                = cough;
-            }
-        }
-    }
-else    {
-    *error = 2;
-    return;
-    }
-}
-
-double SoftThreshold(cough, threshold)
-double cough;
-double threshold;
-{
-register double s=1.0;
-
-if (cough < 0.0)
-    s = -1.0;
-
-if (fabs(cough) > threshold)    {
-    return(s*(fabs(cough) - threshold));
-    }
-else
-    return(0.0);
-}
-/*
- * Function that estimates function with removed observation
- */
-
-void EstWitRem(ynoise, Lynoise, removed, thresh, H, LengthH, ntt, ll, answer, error)
-double *ynoise;     /* The data                 */
-int *Lynoise;       /* The length of the data           */
-int *removed;       /* The index to remove from the data        */
-double *thresh;
-double *H;      /* The wavelets to use                                  */
-int *LengthH;  /* The length of the filter                             */
-int *ntt;      /* The threshold type                                   */
-int *ll;       /* The lowest level to threshold; all levels above too  */
-double *answer;
-int *error;     /* Possible errors              */
-{
-register int i; /* Register int?                */
-int nleft, nright;  /* The number of data points to the left & right */
-int nleftExtend;    /* The length of the leftEx vector      */
-int nrightExtend;   /* The length of the rightEx vector     */
-double *leftEx;     /* Array that contains left and it's extension  */
-double *rightEx;    /* Array that contains right and it's extension */
-int Dlevels;
-int *levs_to_do;
-int qlevels;
-int local_levels;
-int bc;
-int type;
-double *C, *D;
-int LengthC, LengthD;
-int levels=0;
-int *firstC, *lastC, *offsetC;
-int *firstD, *lastD, *offsetD;
-
-void simpleWT();
-void Cthreshold();
-void waverecons();
-int LargerPowerOfTwo(); /* A function that returns next larger  */
-                /* power of two than it's argument  */
-
-/* MAN 7/12/10.  Added the stuff below so that the lengths of simpleWT inputs
-can be calculated
-*/
-int tmp;
-int IsPowerOfTwo();
-
-/* No errors yet */
-*error = 0;
-
-/*
- * Compute number of elements in left and right sections
- */
-
---(*removed);
-
-nleft = *removed;   /* To the left there will be "removed" elements */
-
-nright = *Lynoise - *removed - 1;   /* To the right there is this   */
-
-
-/*
- * Now to do the wavelet transform we have to make two vectors that are
- * a power of two in length and that are just inter than twice nleft and nright
- */
-
-nleftExtend = LargerPowerOfTwo(2*nleft);
-nrightExtend= LargerPowerOfTwo(2*nright);
-
-/* Now check that we can do the thresholding using the ll number of levels */
-
-/*
- * Get memory for these extensions
- */
-
-if ((leftEx = (double *)malloc((size_t)nleftExtend*sizeof(double)))==NULL){
-    *error = 2003;
-    return;
-    }
-
-if ((rightEx = (double *)malloc((size_t)nrightExtend*sizeof(double)))==NULL){
-    *error = 2004;
-    return;
-    }
-
-/*
- * Now fill these extensions up
- */
-
-for(i=0; i<nleft; ++i)  {
-    *(leftEx + (nleftExtend-nleft) + i) = *(ynoise+i);
-    *(leftEx + (nleftExtend-nleft)-1- i) = *(ynoise+i);
-    }
-
-for(i=0; i< (nleftExtend-2*nleft); ++i) /* Fill up left of left with first el*/
-    *(leftEx + i) = *(ynoise+nleft-1);
-
-for(i=0; i<nright; ++i) {
-    *(rightEx + i) = *(ynoise+*removed+i+1);
-    *(rightEx +2*nright-1-i) = *(ynoise+*removed+i);
-    }
-
-for(i=0; i< (nrightExtend-2*nright); ++i)
-    *(rightEx+i+2*nright) = *(ynoise+*removed+1);
-
-/*
- * Now we can work out the wavelet transforms of leftExtend and rightExtend
- */
-
-/* MAN 7/12/10.  The call to simpleWT doesn't know what memory it's using
-and so during the next for loop, *D is being used when we don't know what 
-it contains.  I am going to allocate memory specifically for the input into
-simpleWT.
-*/
-
-tmp=IsPowerOfTwo(nleftExtend);
-firstC=calloc(tmp+1,sizeof(int));
-lastC=calloc(tmp+1,sizeof(int));
-offsetC=calloc(tmp+1,sizeof(int));
-firstD=calloc(tmp,sizeof(int));
-lastD=calloc(tmp,sizeof(int));
-offsetD=calloc(tmp,sizeof(int));
-C=calloc(2*nleftExtend-1,sizeof(double));
-D=calloc(nleftExtend-1,sizeof(double));
-
-
-simpleWT(leftEx, &nleftExtend, H, LengthH,
-    C, &LengthC, D, &LengthD, &levels,
-    firstC, lastC, offsetC,
-    firstD, lastD, offsetD,
-    &type, &bc, error);
-
-if (*error != 0)    {
-    return;
-    }
-
-local_levels = levels;
-
-qlevels = local_levels - *ll;
-
-
-if (qlevels>0)  {
-    if ((levs_to_do = (int *)malloc((size_t)qlevels*sizeof(int)))==NULL){
-        *error = 2005;
-        return;
-        }
-    else    for(i=0; i < qlevels; ++i)
-            *(levs_to_do+i) = *ll+i;
-
-    /* Threshold */
-    Dlevels = local_levels - 1;
-    Cthreshold(D, &LengthD, firstD, lastD, offsetD, &Dlevels, ntt, thresh,
-        levs_to_do, &qlevels, &bc, error);
-
-    if (*error != 0)    {
-        return;
-        }
-
-    free((void *)levs_to_do);
-    }
-
-else if (qlevels <0)    {
-    *error = 2002;  /* ll, the depth of thresholding exceeded the number
-             * of levels that were available for this smaller
-             * wavelet transform 
-             */
-    return;
-    }
-
-waverecons(C, D, H, LengthH, &local_levels,
-        firstC, lastC, offsetC, firstD, lastD, offsetD,
-        &type, &bc, error);
-
-if (*error != 0)        {
-        return;
-        }
-
-/* Now transfer them back to leftEx */
-
-for(i=0; i<nleftExtend; ++i)
-    *(leftEx + i) = *(C+i);
-
-/* Now free the various arrays */
-
-free((void *)C);    free((void *)D);
-free((void *)firstC);   free((void *)lastC);    free((void *)offsetC);
-free((void *)firstD);   free((void *)lastD);    free((void *)offsetD);
-
-/* MAN 7/12/10.  The call to simpleWT doesn't know what memory it's using
-and so during the next for loop, *D is being used when we don't know what 
-it contains.  I am going to allocate memory specifically for the input into
-simpleWT.
-*/
-
-tmp=IsPowerOfTwo(nrightExtend);
-firstC=calloc(tmp+1,sizeof(int));
-lastC=calloc(tmp+1,sizeof(int));
-offsetC=calloc(tmp+1,sizeof(int));
-firstD=calloc(tmp,sizeof(int));
-lastD=calloc(tmp,sizeof(int));
-offsetD=calloc(tmp,sizeof(int));
-C=calloc(2*nrightExtend-1,sizeof(double));
-D=calloc(nrightExtend-1,sizeof(double));
-
-
-/* Now repeat everything for the right one */
-
-simpleWT(rightEx, &nrightExtend, H, LengthH,
-    C, &LengthC, D, &LengthD, &levels,
-    firstC, lastC, offsetC,
-    firstD, lastD, offsetD,
-    &type, &bc, error);
-
-if (*error != 0)    {
-    return;
-    }
-
-local_levels = levels;
-
-qlevels = local_levels - *ll;
-
-if (qlevels>0)  {
-    if ((levs_to_do = (int *)malloc((size_t)qlevels*sizeof(int)))==NULL){
-        *error = 2005;
-        return;
-        }
-    else    for(i=0; i < qlevels; ++i)
-            *(levs_to_do+i) = *ll+i;
-
-    /* Threshold */
-    Dlevels = local_levels - 1;
-    Cthreshold(D, &LengthD, firstD, lastD, offsetD, &Dlevels, ntt, thresh,
-        levs_to_do, &qlevels, &bc, error);
-
-    if (*error != 0)    {
-        return;
-        }
-
-    free((void *)levs_to_do);
-    }
-else if (qlevels<0) {
-    *error = 2001;
-    return; /* ll was too large for this smaller transform */
-    }
-
-waverecons(C, D, H, LengthH, &local_levels,
-        firstC, lastC, offsetC, firstD, lastD, offsetD,
-        &type, &bc, error);
-
-if (*error != 0)        {
-        return;
-        }
-
-/* Now transfer them back to rightEx */
-
-for(i=0; i<nrightExtend; ++i)
-    *(rightEx + i) = *(C+i);
-
-/* Now free the various arrays */
-
-free((void *)C);    free((void *)D);
-free((void *)firstC);   free((void *)lastC);    free((void *)offsetC);
-free((void *)firstD);   free((void *)lastD);    free((void *)offsetD);
-
-/* Now work out what the removed value should be        */
-
-*answer = *(leftEx + nleftExtend - 1) + *rightEx;
-*answer /= 2.0;
-
-/* Now free leftEx and rightEx */
-free((void *)leftEx);   free((void *)rightEx);
-*error = 0;
-return;
-}
-
-/*
- * LargerPowerOfTwo:    Returns smallest power of two larger than n
- */
-
-int LargerPowerOfTwo(n)
-int n;
-{
-register int cnt=0;
-n--;
-
-while(n>>=1)
-    ++cnt;
-
-n = 1;
-++cnt;
-while(cnt--)
-    n<<=1;
-return(n);
-}
-/*
- * Do wavelet cross-validation in C
- */
-
-void FullWaveletCV(noisy, nnoisy, UniversalThresh,
-    H, LengthH, ntt, ll, tol, xvthresh, error)
-double *noisy;
-int *nnoisy;
-double *UniversalThresh;
-double *H;  /* The wavelets to use                  */
-int *LengthH;   /* The length of the filter             */
-int *ntt;   /* The threshold type                   */
-int *ll;    /* The lowest level to threshold; all levels above too  */
-double *tol;
-double *xvthresh;
-int *error; /* There was an error!                  */
-{
-int verbose=0;
-double ax, bx,cx;
-double x0, x1, x2, x3;
-/* NOT NEEDED
-double fa,fb,fc; */
-double f1,f2;
-double ssq;
-
-int mRi;    /* This is required as an argument to GetRSS, but we don't
-         * make use of it here */
-
-void GetRSS();
-
-ax = 0.0;
-bx = *UniversalThresh/2.0;
-cx = *UniversalThresh;
-x0 = ax;
-x3 = cx;
-
-if (*error != 0)    {
-    verbose=1;
-    *error = 0;
-    }
-else
-    verbose=0;
-
-if (verbose)    {
-    Rprintf("Entered FullWaveletCV\n");
-    }
-if (fabs(cx - bx) > fabs(bx - ax))  {
-    x1 = bx;
-    x2 = bx + Cons*(cx-bx);
-    }
-else    {
-    x2 = bx;
-    x1 = bx - Cons*(bx-ax);
-    }
-
-
-if (verbose)    {
-    Rprintf("About to enter GetRSS for the first time\n");
-    }
-
-/* NOT NEEDED 
-
-GetRSS(noisy, nnoisy, &ax, H, LengthH, ntt, ll, &ssq, &mRi, &verbose, error);
-if (verbose)    {
-    Rprintf("Just left GetRSS for the first time\n");
-    }
-fa = ssq;
-
-if (*error != 0)    {
-    *error += 1000;
-    return;
-    }
-
-GetRSS(noisy, nnoisy, &bx, H, LengthH, ntt, ll, &ssq, &mRi, &verbose, error);
-fb = ssq;
-
-if (*error != 0)    {
-    *error += 1100;
-    return;
-    }
-
-GetRSS(noisy, nnoisy, &cx, H, LengthH, ntt, ll, &ssq, &mRi, &verbose, error);
-fc = ssq;
-
-if (*error != 0)    {
-    *error += 1200;
-    return;
-    }
-
- * END OF NOT NEEDED */
-
-GetRSS(noisy, nnoisy, &x1, H, LengthH, ntt, ll, &ssq, &mRi, &verbose, error);
-f1 = ssq;
-
-if (*error != 0)    {
-    *error += 1300;
-    return;
-    }
-
-GetRSS(noisy, nnoisy, &x2, H, LengthH, ntt, ll, &ssq, &mRi, &verbose, error);
-f2 = ssq;
-
-if (*error != 0)    {
-    *error += 1400;
-    return;
-    }
-
-while(fabs(x3-x0) > *tol*(fabs(x1) + fabs(x2))) {
-    if (verbose)    {
-    Rprintf("x0=%lf, x1=%lf, x2=%lf, x3=%lf\n", x0,x1,x2,x3);
-    Rprintf("f1=%lf, f2=%lf\n", f1,f2);
-/* MAN 01/03/12. Removed fflush(stdout) call 
-    fflush(stdout);	*/
-        }
-    if (f2 < f1)    {
-        x0 = x1;
-        x1 = x2;
-        x2 = R*x1 + Cons*x3;
-        f1 = f2;
-        GetRSS(noisy, nnoisy, &x2, H, LengthH, ntt, ll, &ssq, &mRi,
-            &verbose, error);
-        f2 = ssq;
-
-        if (*error != 0)    {
-            *error += 1500;
-            return;
-            }
-    }
-
-    else    {
-        x3 = x2;
-        x2 = x1;
-        x1 = R*x2 + Cons*x0;
-        f2 = f1;
-        GetRSS(noisy, nnoisy, &x1, H, LengthH, ntt, ll, &ssq, &mRi,
-            &verbose, error);
-        f1 = ssq;
-
-        if (*error != 0)    {
-            *error += 1600;
-            return;
-            }
-    }
-  }
-
-if (f1 < f2)
-    *xvthresh = x1;
-else
-    *xvthresh = x2;
-
-return;
-}
-#define GRSTART 4       /* The first index to remove for GetRSS */
-
-void GetRSS(ynoise, Lynoise, thresh, H, LengthH, ntt, ll, rss, smallestRSSindex,
-    verbose, error)
-double *ynoise;
-int *Lynoise;
-double *thresh;
-double *H;
-int *LengthH;
-int *ntt;
-int *ll;
-double *rss;
-int *smallestRSSindex;
-int *verbose;
-int *error;
-{
-int removed, local_removed;
-int minRSSix;
-double TheMinRSS;
-double answer;
-void EstWitRem();
-
-/* No error yet!! */
-*error = 0;
-
-*rss = 0.0;
-minRSSix = 0;
-TheMinRSS = 0.0;
-
-for(removed=GRSTART; removed<= *Lynoise-GRSTART+1; ++removed)   {
-
-
-    local_removed = removed;
-    EstWitRem(ynoise, Lynoise, &local_removed, thresh, H, LengthH,
-        ntt, ll, &answer, error);
-
-    if (*error != 0)    {
-        return;
-        }
-    answer -= *(ynoise+removed-1);
-
-    *rss += answer*answer;
-
-    if (removed==GRSTART)   {
-        minRSSix = removed;
-        TheMinRSS = answer* answer;
-        }
-    else if (TheMinRSS > answer*answer) {
-        minRSSix = removed; 
-        TheMinRSS = answer*answer;
-        }
-
-    if (*verbose>1)
-      Rprintf("GetRSS: Removed is %d, ynoise[%d] is %lf RSS is %lf\n",     /*MAN: changed %ld to %d since declared as int (L1329) */
-        removed, removed, *(ynoise+removed-1), *rss);
-
-    }
-*rss /= (*Lynoise - 4);
-*smallestRSSindex = minRSSix;
-return;
-}
-/*
- * ImageDecomposeStep   -   Take an image and do a one level decomp
- *
- * Error Codes
- *
- *  0   -   Ok.
- *
- *  1   -   Memory error for (afterC) temporary image
- *
- *  2   -   Memory error for (afterD) temporary image
- *
- *  3   -   Memory error for (ccopy) temporary row store
- *
- *  4   -   Memory error for (ccopy_out) temporary row store
- *
- *  5   -   Memory error for (dcopy_out) temporary row store
- *
- *  6-9 -   Memory errors for (afterCC,afterCD,afterDC,afterDD)
- *          store for the answers
- */
-
-
-
-void ImageDecomposeStep(C, Csize, firstCin, H, LengthH,
-    LengthCout, firstCout, lastCout,
-    LengthDout, firstDout, lastDout,
-    cc_out, cd_out, dc_out, dd_out, bc, type,
-    error)
-double *C;  /* Input data image                 */
-int Csize; /* Size of image (side length)              */
-int firstCin;  /* Index number of first element in input "C" image */
-double *H;  /* Filter coefficients                  */
-int LengthH;   /* Length of filter                 */
-/* Details about output image */
-int LengthCout;/* Length of C part of output image         */
-int firstCout; /* Index number of first element in output "C" image    */
-int lastCout;  /* Index number of last element             */
-int LengthDout;/* Length of D part of output image         */
-int firstDout; /* Index number of first element in output "D" image    */
-int lastDout;  /* Index number of last element             */
-double *cc_out;/* Smoothed output image                */
-double *cd_out;/* Horizontal detail                    */
-double *dc_out;/* Vertical detail                  */
-double *dd_out;/* Diagonal detail                  */
-int bc;    /* Method of boundary correction            */
-int type;  /* Type of transform, wavelet or stationary     */
-int *error;    /* Error code                       */
-{
-register int j,row,col;
-double *ccopy;  /* Used to copy input data to convolution routines  */
-double *ccopy_out;/* Used to copy output data to afterC after conv. */
-double *dcopy_out;/* Used to copy output data to afterD after conv. */
-double *afterC; /* Temporary store for image data after C convolution   */
-double *afterD; /* Temporary store for image data after D convolution   */
-double *afterCC,*afterCD,*afterDC,*afterDD; /* Results      */
-int step_factor;    /* This should always be 1 for the WAVELET trans*/
-
-void convolveC();
-void convolveD();
-
-*error = 0;
-
-step_factor = 1;
-
-/* Get memory for afterC */
-
-if ((afterC = (double *)malloc((unsigned)(Csize*LengthCout*sizeof(double))))==NULL){
-    *error = 1;
-    return;
-    }
-
-/* Get memory for afterD */
-
-if ((afterD = (double *)malloc((unsigned)(Csize*LengthDout*sizeof(double))))==NULL){
-        *error = 2;
-        return;
-        }
-
-/* Get memory for row of image to pass to convolution routines */
-
-if ((ccopy = (double *)malloc((unsigned)(Csize*sizeof(double)))) == NULL) {
-    *error = 3;
-    return;
-    }
-
-/* Get memory for output row after C convolution */
-
-if ((ccopy_out = (double *)malloc((unsigned)(LengthCout*sizeof(double))))==NULL) {
-    *error = 4;
-    return;
-    }
-
-/* Get memory for output row after D convolution */
-
-if ((dcopy_out = (double *)malloc((unsigned)(LengthDout*sizeof(double))))==NULL) {
-        *error = 5;
-        return;
-        }
-
-
-
-/* Do convolutions on rows of C */
-
-for(row=0; row < (int)Csize; ++row) {
-
-    /* Copy row of C into ccopy */
-
-    for(j=0; j<Csize; ++j)
-        *(ccopy+j) = ACCESS(C, Csize, row, j);
-
-    /* Now convolve this row with C filter */
-
-    convolveC(ccopy, (int)Csize, (int)firstCin,H, (int)LengthH, ccopy_out,
-        (int)firstCout, (int)lastCout,
-        (int)type, step_factor, (int)bc); 
-
-    /* Now convolve this row with D filter */
-
-    convolveD(ccopy, (int)Csize, (int)firstCin, H, (int)LengthH, dcopy_out,
-        (int)firstDout, (int)lastDout,
-        (int)type, step_factor, (int)bc);
-
-    /* Copy answer back to arrays */
-
-    for(j=0; j<(int)LengthCout; ++j)
-        ACCESS(afterC, (int)LengthCout, row, j) = *(ccopy_out + j);
-
-    for(j=0; j<(int)LengthDout; ++j)
-        ACCESS(afterD, (int)LengthDout, row, j) = *(dcopy_out + j);
-
-    }
-
-
-/* Now we have to apply both the C and D filters to afterC and afterD.
- * We get four answers. First we get the necessary memory
- */
-
-if ((afterCC = (double *)malloc((unsigned)(LengthCout*LengthCout*sizeof(double))
-        ))==NULL)   {
-    *error = 6;
-    return;
-    }
-
-if ((afterCD = (double *)malloc((unsigned)(LengthDout*LengthCout*sizeof(double))
-        ))==NULL)   {
-    *error = 7;
-    return;
-    }
-
-if ((afterDC = (double *)malloc((unsigned)(LengthCout*LengthDout*sizeof(double))
-        ))==NULL)   {
-    *error = 8;
-    return;
-    }
-
-if ((afterDD = (double *)malloc((unsigned)(LengthDout*LengthDout*sizeof(double))
-        ))==NULL)   {
-    *error = 9;
-    return;
-    }
-
-
-/* Link this memory to the returning pointers */
-/*
-*cc_out = afterCC;
-*cd_out = afterCD;
-*dc_out = afterDC;
-*dd_out = afterDD;
-*/
-
-/* Apply the filters, first to afterC to get afterCC and afterCD */
-
-for(col=0; col < (int)LengthCout; ++col)    {
-
-    /* Copy column to ccopy */
-
-    for(j=0; j<(int)Csize; ++j)
-        *(ccopy + j) = ACCESS(afterC, (int)LengthCout, j, col);
-
-    /* Apply C filter */
-
-    convolveC(ccopy, (int)Csize, (int)firstCin, H, (int)LengthH, ccopy_out,
-        (int)firstCout, (int)lastCout,
-        (int)type, step_factor, (int)bc);
-
-    /* Apply D filter */
-
-    convolveD(ccopy, (int)Csize, (int)firstCin, H, (int)LengthH, dcopy_out,
-        (int)firstDout, (int)lastDout,
-        (int)type, step_factor, (int)bc);
-
-    /* Copy answer back */
-
-    for(j=0; j<(int)LengthCout; ++j)
-        ACCESS(afterCC, (int)LengthCout, j, col) = *(ccopy_out+j);
-
-    for(j=0; j<(int)LengthDout; ++j)
-        ACCESS(afterCD, (int)LengthCout, j, col) = *(dcopy_out+j);
-    }
-
-/* Apply the filters, now to afterD to get afterDC and afterDD */
-
-for(col=0; col < (int)LengthDout; ++col)    {
-
-    /* Copy column to ccopy */
-
-    for(j=0; j<(int)Csize; ++j)
-        *(ccopy + j) = ACCESS(afterD, (int)LengthDout, j, col);
-
-    /* Apply C filter */
-
-    convolveC(ccopy, (int)Csize, (int)firstCin, H, (int)LengthH, ccopy_out,
-        (int)firstCout, (int)lastCout,
-        (int)type, step_factor, (int)bc);
-
-    /* Apply D filter */
-
-    convolveD(ccopy, (int)Csize, (int)firstCin, H, (int)LengthH, dcopy_out,
-        (int)firstDout, (int)lastDout,
-        (int)type, step_factor, (int)bc);
-
-    /* Copy answer back */
-
-    for(j=0; j<(int)LengthCout; ++j)
-        ACCESS(afterDC, (int)LengthDout, j, col) = *(ccopy_out+j);
-
-    for(j=0; j<(int)LengthDout; ++j)
-        ACCESS(afterDD, (int)LengthDout, j, col) = *(dcopy_out+j);
-    }
-
-/* That should be it ! */
-
-free((char *) afterD);
-free((char *) afterC);
-free((char *)dcopy_out);
-free((char *)ccopy_out);
-free((char *)ccopy);
-
-/* MAN  6/12/10 extra frees and out vectors*/
-
-int tmp;
-void mycpyd();
-
-tmp=LengthCout*LengthCout;
-mycpyd(afterCC,&tmp,cc_out);
-
-tmp=LengthDout*LengthCout;
-mycpyd(afterCD,&tmp,cd_out);
-mycpyd(afterDC,&tmp,dc_out);
-
-tmp=LengthDout*LengthDout;
-mycpyd(afterDD,&tmp,dd_out);
-
-free(afterCC);
-free(afterDD);
-free(afterDC);
-free(afterCD);
-
-return;
-}
-
-
-void StoIDS(C, Csize, firstCin, H, LengthH,
-    LengthCout, firstCout, lastCout,
-    LengthDout, firstDout, lastDout,
-    ImCC, ImCD, ImDC, ImDD, bc, type,
-    error)
-    
-double *C;
-int *Csize;
-int *firstCin;
-double *H;
-int *LengthH;
-int *LengthCout;
-int *firstCout;
-int *lastCout;
-int *LengthDout;
-int *firstDout;
-int *lastDout;
-double *ImCC,*ImCD,*ImDC,*ImDD;
-int *bc;
-int *type;
-int *error;
-{
-register int i,j;
-double *cc_out, *cd_out, *dc_out, *dd_out;
-
-void ImageDecomposeStep();
-
-/* MAN 7/12/10.  I think the out vectors should be alloc'd - see frees at 
-the end 
-*/
-
-cc_out=calloc(*LengthCout**LengthCout,sizeof(double));
-dd_out=calloc(*LengthDout**LengthDout,sizeof(double));
-cd_out=calloc(*LengthCout**LengthDout,sizeof(double));
-dc_out=calloc(*LengthCout**LengthDout,sizeof(double));
-
-
-ImageDecomposeStep(C, *Csize, *firstCin, H, *LengthH,
-    *LengthCout, *firstCout, *lastCout,
-    *LengthDout, *firstDout, *lastDout,
-    cc_out, cd_out, dc_out, dd_out, *bc, *type,
-    error);
-
-/* Copy images */
-
-for(i=0; i<(int)*LengthDout; ++i)   {
-    for(j=0; j<(int)*LengthDout; ++j)
-        ACCESS(ImDD, (int)*LengthDout, i, j) = ACCESS(dd_out,
-            *LengthDout, i, j);
-
-    for(j=0; j<(int)*LengthCout; ++j)
-        ACCESS(ImDC, (int)*LengthDout, j,i) = ACCESS(dc_out,
-            *LengthDout, j,i);
-}
-
-for(i=0; i<(int)*LengthCout; ++i)   {
-    for(j=0; j<(int)*LengthDout; ++j)
-        ACCESS(ImCD, (int)*LengthCout, j,i) = ACCESS(cd_out,
-            *LengthCout, j,i);
-
-    for(j=0; j<(int)*LengthCout; ++j)
-        ACCESS(ImCC, (int)*LengthCout,j,i) = ACCESS(cc_out,
-            *LengthCout, j,i);
-}
-
-/* MAN 7/12/10.  With the allocs above, the frees now make sense. */
-
-free((void *)cc_out);
-free((void *)cd_out);
-free((void *)dc_out);
-free((void *)dd_out);
-}
-
-void StoIRS(ImCC, ImCD, ImDC, ImDD,
-    LengthCin, firstCin,
-    LengthDin, firstDin,
-    H, LengthH,
-    LengthCout, firstCout, lastCout,
-    ImOut, bc, error)
-double *ImCC,*ImCD,*ImDC,*ImDD;
-int *LengthCin, *firstCin;
-int *LengthDin, *firstDin;
-double *H;
-int *LengthH;
-int *LengthCout, *firstCout, *lastCout;
-double *ImOut;
-int *bc;
-int *error;
-{
-void ImageReconstructStep();
-
-*error = 0;
-
-ImageReconstructStep(ImCC, ImCD, ImDC, ImDD,
-    *LengthCin, *firstCin, 
-    *LengthDin, *firstDin,
-    H, *LengthH,
-    *LengthCout, *firstCout, *lastCout,
-    ImOut, bc,
-    error);
-
-}
-
-void ImageReconstructStep(ImCC, ImCD, ImDC, ImDD,
-        LengthCin, firstCin,
-        LengthDin, firstDin,
-        H, LengthH,
-        LengthCout, firstCout, lastCout,
-        ImOut,
-    bc,
-        error)
-double *ImCC,*ImCD,*ImDC,*ImDD;
-int LengthCin, firstCin;
-int LengthDin, firstDin;
-double *H;
-int LengthH;
-int LengthCout, firstCout, lastCout;
-double *ImOut;
-int *bc;
-int *error;
-{
-register int i,j;
-double *c_in;
-double *d_in;
-double *c_out;
-double *toC;
-double *toD;
-int type=WAVELET;       /* The type of the WAVELET transform    */
-
-void conbar();
-
-/* Get memory for c_in and d_in */
-
-if ((c_in = (double *)malloc((unsigned)LengthCin*sizeof(double)))==NULL) {
-        *error = 1;
-        return;
-        }
-
-if ((d_in = (double *)malloc((unsigned)LengthDin*sizeof(double)))==NULL) {
-        *error = 2;
-        return;
-        }
-
-if ((c_out = (double *)malloc((unsigned)LengthCout*sizeof(double)))==NULL) {
-        *error = 3;
-        return;
-        }
-
-if ((toC = (double *)malloc((unsigned)LengthCin*LengthCout*sizeof(double)))
-    == NULL)    {
-        *error = 4;
-        return;
-        }
-        
-/* Now apply C and D filters to CC and CD to obtain toC */
-
-for(i=0; i<LengthCin; ++i)  {
-
-    for(j=0; j < LengthDin; ++j)
-        *(d_in + j) = ACCESS(ImCD, (int)LengthCin, j, i);
-
-    for(j=0; j < LengthCin; ++j)
-        *(c_in + j) = ACCESS(ImCC, (int)LengthCin, j, i);
-
-    conbar(c_in, (int)LengthCin, (int)firstCin,
-           d_in, (int)LengthDin, (int)firstDin,
-           H, (int)LengthH,
-           c_out, (int)LengthCout, (int)firstCout, (int)lastCout,
-        type, (int)*bc);
-
-    for(j=0; j < LengthCout; ++j)
-        ACCESS(toC, (int)LengthCout, i, j) = *(c_out+j); 
-    }
-
-/* Now magically we can use c_in and d_in again, but we now need a toD
- * to store the answer in */
-
-if ((toD = (double *)malloc((unsigned)LengthDin*LengthCout*sizeof(double)))== NULL)    {
-    *error = 5;
-    return;
-    }
-
-/* Now apply C and D filters to DC and DD to obtain toD */
-
-for(i=0; i<LengthDin; ++i)      {
-
-        for(j=0; j < LengthDin; ++j)
-                *(d_in + j) = ACCESS(ImDD, (int)LengthDin, j, i);
-
-        for(j=0; j < LengthCin; ++j)
-                *(c_in + j) = ACCESS(ImDC, (int)LengthDin, j, i);
-
-        conbar(c_in, (int)LengthCin, (int)firstCin,
-               d_in, (int)LengthDin, (int)firstDin,
-               H, (int)LengthH,
-               c_out, (int)LengthCout, (int)firstCout, (int)lastCout,
-        type, (int)*bc);
-
-        for(j=0; j < LengthCout; ++j)
-                ACCESS(toD, (int)LengthCout, i, j) = *(c_out+j);
-        }
-
-
-/* Now apply C and D filters to toC and toD to get ImOut */
-
-for(i=0; i<LengthCout; ++i) {
-
-    for(j=0; j< LengthDin; ++j)
-        *(d_in + j) = ACCESS(toD, (int)LengthCout, j, i);
-
-    for(j=0; j<LengthCin; ++j)
-        *(c_in + j) = ACCESS(toC, (int)LengthCout, j, i);
-
-    conbar(c_in, (int)LengthCin, (int)firstCin,
-               d_in, (int)LengthDin, (int)firstDin,
-               H, (int)LengthH,
-               c_out, (int)LengthCout, (int)firstCout, (int)lastCout,
-        type, (int)*bc);
-
-    for(j=0; j<LengthCout; ++j)
-        ACCESS(ImOut, (int)LengthCout, i, j)  = *(c_out+j);
-    }
-
-/* MAN 7/12/10 : there should be some frees here, though it might complain */
-
-free(c_in);
-free(c_out);
-free(d_in);
-free(toC);
-free(toD);
-
-}
-
-/* AV_BASIS Do the basis averaging */
-
-/*
- * Error codes
- *
- * 1    -   Memory error in creating cl
- * 2    -   Memory error in creating cr
- * 3    -   Memory error in creating packet (getpacket)
- */
-
-
-double *av_basis(wst, wstC, nlevels, level, ix1, ix2, H, LengthH, error)
-double *wst;    /* The stationary wavelet decomposition         */
-double *wstC;   /* The stationary wavelet decomposition         */
-int nlevels; /* The original length of the data         */
-int level;  /* The level to reconstruct             */
-int ix1;    /* The "left" packet index              */
-int ix2;    /* The "right" packet index             */
-double *H;  /* The filter                       */
-int LengthH;    /* The length of the filter             */
-int *error; /* Error code                       */
-{
-register int i;
-double *cl;
-double *cr;
-double *genericC;
-double *genericD;
-void conbar();
-double *getpacket();
-double *av_basis();
-int LengthC;
-int LengthCin;
-
-void rotateback();
-
-*error = 0;
-
-/*
- * Now we must create cl and cr. These will contain the reconstructions
- * from the left and right packets respectively. The length of these
- * vectors depends upon the level we're at.
- */
-
-LengthC = 1 << (level+1);
-LengthCin = 1 << level;
-
-/*
- * Create cl and cr
- */
-
-if ((cl = (double *)malloc((unsigned)LengthC*sizeof(double)))==NULL) {
-    *error = 1;
-    return(NULL);
-    }
-
-if ((cr = (double *)malloc((unsigned)LengthC*sizeof(double)))==NULL) {
-    *error = 2;
-    return(NULL);
-    }
-    
-/*
- * What we do next depends on the level.
- *
- * If level is zero then we've recursed all the way down to the bottom of
- * the tree. And we can reconstruct the 2-vectors one-up-the-tree by using
- * good old conbar().
- *
- * If the level is not zero then we construct at that stage using conbar()
- * but to obtain the Cs we recurse. 
- */
-
-if (level != 0) {
-
-    /* Get C's at this level by asking the next level down. */
-
-    genericC = av_basis(wst, wstC, nlevels, level-1, 2*ix1, 2*ix1+1,
-            H, LengthH, error);
-
-    if (*error != 0)
-        return(NULL); 
-
-    /* Get D's straight from the wst matrix */
-
-    genericD = getpacket(wst, nlevels, level, ix1, error);
-
-    if (*error != 0)
-        return(NULL);
-
-    /* Do the reconstruction */
-
-    conbar(genericC, LengthCin, 0, 
-           genericD, LengthCin, 0, 
-           H, LengthH,
-           cl, LengthC, 0, LengthC-1,
-           WAVELET, PERIODIC);
-
-    free((void *)genericC);
-    free((void *)genericD);
-
-    /* Now do the RHS */
-    
-    genericC = av_basis(wst, wstC, nlevels, level-1, 2*ix2, 2*ix2+1,
-        H, LengthH, error);
-
-    if (*error != 0)
-        return(NULL); 
-
-    /* Get D's straight from the wst matrix */
-
-    genericD = getpacket(wst, nlevels, level, ix2, error);
-
-    if (*error != 0)
-        return(NULL);
-
-    /* Do the reconstruction */
-
-    conbar(genericC, LengthCin, 0, 
-           genericD, LengthCin, 0,
-           H, LengthH,
-           cr, LengthC, 0, LengthC-1,
-           WAVELET, PERIODIC);
-
-    /* Rotate the RHS back */
-
-    rotateback(cr, LengthC);
-
-    /* Can get rid of generics now */
-
-    free((void *)genericC);
-    free((void *)genericD);
-    }
-
-else    {
-    /* Have to really do it! */
-
-    genericC = getpacket(wstC, nlevels, level, ix1, error);
-
-    if (*error != 0)
-        return(NULL);
-
-    genericD = getpacket(wst, nlevels, level, ix1, error);
-
-    if (*error != 0)
-        return(NULL);
-
-    /* Do the reconstruction */
-
-    conbar(genericC, LengthCin, 0, 
-           genericD, LengthCin, 0, 
-           H, LengthH,
-           cl, LengthC, 0, LengthC-1,
-           WAVELET, PERIODIC);
-
-    free((void *)genericC);
-    free((void *)genericD);
-
-    genericC = getpacket(wstC, nlevels, level, ix2, error);
-
-    if (*error != 0)
-        return(NULL);
-
-    genericD = getpacket(wst, nlevels, level, ix2, error);
-
-    if (*error != 0)
-        return(NULL);
-
-    /* Do the reconstruction */
-
-    conbar(genericC, LengthCin, 0,
-           genericD, LengthCin, 0,
-           H, LengthH,
-           cr, LengthC, 0, LengthC-1,
-           WAVELET, PERIODIC);
-
-    /* Rotate the RHS back */
-
-    rotateback(cr, LengthC);
-
-    free((void *)genericC);
-    free((void *)genericD);
-    }
-
-for(i=0; i<LengthC; ++i)
-    *(cl+i) = ((double)0.5)*( *(cl+i) + *(cr+i) );
-
-/* MAN 7/12/10.  Free cr.  Probably won't make much difference. */
-
-free(cr);
-
-return(cl);
-}
-
-
-/* Note this is different to what is in wavepackst.c */
-#define AVBPOINTD(w, l,i) (w + (nlevels*(i)) + (l))
-
-/*
- * A C version of getpacket
- *
- * Warning. The argument list is the same as for the WaveThresh Splus version
- * except that nlevels here should be one more!
- */
-
-double *getpacket(wst, nlevels, level, index, error)
-double *wst;
-int nlevels;    /* This looks like it should be nlevels+1 for somereason */
-int level;
-int index;
-int *error;
-{
-register int i;
-double *packet;
-int PacketLength;
-
-PacketLength = 1 << level;
-
-if ((packet = (double *)malloc((unsigned)PacketLength*sizeof(double)))==NULL){
-    *error = 3;
-    return(NULL);
-    }
-
-
-for(i=0; i< PacketLength; ++i)
-    *(packet+i) = *AVBPOINTD(wst, level, (index*PacketLength+i));
-
-return(packet);
-}
-
-/* Wrapper for av_basis */
-
-
-void av_basisWRAP(wst, wstC, LengthData, level, H, LengthH, answer, error)
-double *wst;
-double *wstC;
-int *LengthData;
-int *level;
-double *H;
-int *LengthH;
-double *answer;
-int *error;
-{
-register int i;
-int nlevels;
-double *acopy;
-double *av_basis();
-
-nlevels = 2 + (int)*level;
-
-acopy =  av_basis(wst, wstC, nlevels, (int)*level, 0, 1, H,
-        (int)*LengthH, error);
-
-for(i=0; i< (int)*LengthData; ++i)
-    *(answer+i) = *(acopy+i);
-
-free((void *)acopy);
-}
-/*
- * CONBAR: Does the reconstruction convolution
- */
-
-#define CEIL(i) ( ((i)>0) ? ( ((i)+1)/2):((i)/2) )
-
-void conbar(c_in, LengthCin, firstCin,
-       d_in, LengthDin, firstDin,
-       H, LengthH,
-       c_out, LengthCout, firstCout, lastCout, type, bc)
-double *c_in;
-int LengthCin;
-int firstCin;
-double *d_in;
-int LengthDin;
-int firstDin;
-double *H;
-int LengthH;
-double *c_out;
-int LengthCout;
-int firstCout;      /* This determines summation over n     */
-int lastCout;       /* and this does too                */
-int type;       /* The type of wavelet reconstruction       */
-int bc;
-{
-register int n,k;
-register int cfactor;
-double sumC, sumD;
-
-int reflect();
-
-switch(type)    {
-
-    case WAVELET:   /* Standard wavelets */
-        cfactor = 2;
-        break;
-
-    case STATION:   /* Stationary wavelets */
-        cfactor = 1;
-        break;
-
-    default:    /* This should never happen */
-        cfactor=0;       /* MAN: added for total cover: shouldn't happen */
-        break;
-    }
-
-
-/* Compute each of the output C */
-
-for(n=firstCout; n<=lastCout; ++n)  {
-
-    /* We want  n+1-LengthH <= 2*k to start off */
-
-
-    k = CEIL(n+1-LengthH);
-
-    sumC = 0.0;
-
-    while( cfactor*k <= n ) {
-
-        sumC += *(H + n - cfactor*k)*ACCESSC(c_in, firstCin, LengthCin,
-                    k, bc);
-
-        ++k;
-        }
-
-    /* Now do D part */
-
-    k = CEIL(n-1);
-
-    sumD = 0.0;
-
-    while( cfactor*k <= (LengthH +n -2) )   {
-
-        sumD += *(H+1+cfactor*k-n) * ACCESSC(d_in, firstDin, LengthDin,
-                    k, bc);
-
-        ++k;
-
-        }
-
-    if (n & 1)      /* n odd */
-        sumC -= sumD;
-    else
-        sumC += sumD;
-
-    ACCESSC(c_out, firstCout, LengthCout, n, bc) = sumC;
-    }
-
-}
-/*
- * CONBARL: Wrapper called by SPlus conbar() to call C conbar.
- */
-
-void conbarL(c_in, LengthCin, firstCin,
-       d_in, LengthDin, firstDin,
-       H, LengthH,
-       c_out, LengthCout, firstCout, lastCout, type, bc)
-double *c_in;
-int *LengthCin;
-int *firstCin;
-double *d_in;
-int *LengthDin;
-int *firstDin;
-double *H;
-int *LengthH;
-double *c_out;
-int *LengthCout;
-int *firstCout; /* This determines summation over n     */
-int *lastCout;      /* and this does too                */
-int *type;      /* The type of wavelet reconstruction       */
-int *bc;
-{
-int LLengthCin;
-int LfirstCin;
-int LLengthDin;
-int LfirstDin;
-int LLengthH;
-int LLengthCout;
-int LfirstCout;
-int LlastCout;
-int Ltype;
-int Lbc;
-void conbar();
-
-LLengthCin = (int)*LengthCin;
-LfirstCin = (int)*firstCin;
-LLengthDin = (int)*LengthDin;
-LfirstDin = (int)*firstDin;
-LLengthH = (int)*LengthH;
-LLengthCout = (int)*LengthCout;
-LfirstCout = (int)*firstCout;
-LlastCout = (int)*lastCout;
-Ltype = (int)*type;
-Lbc = (int)*bc;
-
-
-conbar(c_in, LLengthCin, LfirstCin,
-       d_in, LLengthDin, LfirstDin,
-       H, LLengthH,
-       c_out, LLengthCout, LfirstCout, LlastCout, Ltype, Lbc);
-}
-/*
- * CONVOLVE -   Do filter H filter convolution with boundary
- */
-
-
-
-
-void convolveC(c_in, LengthCin, firstCin, H, LengthH, c_out, 
-    firstCout, lastCout, type, step_factor, bc)
-double *c_in;   /* Input data                       */
-int LengthCin;  /* Length of this array                 */
-int firstCin;   /* The first C value                    */
-double *H;  /* Filter                       */
-int LengthH;    /* Length of filter                 */
-double *c_out;  /* Output data                      */
-int firstCout;  /* First index of C array               */
-int lastCout;   /* Last index of C array                */
-int type;   /* Type of wavelet decomposition            */
-int step_factor;/* For stationary wavelets only             */
-int bc;     /* Method of boundary correction PERIODIC, SYMMETRIC    */
-{
-double sum;
-register int k;
-register int count_out;
-register int m;
-register int cfactor;   /* This determines what sort of dilation we do  */
-            /* and depends on the type argument     */
-int reflect();
-
-count_out = 0;
-
-switch(type)    {
-
-    case WAVELET:   /*  Ordinary wavelets   */
-            cfactor = 2;    /* Pick every other coefficient */
-            break;
-
-    case STATION:   /* Stationary wavelets  */
-            cfactor = 1;    /* Pick every coefficient   */
-            break;
-
-
-    default:    /* This is an error, one of the above must have */
-            /* been picked */
-            /* However, this must be tested in a previous   */
-            /* routine.                 */
-            cfactor=0;       /* MAN: added for total cover: shouldn't happen */
-            break;
-        }
-
-for(k=firstCout; k<=lastCout; ++k)  {
-    sum = 0.0;
-
-
-    for(m=0; m<LengthH; ++m)    {
-
-
-        sum += *(H+m) * ACCESSC(c_in, firstCin, LengthCin,
-            ((step_factor*m)+(cfactor*k)),bc);
-        }
-
-    *(c_out + count_out) = sum;
-    ++count_out;
-    }
-}
-
-void convolveD(c_in, LengthCin, firstCin, H, LengthH, d_out,
-    firstDout, lastDout, type, step_factor, bc)
-double *c_in;   /* Input data                       */
-int LengthCin;  /* Length of this array                 */
-int firstCin;   /* The first index of the C input array         */
-double *H;  /* Filter                       */
-int LengthH;    /* Length of filter                 */
-double *d_out;  /* Output data                      */
-int firstDout;  /* First index of D array               */
-int lastDout;   /* Last index of D array                */
-int type;   /* Type of wavelet decomposition            */
-int step_factor;/* For stationary wavelets only             */
-int bc;     /* Method of boundary correction PERIODIC or SYMMETRIC  */
-{
-double sum;
-double tmp;
-register int k;
-register int count_out;
-register int m;
-register int cfactor;
-
-int reflect();
-
-count_out = 0;
-
-switch(type)    {
-
-    case WAVELET:   /*  Ordinary wavelets   */
-            cfactor = 2;    /* Pick every other coefficient */
-            break;
-
-    case STATION:   /* Stationary wavelets  */
-            cfactor = 1;    /* Pick every coefficient   */
-            break;
-
-
-    default:    /* This is an error, one of the above must have */
-            /* been picked */
-            /* However, this must be tested in a previous   */
-            /* routine.                 */
-            cfactor=0;       /* MAN: added for total cover: shouldn't happen */
-            break;
-        }
-
-for(k=firstDout; k<=lastDout; ++k)  {
-    sum = 0.0;
-
-
-    for(m=0; m<LengthH; ++m)    {
-
-        tmp = ACCESSC(c_in, firstCin, LengthCin,
-                (cfactor*k+(step_factor*(1-m))),bc);
-        
-        if (m&1)    /* odd */
-            sum += *(H+m) *  tmp;
-        else
-            sum -= *(H+m) *  tmp;
-        
-        }
-
-    *(d_out + count_out) = sum;
-    ++count_out;
-    }
-}
-
-
-/* Works out reflection, as REFLECT, but reports access errors */
-int reflect(n, lengthC, bc)
-int n;
-int lengthC;
-int bc;
-{
-
-if ((n >= 0) && (n < lengthC))
-    return(n);
-else if (n<0)   {
-    if (bc==PERIODIC)   {
-        /*
-        n = lengthC+n;
-        */
-        n = n%lengthC + lengthC*((n%lengthC)!=0);
-        if (n < 0)      {
-		/* MAN 01/03/12. Remove stderr write x 2 
-            fRprintf(stderr, "reflect: access error (%d,%d)\n",
-                n,lengthC);
-            fRprintf(stderr, "reflect: left info from right\n"); */
-            Rprintf("reflect: access error (%d,%d)\n",
-                n,lengthC);
-            Rprintf("reflect: left info from right\n");
-		/* MAN 01/03/12.  Remove C exit
-            exit(2);	*/
-            }
-        else
-            return(n);
-        }
-
-    else if (bc==SYMMETRIC) {
-        n = -1-n;
-        if (n >= lengthC)       {
-		/* MAN 01/03/12. Remove stderr write x 1
-            fRprintf(stderr, "reflect: access error (%d,%d)\n",
-                n,lengthC);	*/
-            Rprintf("reflect: access error (%d,%d)\n",
-                n,lengthC);
-		/* MAN 01/03/12.  Remove C exit
-            exit(3);	*/
-            }
-        else
-            return(n);
-        }
-
-    else    {
-		/* MAN 01/03/12. Remove stderr write x 2
-        fRprintf(stderr, "reflect: Unknown boundary correction");
-        fRprintf(stderr, " value of %d\n", bc);	*/
-        Rprintf("reflect: Unknown boundary correction");
-        Rprintf(" value of %d\n", bc);
-		/* MAN 01/03/12.  Remove C exit
-            exit(4);	*/
-        }
-
-    }
-else    {
-    if (bc==PERIODIC)   {
-        /*
-        Rprintf("periodic extension, was %d (%d) now ",n,lengthC);
-        n = n - lengthC; 
-        */
-        n %= lengthC;
-        /*
-        Rprintf("%d\n", n);
-        */
-        if (n >= lengthC)   {
-		/* MAN 01/03/12. Remove stderr write x 2
-            fRprintf(stderr, "reflect: access error (%d,%d)\n",
-                n,lengthC);
-            fRprintf(stderr, "reflect: right info from left\n");	*/
-            Rprintf("reflect: access error (%d,%d)\n",
-                n,lengthC);
-            Rprintf("reflect: right info from left\n");
-		/* MAN 01/03/12.  Remove C exit
-            exit(5);	*/
-            }
-        else
-            return(n);
-        }
-    else if (bc==SYMMETRIC) {
-        n = 2*lengthC - n - 1;
-        if (n<0)        {
-		/* MAN 01/03/12. Remove stderr write x 1
-            fRprintf(stderr, "reflect: access error (%d,%d)\n",
-                n,lengthC);	*/
-            Rprintf("reflect: access error (%d,%d)\n",
-                n,lengthC);
-		/* MAN 01/03/12.  Remove C exit
-            exit(6);    */
-            }
-        else
-            return(n);
-        }
-    else    {
-		/* MAN 01/03/12. Remove stderr write x 1
-        fRprintf(stderr, "reflect: Unknown boundary correction\n");	*/
-        Rprintf("reflect: Unknown boundary correction\n");
-		/* MAN 01/03/12.  Remove C exit
-            exit(7);    */
-        }
-
-
-    }
-/* Safety */
-/* MAN 01/03/12. Remove stderr write x 1
-fRprintf(stderr, "reflect: SHOULD NOT HAVE REACHED THIS POINT\n");	*/
-Rprintf("reflect: SHOULD NOT HAVE REACHED THIS POINT\n");
-/* MAN 01/03/12.  Remove C exit
-            exit(8);    */
-return(0); /* for lint only */
-}
-
-/* Rotate a vector */
-
-/* Vector: a_1, a_2, a_3, ..., a_{n-1}, a_n
-
-    becomes
-
-       a_2, a_3, a_4, ..., a_n, a_1
-
-   rotateback() does the opposite
-
-*/
-
-void rotater(book, length)
-double *book;
-int length;
-{
-register int i;
-double tmp;
-
-tmp = *book;
-
-for(i=0; i<length-1; ++i)
-        *(book+i) = *(book+i+1);
-
-*(book+length-1) = tmp;
-}
-
-void rotateback(book, length)
-double *book;
-int length;
-{
-register int i;
-double tmp;
-
-tmp = *(book+length-1);
-
-for(i= length-1; i>0; --i)
-    *(book+i) = *(book+i-1);
-
-*book = tmp;
-}
-/*
- * Does a simple wavelet transform
- *
- * This is just like the ordinary periodic wavelet transform
- *
- * The purpose of this function is simplicity. All you need supply is the
- * data and some pointers for the arguments
- *
- * This function uses Calloc to create the arrays:
- *
- *   firstC,lastC,offsetC,firstD,lastD,offsetD,C,D
- *
- * When you have used their contents it is a good idea for you to destroy
- * the memory associated with these arrays. To do this call
- *
- * free((char *)C);     - This frees the memory associated with the pointer
- *
- * [We recommend you declare these arrays in the calling program like
- *
- *  double *C, *D;
- *  int *firstC, *lastC, *offsetC, *firstD, *lastD, *offsetD;
- *
- * Then PASS the ADDRESS of these to this function, e.g. 
- * &C, &D etc.]
- */
-
-void simpleWT(TheData, ndata, H, LengthH,
-    C, LengthC, D, LengthD, levels,
-    firstC, lastC, offsetC,
-    firstD, lastD, offsetD, type, bc, error) 
-double *TheData;/* The data to transform; must be a power of two els    */ 
-int *ndata; /* The length of the data               */
-double *H;  /* The wavelet filter that you want to use      */
-int *LengthH;   /* The length of the wavelet filter         */
-/* The following arguments are the answer               */
-double *C; /* A pointer to the array of C answers is returned  */
-int *LengthC;   /* The length of the C array is returned        */
-double *D; /* A pointer to the array of D answers is returned  */
-int *LengthD;   /* The length of the D array is returned        */
-int *levels;    /* The number of levels of the transform is returned    */
-int *firstC,*lastC,*offsetC;/* These are computed and returned   */
-int *firstD,*lastD,*offsetD;/* These are computed and returned   */
-int *type;  /* This is filled in with type WAVELET          */
-int *bc;    /* This is filled in with PERIODIC          */
-int *error; /* Returns any error condition              */
-{
-int *lfC,*llC,*loC; /* Local versions of firstC,lastC,offsetC   */
-int *lfD,*llD,*loD; /* Local versions of firstD,lastD,offsetD   */
-double *lC, *lD;    /* Local versions of C and D            */
-int cnt,i;
-
-void wavedecomp();
-int IsPowerOfTwo();     /*MAN: added since missing declaration, see 2537 */
-
-/* No errors yet */
-
-*error = 0;
-
-/* Fill in type of transform and type of boundary handling conditions   */
-
-*type = (int)WAVELET;
-*bc = (int)PERIODIC;
-
-/* Now work out the size of the arrays needed for the transform     */
-
-*levels = (int)IsPowerOfTwo(*ndata);
-
-/* Now create memory for first/last and offset */
-
-if ((lfC = (int *)malloc((size_t)(*levels+1)*sizeof(int)))==NULL) {
-    *error = 3001;
-    return;
-    }
-
-if ((llC = (int *)malloc((size_t)(*levels+1)*sizeof(int)))==NULL) {
-    *error = 3002;
-    return;
-    }
-
-if ((loC = (int *)malloc((size_t)(*levels+1)*sizeof(int)))==NULL) {
-    *error = 3003;
-    return;
-    }
-
-if ((lfD = (int *)malloc((size_t)(*levels)*sizeof(int)))==NULL)   {
-    *error = 3004;
-    return;
-    }
-
-if ((llD = (int *)malloc((size_t)(*levels)*sizeof(int)))==NULL)   {
-    *error = 3005;
-    return;
-    }
-
-if ((loD = (int *)malloc((size_t)(*levels)*sizeof(int)))==NULL)   {
-    *error = 3006;
-    return;
-    }
-
-/* Now fill up these arrays */
-
-*lfC = *llC = 0;
-cnt = 1;
-
-for(i=1; i<*levels+1; ++i)  {
-    *(lfC+i) = 0;
-    *(llC+i) = *(llC+i-1) + cnt;
-    cnt<<=1;
-    } 
-
-*(loC+*levels+1-1) = 0;
-for(i=*levels+1-2; i>=0; --i)   {
-    *(loC+i) = *(loC+i+1) + *(llC+i+1)+1;
-    }
-
-*lfD = *llD = 0;
-cnt = 1;
-
-for(i=1; i<*levels; ++i)    {
-    *(lfD+i) = 0;
-    *(llD+i) = *(llD+i-1) + cnt;
-    cnt<<=1;
-    }
-
-*(loD+*levels-1) = 0;
-for(i=*levels-2; i>=0; --i) {
-    *(loD+i) = *(loD+i+1) + *(llD+i+1)+1;
-    }
-
-
-/* Now we have to create the C and D arrays */
-
-*LengthC = *loC + 1;
-*LengthD = *loD + 1;
-
-
-if ((lC = (double *)calloc((size_t)*LengthC,(size_t)sizeof(double)))==NULL) {
-    *error = 3007;
-    return;
-    }
-
-if ((lD = (double *)calloc((size_t)*LengthD,(size_t)sizeof(double)))==NULL) {
-    *error = 3008;
-    return;
-    }
-/* Calloc should already zero these arrays */
-
-for(i=0; i<*ndata; ++i)
-    *(lC+i) = *(TheData+i);
-
-/* Sorted, now do the wavelet transform */
-
-wavedecomp(lC, lD, H, LengthH, levels,
-    lfC, llC, loC, lfD, llD, loD, type, bc, error);
-
-if (*error != 0)    {
-    *error = 3009;
-    return;
-    }
-
-
-/* Now we can return all the answers. To do this we have to link the information
- * in the l* arrays to the real ones
- */
-/*
-*C = lC;
-*D = lD;
-*firstC = lfC;
-*lastC = llC;
-*offsetC = loC;
-*firstD = lfD;
-*lastD = llD;
-*offsetD = loD;
-*/
-
-void mycpyi();
-void mycpyd();
-
-int tmp;
-
-tmp=*levels;
-mycpyi(lfD,&tmp,firstD);
-mycpyi(llD,&tmp,lastD);
-mycpyi(loD,&tmp,offsetD);
-tmp++;
-mycpyi(lfC,&tmp,firstC);
-mycpyi(llC,&tmp,lastC);
-mycpyi(loC,&tmp,offsetC);
-tmp=*LengthC;
-mycpyd(lC,&tmp,C);
-tmp=*LengthD;
-mycpyd(lD,&tmp,D);
-
-/* That's it, time to go home */
-
-/* MAN frees: 7/12/10 <-> mycpyi, d above */
-
-free(lC);
-free(lD);
-free(lfC);
-free(lfD);
-free(llC);
-free(llD);
-free(loD);
-free(loC);
-
-return;
-}
-
-void wavedecomp(C, D, H, LengthH, levels, firstC,lastC,
-    offsetC, firstD, lastD, offsetD, type, bc, error)
-double *C;              /* Input data, and the subsequent smoothed data */
-double *D;              /* The wavelet coefficients                     */
-double *H;              /* The smoothing filter H                       */
-int *LengthH;          /* Length of smoothing filter                   */
-int *levels;           /* The number of levels in this decomposition   */
-int *firstC;           /* The first possible C coef at a given level   */
-int *lastC;            /* The last possible C coef at a given level    */
-int *offsetC;          /* Offset from C[0] for certain level's coeffs  */
-int *firstD;           /* The first possible D coef at a given level   */
-int *lastD;            /* The last possible D coef at a given level    */
-int *offsetD;          /* Offset from D[0] for certain level's coeffs  */
-int *type;      /* The type of wavelet decomposition        */
-int *bc;        /* Method of boundary correction        */
-int *error;            /* Error code                                   */
-{
-register int next_level,at_level;
-register int step_factor;   /* Controls width of filter for station */
-register int verbose;   /* Controls message printing, passed in error var*/
-
-void convolveC();
-void convolveD();
-
-if (*error == 1l)   /* Error switches on verbosity */
-    verbose = 1;
-else
-    verbose = 0;
-
-switch(*bc) {
-
-    case PERIODIC:  /* Periodic boundary conditions */
-        if (verbose) Rprintf("Periodic boundary method\n");
-        break;
-
-    case SYMMETRIC: /* Symmetric boundary conditions */
-        if (verbose) Rprintf("Symmetric boundary method\n");
-        break;
-
-    default:    /* The bc must be one of the above */
-        Rprintf("Unknown boundary correction method\n");
-        *error = 1;
-        return;
-    }
-
-switch(*type)   {
-
-    case WAVELET:   /* Standard wavelets */
-        if (verbose) Rprintf("Standard wavelet decomposition\n");
-        break;
-
-    case STATION:   /* Stationary wavelets */
-        if (verbose) Rprintf("Stationary wavelet decomposition\n");
-        break;
-
-    default:    /* The type must be of one the above */
-        if (verbose) Rprintf("Unknown decomposition type\n");
-        *error = 2;
-        return;
-    }
-        
-if (verbose) Rprintf("Decomposing into level: ");
-
-*error = 0;
-
-step_factor = 1;    /* This variable should *always* be 1 for standard
-             * wavelets. It should start at 1 for stationary
-             * wavelets and multiply itself by 2 each stage
-             */
-
-for(next_level = *levels - 1; next_level >= 0; --next_level)    {
-
-    if (verbose)
-        Rprintf("%d ", next_level);
-
-    at_level = next_level + 1;
-
-/* For stationary wavelets we need to define a step factor.
- * This widens the span of the filter. At the top level (*levels->*levels-1)
- * it is one, as usual. Then for the next step it becomes 2, then 4 etc.
- */
-
-    convolveC( (C+*(offsetC+at_level)),
-        (int)(*(lastC+ at_level) - *(firstC+at_level)+1),
-        (int)(*(firstC+at_level)),
-        H,
-        (int)*LengthH,
-        (C+*(offsetC+next_level)),
-        (int)(*(firstC+next_level)),
-        (int)(*(lastC+next_level)) , (int)*type,
-        step_factor, (int)*bc);
-
-    convolveD( (C+*(offsetC+at_level)),
-                (int)(*(lastC+ at_level) - *(firstC+at_level)+1),
-                (int)(*(firstC+at_level)),
-                H,
-                (int)*LengthH,
-        (D+*(offsetD+next_level)),
-        (int)(*(firstD+next_level)),
-        (int)(*(lastD+next_level)), (int)*type,
-        step_factor, (int)*bc );
-
-    if (*type == STATION)
-        step_factor *= 2;   /* Any half decent compiler should
-                     * know what to do here ! */
-    }
-if (verbose)
-    Rprintf("\n");
-return;
-}
-
-void accessDwp(Data, LengthData, nlevels, level, answer, error)
-double *Data;       /* This is a 2D array. Top level contains data */
-int *LengthData;    /* Length of Data, this is power of 2              */
-int *nlevels;       /* The number of levels in this decomposition   */
-int *level;     /* Which level you want to extract      */
-double *answer;     /* The level of coefficients            */
-int *error;     /* Error code                   */
-{
-register int i;
-
-*error = 0;
-
-/*
- * Check variable integrity
- */
-
-if (*level < 0) {
-    *error =4000;
-    return;
-    }
-
-else if (*level > *nlevels) {
-    *error = 4001;
-    return;
-    }
-
-for(i=0; i< *LengthData; ++i)
-    *(answer+i) = ACCESSD(*level, i);
-
-
-}
-
-
-void wavepackde(Data, LengthData, levels, H, LengthH)
-double *Data;       /* This is a 2D array. Top level contains data */
-int *LengthData;    /* Length of Data, this is power of 2              */
-int *levels;        /* The number of levels, 2^(levels+1)=LengthData   */
-double *H;      /* The filter to use                   */
-int *LengthH;       /* Length of filter                */
-{
-int startin, outstart1, outstart2;
-/*
-int i,j;
-*/
-void wvpkr();
-
-/*
-Rprintf("This routine is wavepackde\n");
-Rprintf("Length of data is %ld\n", *LengthData);
-Rprintf("Number of levels is %ld\n", *levels);
-Rprintf("Data array is:\n");
-for(i= (int)*levels; i>=0; --i)
-    for(j=0; j< *LengthData; ++j)   {
-        Rprintf("Level %d, Item %d is %lf\n", i,j, ACCESSD(i,j));
-        }
-*/
-
-startin = 0;
-outstart1 = 0;
-outstart2 = ((int)*LengthData)/2;
-
-wvpkr(Data, startin, (int)*LengthData, outstart1, outstart2, (int)*levels, H,
- (int)*LengthH, LengthData);
-}
-
-void wvpkr(Data, startin, lengthin, outstart1, outstart2, level, H, LengthH,
-    LengthData)
-double *Data;
-int startin;
-int lengthin;
-int outstart1;
-int outstart2;
-int level;  /* The level where we're at         */
-double *H;
-int LengthH;
-int *LengthData;
-{
-int lengthout;
-void convolveC();
-void convolveD();
-
-lengthout = lengthin/2;
-
-
-convolveC( POINTD(level, startin), lengthin, 0, H, LengthH,
-    POINTD(level-1, outstart1), 0, lengthout-1, 
-    WAVELET, 1, PERIODIC);
-
-convolveD( POINTD(level, startin), lengthin, 0, H, LengthH,
-    POINTD(level-1, outstart2), 0, lengthout-1, 
-    WAVELET, 1, PERIODIC);
-
-if (lengthout==1)
-    return;
-else    {
-    /*
-     * Now apply both filters to the LOW pass filtered data
-     */
-    wvpkr(Data, outstart1, lengthout, outstart1, outstart1+lengthout/2,
-        level-1, H, LengthH, LengthData); 
-    /*
-     * Now apply both filters to the HIGH pass filtered data
-     */
-    wvpkr(Data, outstart2, lengthout, outstart2, outstart2+lengthout/2,
-        level-1, H, LengthH, LengthData); 
-    }
-}
-/* WAVEPACKRECON    -   inverse swt             */
-/*
- * Error codes
- *
- *  1   -   As the reconstruction is built up the vector
-            ldata should contain a doubling sequence (apart
-            from the first two numbers which should be the
-            same. This error is returned if this is not the case.
-
- *  2   -   memory error on creating c_in
- *  3   -   memory error on creating c_out
- */
-
-
-void wavepackrecon(rdata, ldata, nrsteps, rvector, H, LengthH, error)
-double *rdata;  /* The transformed data, packets are packed together    */
-int *ldata; /* Array of lengths of packets in rdata         */
-int *nrsteps;   /* The number of reconstruction steps           */
-        /* This is also the length of the ldata array       */
-int *rvector;   /* Integer whose binary decomposition reveals rotate/not
-           instruction                      */
-double *H;  /* Filter                       */
-int *LengthH;   /* Length of filter                 */
-int *error; /* Error code                       */
-{
-register int i,j;
-register int msb;
-register int ldctr;
-int LengthCin;
-int LengthCout;
-int LengthDin;
-double *c_in;
-double *c_out;
-void conbar();  /* The reconstruction step from WaveThresh 2.2      */
-void rotateback();
-
-/* Set error code to zero as no error has occured yet!  */
-
-*error = 0;
-
-/* We can use conbar to do all our hard work for us         */
-/* This is the reconstruction step in the ordinary DWT. The only    */
-/* modification that we have to make is to rotate the data at each  */
-/* step if we need to. This information is stored in "rvector" (rotate  */
-/* vector). This is a single integer whose information is stored in */
-/* binary form. Each bit refers to a rotate/non rotate operation and    */
-/* should be applied by the following method:               */
-/*
- *
- *  a. do conbar
- *  b. check next most sig bit of rvector and rotate if 1
- *
- * And start with the most significant bit.
- */
-
-/*
-Rprintf("Rvector is %d\n", (int)*rvector);
-*/
-
-/* First let's generate the MSB */
-
-msb = 0x01 << ((int)*nrsteps-1);
-
-/* Get initial C data stored    */
-
-LengthCin = (int)*(ldata+0);
-
-ldctr = LengthCin;  /* ldctr measures how far aint rdata we have gone */
-
-if ((c_in = (double *)malloc((unsigned)LengthCin*sizeof(double)))==NULL) {
-        *error = 2;
-        return;
-        }
-
-for(j=0; j< LengthCin; ++j)
-    *(c_in+j) = *(rdata+j);
-
-LengthCout = LengthCin;
-
-c_out=calloc(LengthCout,sizeof(double));    /* MAN: added initialization.  Hopefully shouldn't have any bad
-                                                consequences... */
-for(i=0; i< (int)*nrsteps; ++i) {
-    LengthCout *= 2;
-
-    if (i != 0)
-        free((void *)c_out);
-
-    if ((c_out=(double *)malloc((unsigned)LengthCout*sizeof(double)))==NULL)    {
-        *error = 3;
-        return;
-        }
-
-    /* Now store D data at this level   */
-    LengthDin = (int)*(ldata+(i+1));
-
-    /* Don't need to store cos we can put rdata+ldctr straight in for d_in
-     * for(j=0; j < LengthDin; ++j)
-     *  *(d_in+j) = *(rdata+ldctr+j);
-     */
-
-    conbar(c_in, LengthCin, 0,
-           rdata+ldctr, LengthDin, 0,
-           H, (int)*LengthH,
-           c_out, LengthCout, 0, LengthCout-1,
-           WAVELET, PERIODIC);
-
-    ldctr += LengthDin; /* update cos we've moved aint rdata */ 
-
-    /* O.k. chaps, c_out must now become c_in, and we should check
-       that the lengths match */
-
-    /*
-    Rprintf("LengthCout is %d\n", LengthCout);
-    Rprintf("i is %d\n", i);
-    Rprintf("nrsteps is %d\n", (int)*nrsteps);
-    */
-    /*Rprintf("ldata+i+2 is %d\n", (int)*(ldata+i+2));*/
-    if (i+1 != (int)*nrsteps && LengthCout != (int)*(ldata+i+2))    {
-        *error = 1;
-        return;
-        }
-
-    /* Do we rotate back ? */
-
-    if (msb & (int)*rvector)    {
-        /*
-        Rprintf("Rotating\n");
-        */
-        rotateback(c_out, LengthCout);
-        }
-
-    /*
-    Rprintf("msb is: %d\n", msb);
-    */
-
-    msb >>= 1;
-
-    /* Now c_in <- c_out */
-
-    free((void *)c_in);
-
-    if ((c_in = (double *)malloc((unsigned)LengthCout*sizeof(double)))==NULL)   {
-        *error = 2;
-        return;
-        }
-
-    for(j=0; j<LengthCout; ++j)
-        *(c_in+j) = *(c_out+j);
-
-    LengthCin = LengthCout;
-
-    }
-/* Now copy c_out into rdata - they should be the same length at this stage */
-
-for(j=0; j<LengthCout; ++j)
-    *(rdata+j) = *(c_out+j);
-
-free((void *)c_out);
-free((void *)c_in);
-
-}
-/*
- * Routine to perform the stationary wavelet decomposition in a wavelet
- * packet fashion.
- */
-
-void wavepackst(Carray, Data, LengthData, levels, H, LengthH, error)
-double *Carray;     /* Will contain bottom most Cs             */
-double *Data;       /* This is a 2D array. Zeroeth level contains data */
-int *LengthData;    /* Length of Data, this is power of 2              */
-int *levels;        /* The number of levels, 2^(*levels)=LengthData    */
-double *H;      /* The filter to use                   */
-int *LengthH;       /* Length of filter                */
-int *error;     /* Error code, if non-zero then it's a mem error   */
-{
-int startin, outstart1, outstart2;
-register int i;
-double *book;
-
-void wvpkstr();
-
-*error = 0;
-
-/*
-Rprintf("This routine is wavepackst\n");
-Rprintf("Length of data is %ld\n", *LengthData);
-Rprintf("Number of levels is %ld\n", *levels);
-Rprintf("Data array is:\n");
-for(i= (int)*levels; i>=0; --i)
-    for(j=0; j< *LengthData; ++j)   {
-        Rprintf("Level %d, Item %d is %lf\n", i,j, ACCESSD(i,j));
-        }
-*/
-
-/* Create a bookeeping vector. That contains the C,C' level smooths
-   thoughout the algorithm */
-
-if ((book = (double *)malloc((unsigned)*LengthData*sizeof(double)))==NULL){
-    *error = 1;
-    return;
-    }
-    
-/* Copy original data to book keeping vector */
-
-for(i=0; i< *LengthData; ++i)
-    *(book+i) = *POINTD(*levels, i);
-
-
-startin = 0;
-outstart1 = 0;
-outstart2 = ((int)*LengthData)/2;
-
-wvpkstr(Carray, Data, startin, (int)*LengthData, outstart1, outstart2,
-    (int)*levels, H, (int)*LengthH, LengthData, book, error);
-
-if (*error != 0)
-    return;
-else
-    free((void *)book);
-}
-
-void wvpkstr(Carray, Data, startin, lengthin, outstart1, outstart2, level, H,
-    LengthH, LengthData, book, error)
-double *Carray;
-double *Data;
-int startin;
-int lengthin;
-int outstart1;
-int outstart2;
-int level;  /* The level where we're at         */
-double *H;
-int LengthH;
-int *LengthData;
-double *book;
-int *error;
-{
-register int i;
-int lengthout;
-double *book1, *book2;
-
-void convolveC();
-void convolveD();
-void rotater();
-
-/*
-Rprintf("wvpkstr entry\n");
-Rprintf("lengthout is %d\n", lengthout);
-*/
-
-lengthout = lengthin/2;
-
-if ((book1 = (double *)malloc((unsigned)lengthout*sizeof(double)))==NULL) {
-    *error = 1;
-    return;
-    }
-
-else if ((book2 = (double *)malloc((unsigned)lengthout*sizeof(double)))==NULL){
-    *error = 1;
-    return;
-    }
-
-
-convolveC(book, lengthin, 0, H, LengthH,
-    book1, 0, lengthout-1, 
-    WAVELET, 1, PERIODIC);
-
-
-for(i=0; i < lengthout; ++i)
-    * POINTC(level-1, (outstart1+i)) = *(book1+i);
-
-/*
-Rprintf("book1 coefficients \n");
-for(i=0; i<lengthout; ++i)
-    Rprintf("%lf ", *(book1+i));;
-Rprintf("\n");
-*/
-
-convolveD( book, lengthin, 0, H, LengthH,
-    POINTD(level-1, outstart1), 0, lengthout-1, 
-    WAVELET, 1, PERIODIC);
-
-/* Now cycle book around one, and do the convolutions again */
-
-/* COMMENT OUT
- * tmp = *(book+lengthin-1);
- *
- * for(i=lengthin-1; i>0; --i)
- *  *(book+i) = *(book+i-1);
- * book = tmp;
- */
-
-/* COMMENT OUT (replaced by rotater function) tmp = *book;
- * for(i=0; i<lengthin-1; ++i)
- *  *(book+i) = *(book+i+1);
- *
- * *(book+lengthin-1) = tmp;
- */
-
-rotater(book, lengthin);
-
-convolveC( book, lengthin, 0, H, LengthH,
-    book2, 0, lengthout-1, 
-    WAVELET, 1, PERIODIC);
-
-for(i=0; i < lengthout; ++i)
-    *POINTC(level-1, (outstart2+i)) = *(book2+i);
-
-/*
-Rprintf("book2 coefficients \n");
-for(i=0; i<lengthout; ++i)
-    Rprintf("%lf ", *(book2+i));
-Rprintf("\n");
-*/
-
-
-convolveD( book, lengthin, 0, H, LengthH,
-    POINTD(level-1, outstart2), 0, lengthout-1, 
-    WAVELET, 1, PERIODIC);
-
-
-if (lengthout!=1)   {
-    /*
-     * Now pass book1 and book2 to the next level 
-     */
-    wvpkstr(Carray, Data, outstart1, lengthout, outstart1,
-        outstart1+lengthout/2, level-1, H, LengthH, LengthData,
-        book1, error); 
-
-    if (*error != 0)
-        return;
-
-    wvpkstr(Carray, Data, outstart2, lengthout, outstart2,
-        outstart2+lengthout/2, level-1, H, LengthH, LengthData,
-        book2, error); 
-
-    if (*error != 0)
-        return;
-    }
-
-
-free((void *)book1);
-free((void *)book2);
-}
-/*
- * waverecons:  Do 1D wavelet reconstruction
- */
-
-void waverecons(C, D, H, LengthH, levels,
-    firstC, lastC, offsetC, firstD, lastD, offsetD, type, bc, error)
-double *C;              /* Input data, and the subsequent smoothed data */
-double *D;              /* The wavelet coefficients                     */
-double *H;              /* The smoothing filter H                       */
-int *LengthH;          /* Length of smoothing filter                   */
-int *levels;           /* The number of levels in this decomposition   */
-int *firstC;           /* The first possible C coef at a given level   */
-int *lastC;            /* The last possible C coef at a given level    */
-int *offsetC;          /* Offset from C[0] for certain level's coeffs  */
-int *firstD;           /* The first possible D coef at a given level   */
-int *lastD;            /* The last possible D coef at a given level    */
-int *offsetD;          /* Offset from D[0] for certain level's coeffs  */
-int *type;      /* The type of wavelet decomposition        */
-int *bc;        /* Which boundary handling are we doing     */
-int *error;            /* Error code                                   */
-{
-register int next_level, at_level;
-register int verbose;   /* Printing messages, passed in error       */
-
-void conbar();
-
-if (*error == 1)
-    verbose = 1;
-else
-    verbose = 0;
-
-switch(*bc) {
-
-    case PERIODIC:  /* Periodic boundary conditions */
-        if (verbose) Rprintf("Periodic boundary method\n");
-        break;
-
-    case SYMMETRIC: /* Symmetric boundary conditions */
-        if (verbose) Rprintf("Symmetric boundary method\n");
-        break;
-
-    default:    /* The bc must be one of the above */
-        Rprintf("Unknown boundary correction method\n");
-        *error = 1;
-        return;
-    }
-
-switch(*type)   {
-
-    case WAVELET:   /* Standard wavelets */
-        if (verbose) Rprintf("Standard wavelet decomposition\n");
-        break;
-
-    case STATION:   /* Stationary wavelets */
-        if (verbose) Rprintf("Stationary wavelet decomposition\n");
-        break;
-
-    default:    /* The type must be of one the above */
-        if (verbose) Rprintf("Unknown decomposition type\n");
-        *error = 2;
-        return;
-    }
-
-if (verbose) Rprintf("Building level: ");
-
-*error = 0;
-
-for(next_level = 1; next_level <= *levels; ++next_level)    {
-
-    
-    if (verbose)
-        Rprintf("%d ", next_level);
-
-    at_level = next_level - 1; 
-
-    conbar( (C+*(offsetC+at_level)),
-        (int)(*(lastC+at_level) - *(firstC+at_level) + 1),
-        (int)(*(firstC+at_level)),
-        (D+*(offsetD+at_level)),
-        (int)(*(lastD+at_level) - *(firstD+at_level) + 1),
-        (int)(*(firstD+at_level)),
-        H,
-        (int)*LengthH,
-        (C+*(offsetC+next_level)),
-        (int)(*(lastC+next_level) - *(firstC+next_level)+1),
-                (int)(*(firstC+next_level)),
-                (int)(*(lastC+next_level)),
-        (int)(*type),
-        (int)(*bc) );
-    }
-if (verbose)
-    Rprintf("\n");
-
-return;
-}
-/*
- * Functions to do complex arithmetic
- *
- */
-
-/*
- * Addition: a+ib + c+id = a+c +i(b+d) = e + i f
- */
-
-void comadd(a,b,c,d,e,f)
-double a,b,c,d,*e,*f;
-{
-*e = a+c;
-*f = b+d;
-}
-
-/*
- * Subtraction: a+ib - c+id = a+c -i(b+d) = e + i f
- */
-
-void comsub(a,b,c,d,e,f)
-double a,b,c,d,*e,*f;
-{
-*e = a-c;
-*f = b-d; 
-}
-
-/*
- * Multiplication: (a+ib)(c+id) = ac-bd +i(bc+ad) = e + i f
- */
-
-void commul(a,b,c,d,e,f)
-double a,b,c,d,*e,*f;
-{
-*e = (a*c - b*d);
-*f = (b*c + a*d);
-}
-
-
-/*
- * Division: (a+ib)(c+id) = (ac+bd +i(bc-ad))/(c^2+d^2) = e + i f
- */
-
-void comdiv(a,b,c,d,e,f)
-double a,b,c,d,*e,*f;
-{
-double tmp;
-
-tmp = c*c + d*d;
-
-*e = (a*c + b*d)/tmp;
-*f = (b*c - a*d)/tmp;
-}
-/*
- * Complex wavelet version
- */
-
-/*
- * COMCBR: Does the reconstruction convolution
- */
-
-void comcbr(c_inR, c_inI, LengthCin, firstCin, lastCin,
-       d_inR, d_inI, LengthDin, firstDin, lastDin,
-       HR, HI, GR, GI, LengthH,
-       c_outR, c_outI, LengthCout, firstCout, lastCout, type, bc)
-double *c_inR;
-double *c_inI;
-int LengthCin;
-int firstCin;
-int lastCin;        /* Code probably doesn't need this      */
-double *d_inR;
-double *d_inI;
-int LengthDin;
-int firstDin;
-int lastDin;
-double *HR;
-double *HI;
-double *GR;
-double *GI;
-int LengthH;
-double *c_outR;
-double *c_outI;
-int LengthCout;
-int firstCout;      /* This determines summation over n     */
-int lastCout;       /* and this does too                */
-int type;       /* The type of wavelet reconstruction       */
-int bc;
-{
-register int n,k;
-register int cfactor;
-double sumCR, sumCI, sumDR, sumDI;
-double a,b,c,d,e,f;
-
-switch(type)    {
-
-    case WAVELET:   /* Standard wavelets */
-        cfactor = 2;
-        break;
-
-    case STATION:   /* Stationary wavelets */
-        cfactor = 1;
-        break;
-
-    default:    /* This should never happen */
-        cfactor=0;       /* MAN: added for total cover: shouldn't happen */
-        break;
-    }
-
-
-/* Compute each of the output C */
-
-for(n=firstCout; n<=lastCout; ++n)  {
-
-    /* We want  n+1-LengthH <= 2*k to start off */
-
-
-    k = CEIL(n+1-LengthH);
-
-    sumCR = 0.0;
-    sumCI = 0.0;
-    sumDR = 0.0;
-    sumDI = 0.0;
-
-    while( cfactor*k <= n ) {
-
-        a = *(HR + n - cfactor*k);
-        b = *(HI + n - cfactor*k);
-
-        c = ACCESSC(c_inR, firstCin, LengthCin, k, bc);
-        d = ACCESSC(c_inI, firstCin, LengthCin, k, bc);
-
-        commul(a,b,c,d, &e, &f);
-
-        sumCR += e;
-        sumCI += f;
-
-        /* Now D part */
-
-        a = *(GR + n - cfactor*k);
-        b = *(GI + n - cfactor*k);
-
-        c = ACCESSC(d_inR, firstDin, LengthDin, k, bc);
-        d = ACCESSC(d_inI, firstDin, LengthDin, k, bc);
-
-        commul(a,b,c,d, &e, &f);
-
-        sumDR += e;
-        sumDI += f;
-
-        ++k;
-        }
-
-    sumCR += sumDR;
-    sumCI += sumDI;
-
-    ACCESSC(c_outR, firstCout, LengthCout, n, bc) = sumCR;
-    ACCESSC(c_outI, firstCout, LengthCout, n, bc) = sumCI;
-    }
-
-}
-/*
- * This routine is identical to the convolve.c routine except it
- * does it for complex wavelets.
-
- * COMCONC  -   Do filter H filter convolution with boundary
- */
-
-
-void comconC(c_inR, c_inI, LengthCin, firstCin, HR, HI, LengthH,
-c_outR, c_outI, LengthCout, firstCout, lastCout, type, step_factor, bc)
-double *c_inR;  /* Input data (real)                    */
-double *c_inI;  /* Input data (imaginary)               */
-int LengthCin;  /* Length of this array                 */
-int firstCin;   /*  <-- MAN: added since missing...     */
-double *HR; /* Lowpass Filter                   */
-double *HI; /* Lowpass Filter                   */
-int LengthH;    /* Length of filter                 */
-double *c_outR; /* Output data (real)                   */
-double *c_outI; /* Output data (imaginary)              */
-int LengthCout; /* Length of above array                */
-int firstCout;  /* First index of C array               */
-int lastCout;   /* Last index of C array                */
-int type;   /* Type of wavelet decomposition            */
-int step_factor;/* For stationary wavelets only             */
-int bc;     /* Method of boundary correction PERIODIC, SYMMETRIC    */
-{
-double sumR,sumI;
-double a,b,c,d,e,f;
-register int k;
-register int count_out;
-register int m;
-register int cfactor;   /* This determines what sort of dilation we do  */
-            /* and depends on the type argument     */
-
-count_out = 0;
-
-switch(type)    {
-
-    case WAVELET:   /*  Ordinary wavelets   */
-            cfactor = 2;    /* Pick every other coefficient */
-            break;
-
-    case STATION:   /* Stationary wavelets  */
-            cfactor = 1;    /* Pick every coefficient   */
-            break;
-
-
-    default:    /* This is an error, one of the above must have */
-            /* been picked */
-            /* However, this must be tested in a previous   */
-            /* routine.                 */
-            cfactor=0;       /* MAN: added for total cover: shouldn't happen */
-            break;
-        }
-
-for(k=firstCout; k<=lastCout; ++k)  {
-    sumR = 0.0;
-    sumI = 0.0;
-
-
-    for(m=0; m<LengthH; ++m)    {
-
-        a = *(HR + m);  /* real part */
-        b = *(HI + m);  /* imaginary part */
-
-        c = ACCESSC(c_inR, firstCin, LengthCin,
-            ((step_factor*m)+(cfactor*k)),bc);
-        d = ACCESSC(c_inI, firstCin, LengthCin,
-            ((step_factor*m)+(cfactor*k)),bc);
-
-        commul(a,b,c,d,&e, &f);
-
-        sumR += e;
-        sumI += f;
-        }
-
-    *(c_outR + count_out) = sumR;
-    *(c_outI + count_out) = sumI;
-    ++count_out;
-    }
-}
-
-void comconD(c_inR, c_inI, LengthCin, firstCin, GR, GI, LengthH,
-    d_outR, d_outI, LengthDout, firstDout, lastDout, type, step_factor, bc)
-double *c_inR;  /* Input data                       */
-double *c_inI;  /* Input data                       */
-int LengthCin;  /* Length of this array                 */
-int firstCin;
-double *GR; /* highpass Filter                  */
-double *GI; /* highpass Filter                  */
-int LengthH;    /* Length of filter                 */
-double *d_outR; /* Output data                      */
-double *d_outI; /* Output data                      */
-int LengthDout; /* Length of above array                */
-int firstDout;  /* First index of D array               */
-int lastDout;   /* Last index of D array                */
-int type;   /* Type of wavelet decomposition            */
-int step_factor;/* For stationary wavelets only             */
-int bc;     /* Method of boundary correction PERIODIC or SYMMETRIC  */
-{
-double sumR, sumI;
-double a,b,c,d,e,f;
-register int k;
-register int count_out;
-register int m;
-register int cfactor;
-
-count_out = 0;
-
-switch(type)    {
-
-    case WAVELET:   /*  Ordinary wavelets   */
-            cfactor = 2;    /* Pick every other coefficient */
-            break;
-
-    case STATION:   /* Stationary wavelets  */
-            cfactor = 1;    /* Pick every coefficient   */
-            break;
-
-
-    default:    /* This is an error, one of the above must have */
-            /* been picked */
-            /* However, this must be tested in a previous   */
-            /* routine.                 */
-            cfactor=0;       /* MAN: added for total cover: shouldn't happen */
-            break;
-        }
-
-for(k=firstDout; k<=lastDout; ++k)  {
-    sumR = 0.0;
-    sumI = 0.0;
-
-
-    for(m=0; m<LengthH; ++m)    {
-
-        a = *(GR+m);
-
-        b = *(GI+m);
-
-        c = ACCESSC(c_inR, firstCin, LengthCin,
-            ((step_factor*m)+(cfactor*k)),bc);
-        d = ACCESSC(c_inI, firstCin, LengthCin,
-            ((step_factor*m)+(cfactor*k)),bc);
-        /*
-        c = ACCESSC(c_inR, firstCin, LengthCin,
-                (cfactor*k+(step_factor*(1-m))),bc);
-        d = ACCESSC(c_inI, firstCin, LengthCin,
-                (cfactor*k+(step_factor*(1-m))),bc);
-
-        Rprintf("%d: (%lf, %lf)* (%lf, %lf)\n", a,b,c,d);
-        */
-        commul(a,b,c,d,&e,&f);
-
-        sumR += e;
-        sumI += f;
-        }
-
-    *(d_outR + count_out) = sumR;
-    *(d_outI + count_out) = sumI;
-    ++count_out;
-    }
-}
-
-
-/*
- * Complex version of wavelet transform
- */
-
-void comwd(CR, CI, LengthC, DR, DI, LengthD, HR, HI, GR, GI, LengthH,
-levels, firstC,lastC, offsetC, firstD, lastD, offsetD, type, bc, error)
-double *CR;              /* Input data, and the subsequent smoothed data */
-double *CI;              /* Input data, and the subsequent smoothed data */
-int *LengthC;          /* Length of C array                            */
-double *DR;              /* The wavelet coefficients                     */
-double *DI;              /* The wavelet coefficients                     */
-int *LengthD;          /* Length of D array                            */
-double *HR;              /* The smoothing filter H                       */
-double *HI;              /* The smoothing filter H                       */
-double *GR;              /* The highpass filter H                       */
-double *GI;              /* The highpass filter H                       */
-int *LengthH;          /* Length of smoothing filter                   */
-int *levels;           /* The number of levels in this decomposition   */
-int *firstC;           /* The first possible C coef at a given level   */
-int *lastC;            /* The last possible C coef at a given level    */
-int *offsetC;          /* Offset from C[0] for certain level's coeffs  */
-int *firstD;           /* The first possible D coef at a given level   */
-int *lastD;            /* The last possible D coef at a given level    */
-int *offsetD;          /* Offset from D[0] for certain level's coeffs  */
-int *type;      /* The type of wavelet decomposition        */
-int *bc;        /* Method of boundary correction        */
-int *error;            /* Error code                                   */
-{
-register int next_level,at_level;
-register int step_factor;   /* Controls width of filter for station */
-register int verbose;   /* Controls message printing, passed in error var*/
-
-if (*error == 1)   /* Error switches on verbosity */
-    verbose = 1;
-else
-    verbose = 0;
-
-switch(*bc) {
-
-    case PERIODIC:  /* Periodic boundary conditions */
-        if (verbose) Rprintf("Periodic boundary method\n");
-        break;
-
-    case SYMMETRIC: /* Symmetric boundary conditions */
-        if (verbose) Rprintf("Symmetric boundary method\n");
-        break;
-
-    default:    /* The bc must be one of the above */
-        Rprintf("Unknown boundary correction method\n");
-        *error = 1;
-        return;
-        break;
-    }
-
-switch(*type)   {
-
-    case WAVELET:   /* Standard wavelets */
-        if (verbose) Rprintf("Standard wavelet decomposition\n");
-        break;
-
-    case STATION:   /* Stationary wavelets */
-        if (verbose) Rprintf("Stationary wavelet decomposition\n");
-        break;
-
-    default:    /* The type must be of one the above */
-        if (verbose) Rprintf("Unknown decomposition type\n");
-        *error = 2;
-        return;
-        break;
-    }
-        
-if (verbose) Rprintf("Decomposing into level: ");
-
-*error = 0;
-
-step_factor = 1;    /* This variable should *always* be 1 for standard
-             * wavelets. It should start at 1 for stationary
-             * wavelets and multiply itself by 2 each stage
-             */
-
-for(next_level = *levels - 1; next_level >= 0; --next_level)    {
-
-    if (verbose)
-        Rprintf("%d ", next_level);
-
-    at_level = next_level + 1;
-
-/* For stationary wavelets we need to define a step factor.
- * This widens the span of the filter. At the top level (*levels->*levels-1)
- * it is one, as usual. Then for the next step it becomes 2, then 4 etc.
- */
-
-    comconC( (CR+*(offsetC+at_level)),
-           (CI+*(offsetC+at_level)),
-        (int)(*(lastC+ at_level) - *(firstC+at_level)+1),
-        (int)(*(firstC+at_level)),
-        HR, HI,
-        (int)*LengthH,
-        (CR+*(offsetC+next_level)),
-        (CI+*(offsetC+next_level)),
-        (int)(*(lastC+next_level) - *(firstC+next_level)+1),
-        (int)(*(firstC+next_level)),
-        (int)(*(lastC+next_level)) , (int)*type,
-        step_factor, (int)*bc);
-
-    comconD( (CR+*(offsetC+at_level)),
-           (CI+*(offsetC+at_level)),
-                (int)(*(lastC+ at_level) - *(firstC+at_level)+1),
-                (int)(*(firstC+at_level)),
-                GR, GI,
-                (int)*LengthH,
-        (DR+*(offsetD+next_level)),
-        (DI+*(offsetD+next_level)),
-        (int)(*(lastD+next_level) - *(lastD+next_level)+1),
-        (int)(*(firstD+next_level)),
-        (int)(*(lastD+next_level)), (int)*type,
-        step_factor, (int)*bc );
-
-    if (*type == STATION)
-        step_factor *= 2;   /* Any half decent compiler should
-                     * know what to do here ! */
-    }
-if (verbose)
-    Rprintf("\n");
-return;
-}
-/*
- * waverecons:  Do 1D wavelet reconstruction
- */
-
-void comwr(CR, CI, LengthC, DR, DI, LengthD, HR, HI, GR, GI, LengthH, levels,
-    firstC, lastC, offsetC, firstD, lastD, offsetD, type, bc, error)
-double *CR;              /* Input data, and the subsequent smoothed data */
-double *CI;              /* Input data, and the subsequent smoothed data */
-int *LengthC;          /* Length of C array                            */
-double *DR;              /* The wavelet coefficients                     */
-double *DI;              /* The wavelet coefficients                     */
-int *LengthD;          /* Length of D array                            */
-double *HR;              /* The smoothing filter H                       */
-double *HI;              /* The smoothing filter H                       */
-double *GR;              /* The bandpass filter G                       */
-double *GI;              /* The bandpass filter G                       */
-int *LengthH;          /* Length of smoothing filter                   */
-int *levels;           /* The number of levels in this decomposition   */
-int *firstC;           /* The first possible C coef at a given level   */
-int *lastC;            /* The last possible C coef at a given level    */
-int *offsetC;          /* Offset from C[0] for certain level's coeffs  */
-int *firstD;           /* The first possible D coef at a given level   */
-int *lastD;            /* The last possible D coef at a given level    */
-int *offsetD;          /* Offset from D[0] for certain level's coeffs  */
-int *type;      /* The type of wavelet decomposition        */
-int *bc;        /* Which boundary handling are we doing     */
-int *error;            /* Error code                                   */
-{
-register int next_level, at_level;
-register int verbose;   /* Printing messages, passed in error       */
-
-if (*error == 1)
-    verbose = 1;
-else
-    verbose = 0;
-
-switch(*bc) {
-
-    case PERIODIC:  /* Periodic boundary conditions */
-        if (verbose) Rprintf("Periodic boundary method\n");
-        break;
-
-    case SYMMETRIC: /* Symmetric boundary conditions */
-        if (verbose) Rprintf("Symmetric boundary method\n");
-        break;
-
-    default:    /* The bc must be one of the above */
-        Rprintf("Unknown boundary correction method\n");
-        *error = 1;
-        return;
-        break;
-    }
-
-switch(*type)   {
-
-    case WAVELET:   /* Standard wavelets */
-        if (verbose) Rprintf("Standard wavelet decomposition\n");
-        break;
-
-    case STATION:   /* Stationary wavelets */
-        if (verbose) Rprintf("Stationary wavelet decomposition\n");
-        break;
-
-    default:    /* The type must be of one the above */
-        if (verbose) Rprintf("Unknown decomposition type\n");
-        *error = 2;
-        return;
-        break;
-    }
-
-if (verbose) Rprintf("Building level: ");
-
-*error = 0;
-
-for(next_level = 1; next_level <= *levels; ++next_level)    {
-
-    
-    if (verbose)
-        Rprintf("%d ", next_level);
-
-    at_level = next_level - 1; 
-
-    comcbr( (CR+*(offsetC+at_level)),
-        (CI+*(offsetC+at_level)),
-        (int)(*(lastC+at_level) - *(firstC+at_level) + 1),
-        (int)(*(firstC+at_level)),
-        (int)(*(lastC+at_level)),
-        (DR+*(offsetD+at_level)),
-        (DI+*(offsetD+at_level)),
-        (int)(*(lastD+at_level) - *(firstD+at_level) + 1),
-        (int)(*(firstD+at_level)),
-        (int)(*(lastD+at_level)),
-        HR, HI, GR, GI,
-        (int)*LengthH,
-        (CR+*(offsetC+next_level)),
-        (CI+*(offsetC+next_level)),
-        (int)(*(lastC+next_level) - *(firstC+next_level)+1),
-                (int)(*(firstC+next_level)),
-                (int)(*(lastC+next_level)),
-        (int)(*type),
-        (int)(*bc) );
-    }
-if (verbose)
-    Rprintf("\n");
-
-return;
-}
-/*
- * Emulate the WavDE function in C (but not plotting information)
- * and don't return the wavelet coefficients.
- */
-
-#define HARDTHRESH(w,t) ( fabs((w)) > (t) ? (w) : (0.0))
-
-void CWavDE(x, n, minx, maxx, Jmax, threshold, xout, fout, nout,
-    PrimRes, SFx, SFy, lengthSF, WVx, WVy, lengthWV,
-    kmin, kmax, kminW, kmaxW, xminW, xmaxW,
-    phiLH, phiRH, psiLH, psiRH, verbose, error)
-double *x;  /* The data                     */
-int *n; /* The length of the data               */
-double *minx;   /* The min of the data                  */
-double *maxx;   /* The max of the data                  */
-int *Jmax;  /* The number of levels in the expansion        */
-double *threshold;  /* Threshold value for thresholding the wv coefs*/
-/* Output Variables */
-double *xout;   /* The grid on which the density estimate is defined    */ 
-double *fout;   /* The density estimate defined on the above grid   */ 
-int *nout;  /* The length of the grid               */
-/* Input variables again */
-double *PrimRes;/* The primary resolution               */
-double *SFx;    /* The grid on which the scaling function is defined    */
-double *SFy;    /* The scaling function                 */
-int *lengthSF;  /* The length of the grid               */
-double *WVx;    /* The grid on which the wavelet is defined     */
-double *WVy;    /* The wavelet function                 */
-int *lengthWV;  /* The length of the grid               */
-int *kmin;  /* minimum k for scaling function coefficient comp. */
-int *kmax;  /* maximum k for scaling function coefficient comp. */
-int *kminW; /* as above but for each wavelet level (1:Jmax)     */
-int *kmaxW; /* as above but for each wavelet level (1:Jmax)     */
-double *xminW;  /* minimum x value for each level for wavelet       */
-double *xmaxW;  /* maximum x value for each level for wavelet       */
-double *phiLH;  /* left hand end of support of Phi          */
-double *phiRH;  /* right hand end of support of Phi         */
-double *psiLH;  /* left hand end of support of psi          */
-double *psiRH;  /* right hand end of support of psi         */
-int *verbose;   /* Print messages or not?               */
-int *error; /* Error codes                      */
-
-/* Error codes
-
-    0   -   O.k.
-    1   -   Memory error
-
- */
-{
-register int i,k,l,j,twopowjp1;
-register int la;
-double atmp;
-double *a;
-double sum;
-double divisor;
-double widthSF,widthWV;
-double evalF();
-double xmin, xmax; /* Note these are not the same as maxx and minx */
-double SFYscale, WVYscale; /* I forgot to multiply by p^{1/2} etc. */
-
-if (*verbose > 1)
-    Rprintf("Entered CWavDE function\n");
-
-*kmin = (int)floor(*minx - *phiRH/ *PrimRes);
-*kmax = (int)ceil(*maxx - *phiLH/ *PrimRes);
-
-if (*verbose > 1)
-    Rprintf("kmin is %d, kmax is %d\n", *kmin, *kmax);       /*MAN: changed %ld to %d since declared as int (L1329) */
-
-la = (int)(*kmax - *kmin) + 1;
-
-if ((a = (double *)malloc((unsigned)(sizeof(double)*la)))==NULL)    {
-    *error = 1;
-    return;
-    }
-
-/* Now compute the widths of the wavelet/scaling function supports */
-
-widthSF = *(SFx+(int)*lengthSF-1) - *SFx;
-widthWV = *(WVx+(int)*lengthWV-1) - *WVx;
-
-/* 
- * Now work out all of the scaling function coefficients
- */
-
-k = (int)*kmin;
-
-/* I forgot to multiply by p^{1/2} ! */
-SFYscale = sqrt(*PrimRes);
-
-for (i=0; i<la; ++i)    {
-    sum = 0.0;
-    for(l=0; l<(int)*n; ++l)    {
-        sum += evalF(SFx, SFy, lengthSF, widthSF,
-            (*PrimRes* *(x+l))-(double)k);
-        }
-    *(a+i) = SFYscale*sum/(double)*n;
-    ++k;
-    }
-/*
- * Now compute the wavelet supports
- */
-
-for(j=0; j< (int)*Jmax; ++j)    {
-
-    twopowjp1 = 1 << (j+1);     /* MAN: added parentheses for bit shift */
-
-    divisor = *PrimRes*(double)twopowjp1;
-
-    *(kminW+j) = (int)floor(*minx - *psiRH/divisor);
-    *(kmaxW+j) = (int)ceil(*maxx - *psiLH/divisor);
-    *(xminW+j) = (double)*(kminW+j) + *psiLH/divisor;
-    *(xmaxW+j) = (double)*(kmaxW+j) + *psiRH/divisor;
-    }
-
-/* Now figure out range of x values over which the density estimate
- * is compactly supported
- */
-
-xmin = (double)*kmin + *phiLH/ *PrimRes;
-xmax = (double)*kmax + *phiRH/ *PrimRes;
-
-for(j=0; j< (int)*Jmax; ++j)    {
-    if (*(xminW + j) < xmin)
-        xmin = *(xminW + j);
-
-    if (*(xmaxW + j) > xmax)
-        xmax = *(xmaxW + j);
-    }
-
-divisor = (xmax-xmin)/(double)(*nout-1);
-
-for(i=0; i< (int)*nout; ++i)    {
-    *(fout+i) = 0.0;
-    *(xout+i) = xmin + (double)i*divisor; 
-    }
-
-k = *kmin;
-
-
-for (i=0; i<la; ++i)    {
-    for(l=0; l<(int)*nout; ++l) {
-        *(fout+l) += *(a+i) *
-            evalF(SFx, SFy, lengthSF, widthSF,
-                ((*PrimRes * *(xout+l))-(double)k));
-        }
-    ++k;
-    }
-
-for(l=0; l<(int)*nout; ++l)
-    *(fout+l) = SFYscale * *(fout+l);
-
-/* That was the easy part. Now we have to repeat the same operations
- * as above for the wavelets themselves
- *
- * Go round in a loop and get the wavelet coefficients for each level
- * reuse a
- */
-
-free((void *)a);
-
-for(j=0; j<(int)*Jmax; ++j) {
-    if (*verbose > 0)
-      {
-        Rprintf("Wavelet step: level %d\n", j);
-      }
-
-        twopowjp1 = 1 << (j+1);           /* MAN: added parentheses for bit shift */
-
-        divisor = *PrimRes*(double)twopowjp1;
-
-        WVYscale = sqrt(divisor);
-
-        la = (int)(*(kmaxW+j) - *(kminW+j)) + 1;
-
-        if ((a = (double *)malloc((unsigned)(sizeof(double)*la)))==NULL) {
-            *error = 1;
-            return;
-            }
-
-        /* Now compute the coefficients for this level j */
-
-        k = *(kminW+j);
-        for(i=0; i<la; ++i) {
-            sum = 0.0;
-            for(l=0; l<(int)*n; ++l)    {
-              sum += evalF(WVx, WVy, lengthWV, widthWV,
-               ((double)twopowjp1* *PrimRes * *(x+l))
-               -(double)k);
-            }
-            sum *= WVYscale;
-            *(a+i) = HARDTHRESH(sum/(double)*n, *threshold);
-            atmp = WVYscale * *(a+i);
-            for(l=0; l<(int)*nout; ++l)     {
-                *(fout+l) += atmp *
-                  evalF(WVx, WVy, lengthWV, widthWV,
-            ((double)twopowjp1* *PrimRes * *(xout+l))-(double)k);
-            }
-            ++k;
-            }
-        free((void *)a);
-        }
-
-
-
-*error = 0;
-}
-
-void SCevalF(Fx, Fy, lengthF, widthF, x, nx, answer)
-double *Fx; /* Grid upon which function is defined          */
-double *Fy; /* Function definition                  */
-int *lengthF;   /* Length of above grids                */
-double *widthF; /* Width end Fx - start Fx              */
-double *x;  /* Vector x to evaluate function at         */
-int *nx;    /* Length of x                      */
-double *answer; /* The answer (again vector of length x)        */
-{
-register int i;
-double evalF();
-
-for(i=0; i< (int)*nx; ++i)  {
-    *(answer+i) = evalF(Fx, Fy, lengthF, *widthF, *(x+i));
-    }
-}
-
-
-/*
- * Evaluate the function Fx,Fy at x. Function is deemed to be zero outside
- * of range of Fx
- *
- * Fx must be a strictly increasing equally spaced design
- */
-
-double evalF(Fx, Fy, lengthF, widthF, x)
-double *Fx; /* Grid upon which function is defined          */
-double *Fy; /* Function definition                  */
-int *lengthF;   /* Length of above grids                */
-double widthF;  /* Width end Fx - start Fx              */
-double x;   /* Value of x to evaluate function at           */
-{
-register int il,ir;
-double a;
-double fp;
-
-/*
- * First get approximate index of point to return
- */
-
-if (x < *Fx || x > *(Fx + (int)*lengthF - 1))
-    return(0.0);
-
-a = (double)((int)*lengthF - 1) * (x - *Fx)/widthF;
-
-/* Now a should always be >= 0, since we've already rejected any
-   possible negatives, so we don't have to use floor & ceil here
-   Just (int) will do. */
-
-
-il = (int)a;
-ir = il+1;
-
-fp = a - (double)il;
-
-return( ((1.0-fp)* *(Fy+il)) + (fp* *(Fy+ir)) );
-}
-#define MAX(a,b)    ( (a) < (b) ? (b) : (a))
-#define MIN(a,b)    ( (a) < (b) ? (a) : (b))
-
-void CScalFn(v, ans, res, H, lengthH)
-double *v;
-double *ans;
-int *res;
-double *H;
-int *lengthH;
-{
-register int k,n;
-double sum;
-int b,e;
-
-for(n=0; n< (int)*res; ++n) {
-    sum = 0.0;
-    b = MAX(0, (int )ceil( ((float)(n+1- *lengthH))/2.0));
-        e = MIN(*res, (int )floor(((float) n)/2.0));
-    for(k=b; k<= e; ++k)    {
-        sum += *(H+n-2*k) * *(v+k);
-        }
-    *(ans+n) = sum;
-    }
-}
-
-/* Perform tensor product wavelet transform */
-
-void tpwd(image, nrow, ncol, levr, levc, 
-    firstCr, lastCr, offsetCr,
-    firstDr, lastDr, offsetDr,
-    firstCc, lastCc, offsetCc,
-    firstDc, lastDc, offsetDc,
-    type, bc,
-    H, LengthH, error)
-double *image;      /* The image to decompose           */
-int *nrow;      /* The number of rows in the image      */
-int *ncol;      /* The number of cols in the image      */
-int *levr;      /* The number of levels as rows in the image    */
-int *levc;      /* The number of levels as cols in the image    */
-int *firstCr;           /* The first possible C coef at a given level   */
-int *lastCr;            /* The last possible C coef at a given level    */
-int *offsetCr;          /* Offset from C[0] for certain level's coeffs  */
-int *firstDr;           /* The first possible D coef at a given level   */
-int *lastDr;            /* The last possible D coef at a given level    */
-int *offsetDr;          /* Offset from D[0] for certain level's coeffs  */
-int *firstCc;           /* The first possible C coef at a given level   */
-int *lastCc;            /* The last possible C coef at a given level    */
-int *offsetCc;          /* Offset from C[0] for certain level's coeffs  */
-int *firstDc;           /* The first possible D coef at a given level   */
-int *lastDc;            /* The last possible D coef at a given level    */
-int *offsetDc;          /* Offset from D[0] for certain level's coeffs  */
-int *type;             /* The type of wavelet decomposition            */
-int *bc;               /* Method of boundary correction                */
-double *H;      /* The wavelet filter               */
-int *LengthH;       /* The length of the wavelet filter     */
-int *error;     /* 0=no error, various errors possible      */
-{
-register int i,j;
-
-double *C;      /* temporary store for input/output data    */
-double *D;      /* temporary store for wavelet coefficients */
-
-
-void wavedecomp();  /* The famous wavelet decomposition routine */
-
-*error = 0;
-
-if ((C = (double *)malloc(2*(unsigned)*ncol *sizeof(double)))==NULL)    {
-    *error = 1;
-    return;
-    }
-if ((D = (double *)malloc((unsigned)*ncol *sizeof(double)))==NULL)  {
-    *error = 2;
-    return;
-    }
-
-/* First do the wavelet transform across all rows in the image for each row
- */
-
-for(i=0; i< *nrow; ++i) {
-
-    /* Copy the row across - sorry there is probably a more efficient
-       way to do this in-place, but what the hell. */
-
-
-    for(j=0; j< *ncol; ++j) {
-        *(D+j) = 0.0;
-        *(C+j) = ACCESS(image, *ncol, i, j);
-        }
-
-    /* Now do the jolly old wavelet transform */
-
-
-    wavedecomp(C, D, H, LengthH, levc,
-        firstCc, lastCc, offsetCc,
-        firstDc, lastDc, offsetDc,
-        type, bc, error);
-
-
-    if (*error != 0)
-        return;
-
-    /* And put the answers back in the image array  */
-
-    ACCESS(image, *ncol, i, 0) = *(C+ (*ncol*2)-2);
-
-
-    for(j=1; j< *ncol; ++j) {
-        ACCESS(image, *ncol, i, j) = *(D+j-1);
-        } 
-
-    }
-
-free(C);
-free(D);
-
-/* Now do it the other way around */
-
-if ((C = (double *)malloc(2*(unsigned)*nrow *sizeof(double)))==NULL)    {
-    *error = 1;
-    return;
-    }
-if ((D = (double *)malloc((unsigned)*nrow *sizeof(double)))==NULL)  {
-    *error = 2;
-    return;
-    }
-    
-/* Second do the wavelet transform across all cols in the image for each col
- */
-
-for(j=0; j< *ncol; ++j) {
-
-    /* Copy the row across - sorry there is probably a more efficient
-       way to do this in-place, but what the hell. */
-
-
-    for(i=0; i< *nrow; ++i) {
-        *(D+i) = 0.0;
-        *(C+i) = ACCESS(image, *ncol, i, j);
-        }
-
-    /* Now do the jolly old wavelet transform */
-
-
-    wavedecomp(C, D, H, LengthH, levr,
-        firstCr, lastCr, offsetCr,
-        firstDr, lastDr, offsetDr,
-        type, bc, error);
-
-
-    if (*error != 0)
-        return;
-
-    /* And put the answers back in the image array  */
-
-    ACCESS(image, *ncol, 0, j) = *(C+ (*nrow*2)-2);
-
-
-    for(i=1; i< *nrow; ++i) {
-        ACCESS(image, *ncol, i, j) = *(D+i-1);
-        } 
-
-    }
-
-free(C);
-free(D);
-    
-}
-
-/* Inverse tensor product wavelet transform             */
-
-void tpwr(image, nrow, ncol, levr, levc, 
-    firstCr, lastCr, offsetCr,
-    firstDr, lastDr, offsetDr,
-    firstCc, lastCc, offsetCc,
-    firstDc, lastDc, offsetDc,
-    type, bc,
-    H, LengthH, error)
-double *image;      /* The tpwd coefficients to reconstruct     */
-int *nrow;      /* The number of rows in the image      */
-int *ncol;      /* The number of cols in the image      */
-int *levr;      /* The number of levels as rows in the image    */
-int *levc;      /* The number of levels as cols in the image    */
-int *firstCr;           /* The first possible C coef at a given level   */
-int *lastCr;            /* The last possible C coef at a given level    */
-int *offsetCr;          /* Offset from C[0] for certain level's coeffs  */
-int *firstDr;           /* The first possible D coef at a given level   */
-int *lastDr;            /* The last possible D coef at a given level    */
-int *offsetDr;          /* Offset from D[0] for certain level's coeffs  */
-int *firstCc;           /* The first possible C coef at a given level   */
-int *lastCc;            /* The last possible C coef at a given level    */
-int *offsetCc;          /* Offset from C[0] for certain level's coeffs  */
-int *firstDc;           /* The first possible D coef at a given level   */
-int *lastDc;            /* The last possible D coef at a given level    */
-int *offsetDc;          /* Offset from D[0] for certain level's coeffs  */
-int *type;             /* The type of wavelet decomposition            */
-int *bc;               /* Method of boundary correction                */
-double *H;      /* The wavelet filter               */
-int *LengthH;       /* The length of the wavelet filter     */
-int *error;     /* 0=no error, various errors possible      */
-{
-register int i,j;
-
-double *C;      /* temporary store for input data       */
-double *D;      /* temporary store for wavelet coefficients */
-
-void waverecons();  /* The 1D wavelet reconstruction function   */
-/* Basically just do tpwd backwards! */
-
-*error = 0;
-
-if ((C = (double *)malloc(2*(unsigned)*nrow *sizeof(double)))==NULL)    {
-    *error = 1;
-    return;
-    }
-if ((D = (double *)malloc((unsigned)*nrow *sizeof(double)))==NULL)  {
-    *error = 2;
-    return;
-    }
-
-/*
- * First do the wavelet reconstruction over all cols in the image for each col
- */
-
-for(j=0; j< *ncol; ++j) {
-
-    /* Copy the row across - sorry there is probably a more efficient
-       way to do this in-place, but what the hell. */
-
-    *(C+ (*nrow*2)-2) = ACCESS(image, *ncol, 0, j);
-
-    for(i=1; i< *nrow; ++i) {
-        *(D+i-1) = ACCESS(image, *ncol, i, j); 
-        } 
-
-
-    /* Now do the jolly old wavelet RECONSTRUCTION */
-
-    waverecons(C, D, H, LengthH, levc,
-        firstCc, lastCc, offsetCc,
-        firstDc, lastDc, offsetDc,
-        type, bc, error);
-
-
-    if (*error != 0)
-        return;
-
-    /* And put the answers back in the image array  */
-
-    for(i=0; i< *nrow; ++i)
-        ACCESS(image, *ncol, i, j) = *(C+i);
-
-    }
-
-free(C);
-free(D);
-
-if ((C = (double *)malloc(2*(unsigned)*ncol *sizeof(double)))==NULL)    {
-    *error = 1;
-    return;
-    }
-if ((D = (double *)malloc((unsigned)*ncol *sizeof(double)))==NULL)  {
-    *error = 2;
-    return;
-    }
-
-/*
- * Second do the wavelet reconstruction over all rows in the image for each row
- */
-
-for(i=0; i< *nrow; ++i) {
-
-    /* Copy the row across - sorry there is probably a more efficient
-       way to do this in-place, but what the hell. */
-
-    *(C+ (*ncol*2)-2) = ACCESS(image, *ncol, i, 0); 
-
-    for(j=1; j< *ncol; ++j) {
-        *(D+j-1) = ACCESS(image, *ncol, i, j);
-        } 
-
-
-    /* Now do the jolly old wavelet reconstruction */
-
-
-    waverecons(C, D, H, LengthH, levr,
-        firstCr, lastCr, offsetCr,
-        firstDr, lastDr, offsetDr,
-        type, bc, error);
-
-
-    if (*error != 0)
-        return;
-
-    /* And put the answers back in the image array  */
-
-    for(j=0; j< *ncol; ++j)
-        ACCESS(image, *ncol, i, j) = *(C+j);
-
-    }
-
-free(C);
-free(D);
-}
-
-
-#define ZILCHTOL    1.0E-300    /* Zero tolerance for Shannon entropy */
-#define STOP        1       /* Code for stopping        */
-#define LEFT        2       /* Code for going left      */
-#define RIGHT       3       /* Code for going right     */
-
-/* Compute Shannon-Weaver entropy substitute - the l^2 log (l^2) "norm" */
-void ShannonEntropy(v, lengthv, zilchtol, answer, error)
-double *v;
-int *lengthv;
-double *zilchtol;
-double *answer;
-int *error;
-{
-register int i;
-double *vsq;
-double sum=0.0;
-double SW=0.0;
-
-/* Make private copy of squared coefficients    */
-
-*error = 0;
-
-if ((vsq = (double *)malloc((unsigned)*lengthv*sizeof(double)))==NULL)  {
-    *error = 15000;
-    return;
-    }
-
-for(i=0; i < *lengthv; ++i) {
-    *(vsq + i) = *(v+i) * *(v+i);
-    sum += *(vsq+i);
-    if ( *(vsq+i) == 0.0)
-        *(vsq+i) = 1.0;
-    SW += *(vsq+i) * log(*(vsq+i));
-    }
-
-if (sum < *zilchtol)
-    *answer = 0.0;
-
-else
-    *answer = -SW;
-
-free(vsq);
-
-return;
-
-}
-
-#define ACCESSU(uvec, fv, lev, j)   *(uvec + *(fv+lev) + j)
-
-void Cmnv(wst, wstC, LengthData, nlevels, upperctrl, upperl, firstl, verbose,
-        error)
-double *wst;        /* Table of wavelet packet coefficients     */
-double *wstC;       /* Table of scaling function coefficients   */
-int *LengthData;    /* Length of original data set          */
-int *nlevels;       /* Number of levels in the decomposition    */
-int *upperctrl; /* Vector to record "control" decisions     */
-double *upperl;     /* Vector to record minimum entropies       */
-int *firstl;        /* Index vector into previous two vectors   */
-int *verbose;       /* Print out verbose messages (1=yes, 0=no) */
-int *error;     /* Error condition              */
-{
-register int i,j,k;
-register int nll, nul;  /* Number of packets in lower and upper levels  */
-register int kl, kr;    /* Daughter packet indices, left and right  */
-int PacketLength;   /* Generic packet lengths           */
-double *pkt, *pktl, *pktr;  /* Generic packets          */
-double *cpkt;       /* Combined packet for level zero computations  */
-double mpE, dlE, drE;   /* Entropies for mother and left & right daughters */
-double zilchtol;    /* A zero tolerance             */
-
-double *getpacket();    /* Get a packet                 */
-void ShannonEntropy();  /* Computes entropy             */
-
-*error = 0;
-zilchtol = ZILCHTOL;
-
-if (*verbose == 1)
-    Rprintf("Cmnv: function entered\n");
-
-nll = (int)*LengthData;
-nul = nll >> 1;
-
-/* Go through each level. i refers to the lower level */
-
-for(i=0; i <= *nlevels-1; ++i)  {
-    if (*verbose==1)
-        Rprintf("Cmnv: Packets. Lower: %d Upper %d\n", nll, nul);
-
-    for(j=0; j<nul; ++j)    {
-        if (*verbose==1)
-            Rprintf("Upper level index: %d\n", j);
-        kl = j << 1;
-        kr = kl + 1;
-
-        /* Get mother packet */
-
-        pkt = getpacket(wstC, 1+(int)*nlevels, i+1, j, error);
-        PacketLength = 1 << (i+1);
-
-        if (*error != 0)
-            return;
-
-        /* Compute mother packet entropy */
-
-        ShannonEntropy(pkt, &PacketLength, &zilchtol, &mpE, error);
-
-        if (*error != 0)
-            return;
-
-        /* Don't need mummy packet now, so free her */
-
-        free((void *)pkt);
-
-        /* Now get daughter packets and entropies. The procedure
-         * for this depends on whether we're at the bottom level
-         * or not
-         */
-
-        if (i==0)   {
-
-            pkt = getpacket(wst, 1+(int)*nlevels, i, kl, error);
-            PacketLength = 1 << i;
-
-            if (*error != 0)
-                return;
-
-            pktl = getpacket(wstC, 1+(int)*nlevels, i, kl, error);
-
-            if (*error != 0)
-                return;
-
-            /* Now create a combined packet of both these two */
-
-            if ((cpkt = (double *)malloc((unsigned)2*PacketLength*sizeof(double)))==NULL) {
-                *error = 4;
-                return;
-                }
-
-            for(k = 0; k<PacketLength; ++k) {
-                *(cpkt+k) = *(pkt+k);
-                *(cpkt+PacketLength+k) = *(pktl+k);
-                }
-
-            /* And work out the entropy of this combined packet */
-
-            PacketLength <<= 1;
-
-            ShannonEntropy(cpkt, &PacketLength, &zilchtol, &dlE, error);
-            if (*error != 0)
-                return;
-
-            /* Don't need combined packets or daughter left pax any
-             * more. We can use cpkt again, so don't free it now
-             */
-
-            free((void *)pkt);
-            free((void *)pktl);
-
-            /* Now do the same for the daughter right packets */
-
-            pkt = getpacket(wst, 1+(int)*nlevels, i, kr, error);
-            PacketLength = 1 << i;
-
-            if (*error != 0)
-                return;
-
-
-            pktr = getpacket(wstC, 1+(int)*nlevels, i, kr, error);
-
-            if (*error != 0)
-                return;
-
-            for(k = 0; k<PacketLength; ++k) {
-                *(cpkt+k) = *(pkt+k);
-                *(cpkt+PacketLength+k) = *(pktr+k);
-                }
-
-            /* And work out the entropy of this combined packet */
-
-            PacketLength <<= 1;
-
-            ShannonEntropy(cpkt, &PacketLength, &zilchtol, &drE, error);
-            if (*error != 0)
-                return;
-
-            /* Don't need combined packets or daughter left pax any
-             * more
-             */
-
-            free((void *)cpkt);
-            free((void *)pkt);
-            free((void *)pktr);
-            }
-        else    {   /* We're not at the bottom */
-
-            if (*verbose==1)
-              Rprintf("Left Ent C contrib %lf\n",
-                ACCESSU(upperl,firstl, i-1, kl));
-
-            pktl = getpacket(wst, 1+(int)*nlevels, i, kl, error);
-            PacketLength = 1 << i;
-
-            if (*error != 0)
-                return;
-
-            ShannonEntropy(pktl, &PacketLength, &zilchtol, &dlE,
-                error);
-
-            if (*error != 0)
-                return;
-
-    
-            dlE += ACCESSU(upperl,firstl, i-1, kl);
-
-            /* Loose the daughter packet */
-
-            free((void *)pktl);
-
-
-            /* now the right daughter */
-
-            if (*verbose==1)
-              Rprintf("Right Ent C contrib %lf\n",
-                ACCESSU(upperl,firstl, i-1, kr));
-
-            pktr = getpacket(wst, 1+(int)*nlevels, i, kr, error);
-            PacketLength = 1 << i;
-
-            if (*error != 0)
-                return;
-
-            ShannonEntropy(pktr, &PacketLength, &zilchtol, &drE,
-                error);
-
-            if (*error != 0)
-                return;
-
-    
-            drE += ACCESSU(upperl,firstl, i-1, kr);
-
-            /* Loose the daughter packet */
-
-            free((void *)pktr);
-            }
-
-        if (*verbose==1)    {
-            Rprintf("Mother ent.: %lf\n", mpE);
-            Rprintf("Daug. l. ent.: %lf\n", dlE);
-            Rprintf("Daug. r. ent.: %lf\n", drE);
-            }
-
-
-        if (mpE < dlE)
-          if (mpE < drE)    {
-            ACCESSU(upperl, firstl, i, j) = mpE;
-            ACCESSU(upperctrl, firstl, i, j) = STOP; 
-            }
-          else  {
-            ACCESSU(upperl, firstl, i, j) = drE;
-            ACCESSU(upperctrl, firstl, i, j) = RIGHT; 
-            }
-        else if (dlE < drE) {
-            ACCESSU(upperl, firstl, i, j) = dlE;
-            ACCESSU(upperctrl, firstl, i, j) = LEFT; 
-            }
-          else  {
-            ACCESSU(upperl, firstl, i, j) = drE;
-            ACCESSU(upperctrl, firstl, i, j) = RIGHT; 
-            }
-
-        if (*verbose==1)
-          Rprintf("\tSelected %d %lf\n", ACCESSU(upperctrl,firstl,i,j),
-            ACCESSU(upperl, firstl, i, j));
-        }
-
-    nul >>= 1;
-    nll >>= 1;
-    }
-}
-
-/*
- * Wavelet packet node vector computations
- *
- * (from ~guy/projects/WAVELETS/PACKET/wpCmnv.c)
- */
-
-
-#define TOP 1
-#define BOTTOM  2
-
-void wpCmnv(wp, LengthData, nlevels, upperctrl, upperl, firstl, verbose,
-        error)
-double *wp;     /* Table of wavelet packet coefficients     */
-int *LengthData;    /* Length of original data set          */
-int *nlevels;       /* Number of levels in the decomposition    */
-int *upperctrl; /* Vector to record "control" decisions     */
-double *upperl;     /* Vector to record minimum entropies       */
-int *firstl;        /* Index vector into previous two vectors   */
-int *verbose;       /* Print out verbose messages (1=yes, 0=no) */
-int *error;     /* Error condition              */
-{
-register int i,j;
-register int nll, nul;  /* Number of packets in lower and upper levels  */
-register int kl, kr;    /* Daughter packet indices, left and right  */
-int PacketLength;   /* Generic packet lengths           */
-double *pkt, *pktl, *pktr;  /* Generic packets          */
-double mpE, dE;     /* Entropies for mother and daughters */
-double zilchtol;    /* A zero tolerance             */
-double tmp;     /* Temporary holder             */
-
-double *getpacket();    /* Get a packet                 */
-void ShannonEntropy();  /* Computes entropy             */
-
-*error = 0;
-zilchtol = ZILCHTOL;
-
-if (*verbose == 1)
-    Rprintf("wpCmnv: function entered\n");
-
-nll = (int)*LengthData;
-nul = nll >> 1;
-
-/* Go through each level. i refers to the lower level */
-
-for(i=0; i <= *nlevels-1; ++i)  {
-    if (*verbose==1)
-        Rprintf("wpCmnv: Packets. Lower: %d Upper %d\n", nll, nul);
-
-    for(j=0; j<nul; ++j)    {
-        if (*verbose==1)
-            Rprintf("Upper level index: %d\n", j);
-        kl = j << 1;
-        kr = kl + 1;
-
-        /* Get mother packet */
-
-        pkt = getpacket(wp, 1+(int)*nlevels, i+1, j, error);
-        PacketLength = 1 << (i+1);
-
-        if (*error != 0)
-            return;
-
-        /* Compute mother packet entropy */
-
-        ShannonEntropy(pkt, &PacketLength, &zilchtol, &mpE, error);
-
-        if (*error != 0)
-            return;
-
-        /* Don't need mummy packet now, so free her */
-
-        free((void *)pkt);
-
-        /*
-         * Now get daughter packets and entropies.
-         *
-         * If this is at level 0 then it is really the entropies
-         *
-         * Otherwise the daugther entropy is just the minimum
-         * that we decided on before
-         * 
-         */
-        if (i==0)   {
-
-            pktl = getpacket(wp, 1+(int)*nlevels, i, kl, error);
-            PacketLength = 1 << i;
-
-            if (*error != 0)
-                return;
-
-            pktr = getpacket(wp, 1+(int)*nlevels, i, kr, error);
-
-            if (*error != 0)
-                return;
-
-            /* And work out the entropy of the left and right and
-             * add them
-             */
-
-
-            ShannonEntropy(pktl, &PacketLength, &zilchtol, &dE, error);
-            if (*error != 0)
-                return;
-
-            tmp = dE;
-
-            ShannonEntropy(pktr, &PacketLength, &zilchtol, &dE, error);
-            if (*error != 0)
-                return;
-
-            dE += tmp;
-
-
-            /* Don't need combined packets or daughter left pax any
-             * more. We can use cpkt again, so don't free it now
-             */
-
-            free((void *)pktl);
-            free((void *)pktr);
-        }
-        else    {
-            dE =  ACCESSU(upperl, firstl, i-1, kl);
-            dE += ACCESSU(upperl, firstl, i-1, kr);
-        }
-
-        if (*verbose==1)    {
-            Rprintf("Mother ent.: %lf\n", mpE);
-            Rprintf("Daug. ent.: %lf\n", dE);
-            }
-
-
-        if (mpE < dE)   {
-            ACCESSU(upperl, firstl, i, j) = mpE;
-            ACCESSU(upperctrl, firstl, i, j) = TOP; 
-            }
-        else    {
-            ACCESSU(upperl, firstl, i, j) = dE;
-            ACCESSU(upperctrl, firstl, i, j) = BOTTOM; 
-            }
-
-        if (*verbose==1)
-          Rprintf("\tSelected %d %lf\n", ACCESSU(upperctrl,firstl,i,j),
-            ACCESSU(upperl, firstl, i, j));
-        }
-
-    nul >>= 1;
-    nll >>= 1;
-    }
-}
-
-/*
- * WPST -   Stationary wavelet packet algorithm (i.e "The nightmare")
- */
-
-void wpst(ansvec, lansvec, nlev, finish_level, avixstart, H, LengthH, error)
-double *ansvec; /* Vector of length *lansvec that contains the original
-         * data and will contain the stationary wavelet packet
-         * coefficients on exit
-         */
-int *lansvec;   /* Length of the ansvec vector              */
-int *nlev;  /* The number of levels in this transform       */
-int *finish_level; /* The last level to decompose to            */
-int *avixstart;/* A vector of length (*nlev+1). The index ranging from
-         * 0 to *nlev. The entries in this vector are indices into
-         * the ansvec vector indicating the start index for
-         * packets for a given level.
-         * e.g.  *(avixstart + 0) = 0 (always). So that the first
-         * index for level 0 packets in ansvec is 0.
-         *
-         * e.g. *(avixstart+1)=256 (for *nlev=4). So that the first
-         * index for level 1 packets in ansvec is 256 etc.
-         */
-
-double *H;  /* Filter smoothing coefficients as with all other algs */
-int *LengthH;   /* The number of filter smoothing coefficients      */
-int *error; /* Error code. 0=o.k.                   */
-        /*  1 - memory error in creating c_in       */
-        /*  2-5 - memory error for c_out, d_out, c_outR, d_outR */
-{
-register int i,j,k, plev;
-int pnpkts, ppktlength;
-double *c_in, *c_out, *d_out, *c_outR, *d_outR;
-
-void wpsub();
-
-
-/*
- * i represents the child level. Go through each child level, filling in
- * coefficients as you go
- */
-
-for(i=(int)*nlev-1; i>=(int)*finish_level; --i) {
-
-    plev = i+1;     /* Parent level             */
-    pnpkts = NPKTS((int)plev, *nlev);   /* Number of pkts at p lev */
-    ppktlength = PKTLENGTH((int)plev);  /* Length at parent level  */
-
-    /* Create input and output packets  */
-
-    if ((c_in = (double *)malloc((unsigned)(ppktlength*sizeof(double))))==NULL) {
-        *error = 1;
-        return;
-        }
-
-    if ((c_out = (double *)malloc((unsigned)(sizeof(double)*ppktlength/2)))==NULL)  {
-        *error = 2;
-        return;
-        }
-
-    if ((d_out = (double *)malloc((unsigned)(sizeof(double)*ppktlength/2)))==NULL)  {
-        *error = 3;
-        return;
-        }
-
-
-    if ((c_outR = (double *)malloc((unsigned)(sizeof(double)*ppktlength/2)))==NULL) {
-        *error = 4;
-        return;
-        }
-
-    if ((d_outR = (double *)malloc((unsigned)(sizeof(double)*ppktlength/2)))==NULL) {
-        *error = 5;
-        return;
-        }
-        
-    for(j=0; j< pnpkts; ++j)    {   /* Go thru each parent pkt */
-
-        /* Copy parent packet to c_in */
-
-        for(k=0; k<ppktlength; ++k)
-            *(c_in+k) = ACCWPST(ansvec, plev, avixstart, j, k);
-
-        /* Now compute answer using filter application */ 
-
-        wpsub(c_in, (int)ppktlength, c_out, d_out, c_outR, d_outR,
-            H, LengthH);
-
-
-        /* Now store the answer packets */
-
-        for(k=0; k < ppktlength/2; ++k) {
-            ACCWPST(ansvec, i, avixstart, 4*j, k) = *(c_out+k);
-            ACCWPST(ansvec, i, avixstart, 4*j+1, k) = *(d_out+k);
-            ACCWPST(ansvec, i, avixstart, 4*j+2, k) = *(c_outR+k);
-            ACCWPST(ansvec, i, avixstart, 4*j+3, k) = *(d_outR+k);
-            }
-
-        /* Next parent packet */
-        }
-
-    /* Free packet memory */
-    free((void *)c_in);
-    free((void *)c_out);
-    free((void *)d_out);
-    free((void *)c_outR);
-    free((void *)d_outR);
-
-    /* Next level */
-    }
-}
-
-/*
- * WPSUB    -   Subroutine to compute basic step of stationary
- *          wavelet packet algorithm.
- */
-
-void wpsub(c_in, lc_in, c_out, d_out, c_outR, d_outR, H, LengthH)
-double *c_in;   /* Data input                       */
-int lc_in;  /* Length of input                  */
-double *c_out;  /* result of low pass applied to input          */
-double *d_out;  /* result of high pass applied to input         */
-double *c_outR; /* result of low pass applied to rotated input      */
-double *d_outR; /* result of high pass applied to rotated input     */
-double *H;  /* Wavelet filter                   */
-int *LengthH;   /* Length of wavelet filter             */
-{
-int lengthout;
-
-void convolveC();
-void convolveD();
-void rotater();
-
-lengthout = lc_in/2;
-
-/* Obtain the father and mother wavelet coefficients of the data */
-
-convolveC(c_in, lc_in, 0, H, (int)*LengthH,
-        c_out, 0, (lengthout-1l),
-        WAVELET, 1, PERIODIC);
-
-convolveD(c_in, lc_in, 0, H, (int)*LengthH,
-        d_out, 0, (lengthout-1l),
-        WAVELET, 1, PERIODIC);
-
-/* Obtain the father and mother wavelet coefficients of the rotated data */
-
-rotater(c_in, lc_in);
-        
-convolveC(c_in, lc_in, 0, H, (int)*LengthH,
-        c_outR, 0, (lengthout-1l),
-        WAVELET, 1, PERIODIC);
-
-convolveD(c_in, lc_in, 0, H, (int)*LengthH,
-        d_outR, 0, (lengthout-1l),
-        WAVELET, 1, PERIODIC);
-
-/* That's it */
-
-}
-
-
-void accessDwpst(coefvec, lansvec, nlev, avixstart, primaryindex, nwppkt,
-    pklength, level, weave, lweave, error)
-double *coefvec;    /* Vector storing the stat. wavelet pack. coefs */
-int *lansvec;       /* Length of previous vector            */
-int *nlev;      /* The number of levels in the transform    */
-int *avixstart; /* Index into coefvec for starting position
-             * of each level of coefficients        */
-int *primaryindex;  /* Packet numbers in the SWPT scheme to take out
-             * and interweave
-             */
-int *nwppkt;        /* The number of ordinary WP packets at this level
-             * Also the length of the primaryindex vector
-             */
-int *pklength;      /* The length of an SWPT packet         */
-int *level;     /* The level that we're extracting from     */
-double *weave;      /* A vector to store the answer         */
-int *lweave;        /* The length of the weave vector       */
-int *error;     /* An error code                */
-{
-register int counter, pklcount, i;
-
-*error = 0;
-
-counter = 0;
-
-
-for(pklcount=0; pklcount< *pklength; ++pklcount)    {
-    for(i=0; i<*nwppkt; ++i)    {   /* For each SWPT packet */
-
-        *(weave+counter) = ACCWPST(coefvec, *level, avixstart,
-            (*(primaryindex+i)), pklcount);
-        ++counter;
-        }
-    }
-
-}
-
-/*
- * Use the binary representation of *l to build a number in base 4
- */
-
-void c2to4(l, a)
-int *l;
-int *a;
-{
-register int ndigits,i ;
-int mask;
-int multiplier;
-
-*a = 0;
-
-if (*l == 0)
-    return;
-
-ndigits = (int)ceil( log((double)*l)/log(2.00));
-
-ndigits++;  /* For exact powers of 2 */
-
-mask = 1;
-multiplier=1;
-
-for(i=0; i<ndigits; ++i)    {
-    *a += multiplier*((mask& *l)>>i);
-    mask <<= 1;
-    multiplier *= 4;
-    }
-    
-}
-
-
-/* Next code is from Arne Kovac */
-
-/* Increasing this value would remove some nearly empty diagonals */
-
-double thr=0.0;
-
-/* The doubledouble structure is used by the makegrid function for
-   sorting the data with respect to the x-component. */
-
-struct doubledouble
-           {
-           double x;
-           double y;
-           } Doubledouble;
-
-/* The ddcomp function is used by the makegrid function for sorting
-   the data as an argument for qsort. */
-           
-int ddcomp(const void *a, const void *b)        /* MAN: changed to work in qsort below */
-  {
-
-struct doubledouble *q1=(struct doubledouble *)a; 
-struct doubledouble *q2=(struct doubledouble *)b;  
-  int t;
-  
-  if(q1->x>q2->x)
-/*    return 1; */
-t=1;
-  else
-  if(q1->x<q2->x)
-/*    return -1;  */
-t=-1;
-  else
-/*    return 0;   */
-t=0;    
-    return t;
-  }
-
-void makegrid(double *x,double *y,int *n,double *gridx,double *gridy,
-               int *gridn, double *G, int *Gindex)
-
-               /* This function computes from observations in x und y
-                  new data on a grid of length gridn as well as a
-                  description of the matrix that maps the original
-                  data (or better the ordered original data, so that
-                  x[i]<=x[j] when i<=j) to the new grid data. 
-               
-                  input:
-                  x, y   vector of observations of length n 
-                  gridn
-
-                  output:
-                  gridx, gridy the constructed grid of length gridn */
-  {
-  struct doubledouble *q;
-  int i,li=0,ind;
-  
-
-  /* First, sort the data with respect to x. */
-
-  q=(void *)malloc(*n*sizeof(Doubledouble));
-
-  for(i=0;i<*n;i++)
-    {
-    q[i].x=x[i];
-    q[i].y=y[i];
-    }
-  qsort(q,(size_t)*n,sizeof(struct doubledouble),ddcomp);   /* MAN: used to be (int *)ddcomp */
-
-  /* Now create the new grid data. */
-
-  for(i=0;i<*gridn;i++)
-    {
-    gridx[i]=(i+0.5)/(*gridn);
-
-    /* Determine the index of the nearest observation left to the grid time 
-       point. */
-
-    while((li<*n-1)&&(q[li+1].x<gridx[i]))
-      li++;
-    if(li==(*n-1)) /* We are at the right end */
-      {
-      gridy[i]=q[li].y;
-      ind=li-1;
-      G[i]=0;
-      }
-    else
-    if(q[li].x>=gridx[i]) /* We are at the left end */
-      {
-      gridy[i]=q[0].y;
-      ind=0;
-      G[i]=1;
-      }
-    else
-      {
-      gridy[i]=q[li].y+(gridx[i]-q[li].x)*(q[li+1].y-q[li].y)
-                                                /(q[li+1].x-q[li].x); 
-      ind=li;
-      G[i]=1-(gridx[i]-q[li].x)/(q[li+1].x-q[li].x);
-      }
-    Gindex[i]=ind;
-    }
-  free(q);
-  }
-
-/* sigmastruct describes a covariance matrix of size n. diag is an n-vector
-   of pointers to double vectors that correspond to the diagonals of the
-   matrix. If diag[i]==NULL, then the i-th diagonal is empty. This
-   representation is useful for covariance matrices with a band structure. */
-
-struct sigmastruct 
-          {
-          int n;
-          double **diag;
-          };
-
-/* createSigma allocates memory for a new covariance matrix of size n. */
-
-int createSigma(struct sigmastruct *Sigma, int n)
-  {
-  int i;
-  
-  Sigma->n=n;
-  if((Sigma->diag=malloc(n*sizeof(double *)))==NULL)
-    {
-    return(-1);
-    }
-  for(i=0;i<n;i++)
-    {
-      (Sigma->diag)[i]=NULL;
-    }
-    return(0);
-  }
-  
-/* freeSigma releases the memory used by a sigmastruct element. */
-
-void freeSigma(struct sigmastruct *Sigma)
-  {
-  int i;
-
-  for(i=0;i<Sigma->n;i++)
-    if(Sigma->diag[i]!=NULL)
-      free((Sigma->diag)[i]);
-  free(Sigma->diag);
-  }
-
-/* CleanupSigma removes diagonals that contain only elements < thr. */
-   
-void cleanupSigma(struct sigmastruct *Sigma)
-  {
-  int i,j;
-
-  for(i=0;i<Sigma->n;i++)
-    if((Sigma->diag)[i]!=NULL)
-      {
-      j=0;
-      while((j<Sigma->n-i)&&(fabs((Sigma->diag)[i][j])<thr))
-        j++;
-      if(j>=Sigma->n-i)
-        {
-        free(Sigma->diag[i]);
-        Sigma->diag[i]=NULL;
-        }
-      }
-  }
-  
-/* putSigma changes the entry in the i-th row and j-th column to s and
-   allocates memory for the diagonal if necessary. */
-
-int putSigma(struct sigmastruct *Sigma, int i, int j, double s)
-  {
-  int d=abs(i-j);
-  
-  if(fabs(s)>0.0000001){        /* MAN: added brace to avoid ambiguity */
-  if((i>=Sigma->n)||(j>=Sigma->n))
-    {
-    return(-1);
-    /*  MAN 21/01/13 change  to Rprintf due to CHECK note.
-    Rprintf("Error: This element does not exist.");
-        */
-    }
-  else
-    {
-    if((Sigma->diag)[d]==NULL)
-      if((Sigma->diag[d]=calloc(Sigma->n-d,sizeof(double)))==NULL)
-        return(-2);
-    (Sigma->diag)[d][(i+j-d)/2]=s;
-    }
-  }         /* MAN: added */
-return(0);  /* MAN: added, hopefully won't have bad consequences. */
-} 
-  
-/* allocateSigma allocates memory for diagonals of a covariance matrix,
-   specified by the boolean vector d */
-   
-
-int allocateSigma(struct sigmastruct *Sigma, int *d)
-  {
-  int i;
-  
-  for(i=0;i<Sigma->n;i++)
-    {
-      if(d[i]==TRUE)
-	{
-	  if((Sigma->diag[i]=calloc(Sigma->n-i,sizeof(double)))==NULL)
-	    {
-	      *d = (Sigma->n - i)*sizeof(double);
-	      return(-1);
-	    }
-	}
-    }
-    return(0);
-  }
-
-/* computec is the function that computes the factors for the variances
-   of the wavelet coefficients. 
-
-   Gmatrix, Gindex describe the matrix that maps the original data
-                   to the grid data as received by makegrid (s.o.)
-   n, gridn        are the numbers of original and grid observations
-   H, LengthH      describe the used wavelet filter. The filter coefficients
-                   are stored in the vector H, their number in LengthH.
-   bc              is either PERIODIC or SYMMETRIC, the boundary correction
-                   to be used
-
-   c contains afterwards the coefficients c_{jk}, such that
-               Var(w_{jk})=c_{jk}\cdot\sigma^2
-*/
-
-
-void computec(int *n,double *c,int *gridn,double *Gmatrix,int *Gindex,
-              double *H, int *LengthH, int *bc, int *error)
-  {
-  int virtgn,i,j,k,l,d,zaehler=0,gn=*gridn,laststart=0;
-  int ii,dd,jj,o1,o2,iiG,iiH,jjG,jjH,gn2,LengthH2=*LengthH/2,dH,dG;
-  int *NEEDIT,offset,offset2,band,band1,band2;
-  double cellC,cellD,sig,G[20];
-  double ProductG[20][20],ProductH[20][20];
-  struct sigmastruct Sigma,Sigma2,Sigma3;
-  int rc;
-
-  int createSigma();
-  int putSigma();
-  int allocateSigma();
-
-  if(*LengthH>20)
-    {
-	/* MAN 01/03/12.  Change below to Rprintf */
-    Rprintf("Sorry, you can not use this procedure with more than 20 filter coefficients!\n");
-    *error = 1;
-    return; 
-    }
-  if((NEEDIT=malloc(*gridn*sizeof(int)))==NULL) {
-    *error = 2;
-    *n = *gridn * sizeof(int);  /* Contains number of bytes requested */
-    return;
-    }
-
-  /* First step: Compute Filter G from Filter H */
-  sig=-1.0;
-  for(k=0;k<*LengthH;k++)
-    {
-    G[*LengthH-k-1]=sig*H[k];
-    sig=-sig;
-    }
-
-  for(k=0;k<*LengthH;k++)
-    for(l=0;l<*LengthH;l++)
-      {
-      ProductG[k][l]=G[k]*G[l];
-      ProductH[k][l]=H[k]*H[l];
-      }
-
-  /* Second step: Compute the variance/covariance-matrix of the grid data */
-
-  if (createSigma(&Sigma,gn) < 0)   {
-        *error = 3;
-        *n = (int)gn * sizeof(double);
-        return;
-        }
-  for(i=0;i<*gridn;i++)
-    {
-    j=laststart;
-    while(Gindex[i]-Gindex[j]>=2) 
-      j++;
-    laststart=j;
-    for(;j<=i;j++)
-      {
-      switch(Gindex[i]-Gindex[j])
-        {
-        case  1: rc = putSigma(&Sigma,i,j,Gmatrix[i]*(1.0-Gmatrix[j]));
-
-             if (rc < 0)    {
-                if (rc == -1)   {
-                    *error = 4;
-                    return;
-                    }
-
-                if (rc == -2)   {
-                    *error = 5;
-                    *n = (Sigma.n - abs(i-j))*sizeof(double);
-                    return;
-                    }
-                }
-                    
-
-                 break;
-        case  0: rc= putSigma(&Sigma,i,j,Gmatrix[i]*Gmatrix[j]+(1.0-Gmatrix[i])*(1.0-Gmatrix[j]));
-             if (rc < 0)    {
-                if (rc == -1)   {
-                    *error = 4;
-                    return;
-                    }
-
-                if (rc == -2)   {
-                    *error = 5;
-                    *n = (Sigma.n - abs(i-j))*sizeof(double);
-                    return;
-                    }
-                }
-                 break;
-        }
-      }
-    }
-  
-  /* And now the difficult part... */
-  
-  if(*bc==PERIODIC)
-    {
-    while(gn>=2) /* Apply the wavelet filters to the covariance matrix Sigma. */
-      {
-      gn2=gn/2; /* gn and gn2 are the sizes of Sigma and Sigma2 (or Sigma3). */ 
-
-    /* Store the result of the high pass filter in sigma2... */
-      if (createSigma(&Sigma2,gn2)<0){
-        *error = 3l;
-        *n = gn2 * sizeof(double);
-        return;
-        }
-
-    /* ... and the result of the low pass filter in sigma3. */
-      if (createSigma(&Sigma3,gn2)<0)   {
-        *error = 3;
-        *n = gn2 * sizeof(double);
-        return;
-        }
-      cleanupSigma(&Sigma);       
-
-      /* First we need to know which diagonals in sigma2 and sigma3 will not
-         be empty. */
-
-      band1=gn/2;
-      band2=gn/2+1;
-      while((band1>=0)&&(Sigma.diag[band1]==NULL))
-        band1--;
-      while((band2<=gn-1)&&(Sigma.diag[band2]==NULL))
-        band2++;
-      if(band1<=gn-band2)
-        band=gn-band2;
-      else
-        band=band1;
-        
-      if(band+*LengthH>gn)
-        for(d=0;d<gn2;d++)
-          NEEDIT[d]=TRUE;
-      else
-        {
-        for(d=0;d<gn2;d++)
-          NEEDIT[d]=FALSE;
-        for(d=0;(d<=(band+*LengthH)/2)&&(d<gn2);d++)
-          NEEDIT[d]=TRUE;
-        for(d=1;(d<=(band+*LengthH)/2)&&(d<gn2);d++)
-          NEEDIT[gn2-d]=TRUE;
-        }
-
-      /* We allocate memory only for these diagonals. */
-
-      if (allocateSigma(&Sigma2,NEEDIT) <0) {
-        *error = 6;
-        *n = *NEEDIT;
-        return;
-        }
-        
-      if (allocateSigma(&Sigma3,NEEDIT) < 0)    {
-        *error = 6;
-        *n = *NEEDIT;
-        return;
-        }
-
-      /* Every entry of Sigma is involved in the computation of (LengthH/2)^2
-         entries of Sigma2 and Sigma3. We find out in which and do the
-         necessary computaions. */
-
-      /* Let's start with the main diagonal elements of Sigma. */
-
-      if(Sigma.diag[0]!=NULL)
-        for(j=0;j<gn;j++)
-          if(fabs(sig=Sigma.diag[0][j])>thr)
-            {
-            o1=j%2;
-            iiH=j/2;
-            iiG=(iiH+LengthH2-1)%(gn2);
-
-            for(k=0;k<LengthH2;k++)
-              {
-              Sigma3.diag[0][iiH]+=sig*ProductH[2*k+o1][2*k+o1];
-              Sigma2.diag[0][iiG]+=sig*ProductG[2*k+o1][2*k+o1];
-              jjH=((j-2*(k+1)+*gridn)/2)%(gn2);
-              jjG=(jjH+LengthH2-1)%(gn2);
-              for(l=k+1;l<LengthH2;l++)
-                { 
-                dH=abs(iiH-jjH);
-                dG=abs(iiG-jjG);
-                if(dH==0)
-                  Sigma3.diag[dH][iiH]+=2*sig*ProductH[2*k+o1][2*l+o1];
-                else       
-                  Sigma3.diag[dH][(iiH+jjH-dH)/2]+=sig*ProductH[2*k+o1][2*l+o1];
-                if(dG==0)
-                  Sigma2.diag[dG][iiG]+=2*sig*ProductG[2*k+o1][2*l+o1];
-                else         
-                  Sigma2.diag[dG][(iiG+jjG-dG)/2]+=sig*ProductG[2*k+o1][2*l+o1];
-            
-                if((--jjH)<0) jjH=gn2-1;
-                if((--jjG)<0) jjG=gn2-1;
-                }
-              if((--iiH)<0) iiH=gn2-1;
-              if((--iiG)<0) iiG=gn2-1;
-              }
-            }
-
-      /* Now do the rest. */
-      for(d=1;d<gn;d++)
-        if(Sigma.diag[d]!=NULL)
-          for(j=0;j<gn-d;j++)
-            if(fabs(sig=Sigma.diag[d][j])>thr)
-              {
-              o1=(d+j)%2;
-              iiH=((d+j+*gridn)/2)%(gn2);
-              iiG=(iiH+LengthH2-1)%(gn2);
-
-              for(k=0;k<LengthH2;k++)
-                {
-                jjH=((j+*gridn)/2)%(gn2);
-                jjG=(jjH+LengthH2-1)%(gn2);
-                o2=j%2;
-                for(l=0;l<LengthH2;l++)
-                  {
-                  dH=abs(iiH-jjH);
-                  dG=abs(iiG-jjG);
-                  if(dH==0)
-                    Sigma3.diag[dH][iiH]+=2*sig*ProductH[o1][o2];
-                  else       
-                    Sigma3.diag[dH][(iiH+jjH-dH)/2]+=sig*ProductH[o1][o2];
-                  if(dG==0)
-                    Sigma2.diag[dG][iiG]+=2*sig*ProductG[o1][o2];
-                  else         
-                    Sigma2.diag[dG][(iiG+jjG-dG)/2]+=sig*ProductG[o1][o2];
-                  if((--jjH)<0) jjH=gn2-1;
-                  if((--jjG)<0) jjG=gn2-1;
-                  o2+=2;
-                  }
-                if((--iiH)<0) iiH=gn2-1;
-                if((--iiG)<0) iiG=gn2-1;
-                o1+=2;
-                }
-              }
-
-      /* Now Sigma2 und Sigma3 should contain the right values. Store
-         only the main diagonal of Sigma2 in c. */
-      for(j=0;j<gn2;j++)
-        c[zaehler++]=Sigma2.diag[0][j];
-
-      /* Sigma and Sigma2 are now redundant. */
-      freeSigma(&Sigma);
-      freeSigma(&Sigma2);
-
-      /* Sigma3 becomes our new Sigma. */
-      memcpy(&Sigma,&Sigma3,sizeof(Sigma));
-      gn=gn2;
-      }
-    } /* end of the periodic case */
-  else
-  if(*bc==SYMMETRIC) /* The symmetric case is even more difficult... */
-    {
-    virtgn=gn; /* virtgn is used to determine when we can finish and takes
-                  exactly the same values as gn in the periodic case. */
-    offset=0; /* Symmetric boundary conditions provide extra coefficients
-                 on both sides. offset gives the number of such extra
-                 coeffs on the left-hand side. */
-    while(virtgn>=2)
-      {
-      /* First of all, we want to know how many diagonals and extra coeffs
-         Sigma2 and Sigma3 have. */
-
-      if(offset%2==0)
-        gn2=(gn+1)/2+LengthH2-1;
-      else
-        gn2=(gn+2)/2+LengthH2-1;
-      offset2=(offset+*LengthH-1)/2;
-
-      /* Now allocate memory for them. */
-      
-      if (createSigma(&Sigma2,gn2) <0)  {
-        *error = 3;
-        *n = gn2 * sizeof(double);
-        return;
-        }
-        
-      if (createSigma(&Sigma3,gn2) <0)  {
-        *error = 3;
-        *n = gn2*sizeof(double);
-        return;
-        }
-      cleanupSigma(&Sigma);
-      
-      /* Again, we need to know which diagonals in sigma2 and sigma3 will not
-         be empty. */
-
-      band=gn-1;
-      while((band>=0)&&(Sigma.diag[band]==NULL))
-        band--;
-      if(band+2*(*LengthH)>gn)
-        for(d=0;d<gn2;d++)
-          NEEDIT[d]=TRUE;
-      else
-        {
-        for(d=0;d<gn2;d++)
-          NEEDIT[d]=FALSE;
-        for(d=0;(d<=(band+*LengthH)/2)&&(d<gn2);d++)
-          NEEDIT[d]=TRUE;
-        }
-
-      /* We allocate memory only for these diagonals. */
-
-      if (allocateSigma(&Sigma2,NEEDIT) < 0)    {
-        *error = 6;
-        *n = *NEEDIT;
-        return;
-        }
-      if (allocateSigma(&Sigma3,NEEDIT) < 0)    {
-        *error = 6;
-        *n = *NEEDIT;
-        return;
-        }
-
-      /* Every entry of Sigma is involved in the computation of (LengthH/2)^2
-         entries of Sigma2 and Sigma3. We find out in which and do the
-         necessary computaions. */
-
-      /* Let's start with the values that are not effected by boundary 
-         correction.  First the main diagonal. */
-
-      if(Sigma.diag[0]!=NULL)
-        for(j=0;j<gn;j++)
-          if(fabs(sig=Sigma.diag[0][j])>thr)
-            {
-            o1=(j+offset)%2;
-            iiH=(j+offset%2)/2+LengthH2-1;
-            iiG=iiH;
-
-            for(k=0;k<LengthH2;k++)
-              {
-              Sigma3.diag[0][iiH]+=sig*ProductH[2*k+o1][2*k+o1];
-              Sigma2.diag[0][iiG]+=sig*ProductG[2*k+o1][2*k+o1];
-              jjH=(j+offset%2)/2+LengthH2-1-(k+1);
-              jjG=jjH;
-              for(l=k+1;l<LengthH2;l++)
-                { 
-                if((iiH<0)||(jjH<0))
-		/* MAN 01/03/12.  Changed to Rprintf. */
-                  Rprintf("ERROR\n");
-                dH=abs(iiH-jjH);
-                dG=abs(iiG-jjG);
-                if(dH==0)
-                  Sigma3.diag[dH][iiH]+=2*sig*ProductH[2*k+o1][2*l+o1];
-                else       
-                  Sigma3.diag[dH][(iiH+jjH-dH)/2]+=sig*ProductH[2*k+o1][2*l+o1];
-                if(dG==0)
-                  Sigma2.diag[dG][iiG]+=2*sig*ProductG[2*k+o1][2*l+o1];
-                else       
-                  Sigma2.diag[dG][(iiG+jjG-dG)/2]+=sig*ProductG[2*k+o1][2*l+o1];
-                jjH--;
-                jjG--;
-                }
-              iiH--;
-              iiG--;
-              }
-            }
-
-      /* Now do the not-effected values on the other diagonals. */
-
-      for(d=1;d<gn;d++)
-        if(Sigma.diag[d]!=NULL)
-          /*for(j=*LengthH-2+offset%2;j<gn-d-(*LengthH-2+offset%2);j++)*/
-          for(j=0;j<gn-d;j++)
-            if(fabs(sig=Sigma.diag[d][j])>thr)
-              {
-              o1=(d+j+offset)%2;
-              iiH=(d+j+offset%2)/2+LengthH2-1;
-              iiG=iiH;
-
-              for(k=0;k<LengthH2;k++)
-                {
-                jjH=(j+offset%2)/2+LengthH2-1;
-                jjG=jjH;
-                o2=(j+offset)%2;
-                for(l=0;l<LengthH2;l++)
-                  {
-                  dH=abs(iiH-jjH);
-                  dG=abs(iiG-jjG);
-                  if(dH==0)
-                    Sigma3.diag[dH][iiH]+=2*sig*ProductH[o1][o2];
-                  else       
-                    Sigma3.diag[dH][(iiH+jjH-dH)/2]+=sig*ProductH[o1][o2];
-                  if(dG==0)
-                    Sigma2.diag[dG][iiG]+=2*sig*ProductG[o1][o2];
-                  else         
-                    Sigma2.diag[dG][(iiG+jjG-dG)/2]+=sig*ProductG[o1][o2];
-                  jjH--;
-                  jjG--;
-                  o2+=2;
-                  }
-                iiH--;
-                iiG--;
-                o1+=2;
-                }
-              }
-
-      /* Finally, do the boundary entries. */
-
-      for(d=0;d<gn2;d++)
-        if(Sigma2.diag[d]!=NULL)
-          {
-          for(j=0;(j<gn2-d)&&(j<LengthH2-1+offset%2);j++)
-            {
-            cellC=0;
-            cellD=0;
-            i=d+j;
-            iiG=2*i-(*LengthH-2)-offset%2;
-            for(k=0;k<*LengthH;k++,iiG++)
-              {
-              jjG=2*j-(*LengthH-2)-offset%2;
-              for(l=0;l<*LengthH;l++,jjG++)
-                {
-                ii=iiG;
-                jj=jjG;
-                if(ii<0)
-                  ii=-ii-1;
-                if(jj<0)
-                  jj=-jj-1;
-                if(ii>=gn)
-                  {
-                  ii=2*gn-ii-1;
-                  }
-                if(jj>=gn)
-                  {
-                  jj=2*gn-jj-1;
-                  }
-                dd=abs(ii-jj);
-                if(Sigma.diag[dd]!=NULL)
-                  {
-                  sig=(Sigma.diag)[dd][(ii+jj-dd)/2];
-                  cellC+=sig*ProductH[k][l];
-                  cellD+=sig*ProductG[k][l];
-                  }
-                }
-              }
-            Sigma2.diag[d][j]=cellD;
-            Sigma3.diag[d][j]=cellC;
-            }
-          for(j=gn2-d-1;(j>=0)&&(j>=gn2-d-LengthH2+1-offset%2);j--)
-            {
-            cellC=0;
-            cellD=0;
-            i=d+j;
-            iiG=2*i-(*LengthH-2)-offset%2;
-            for(k=0;k<*LengthH;k++,iiG++)
-              {
-              jjG=2*j-(*LengthH-2)-offset%2;
-              for(l=0;l<*LengthH;l++,jjG++)
-                {
-                ii=iiG;
-                jj=jjG;
-                if(ii<0)
-                  ii=-ii-1;
-                if(jj<0)
-                  jj=-jj-1;
-                if(ii>=gn)
-                  {
-                  ii=2*gn-ii-1;
-                  }
-                if(jj>=gn)
-                  {
-                  jj=2*gn-jj-1;
-                  }
-                dd=abs(ii-jj);
-                if(Sigma.diag[dd]!=NULL)
-                  {
-                  sig=(Sigma.diag)[dd][(ii+jj-dd)/2];
-                  cellC+=sig*ProductH[k][l];
-                  cellD+=sig*ProductG[k][l];
-                  }
-                }
-              }
-            Sigma2.diag[d][j]=cellD;
-            Sigma3.diag[d][j]=cellC;
-            }
-          }
-
-      /* This looks now pretty the same as in the periodic case. */
-
-      for(j=0;j<gn2;j++)
-        c[zaehler++]=Sigma2.diag[0][j];
-      freeSigma(&Sigma);
-      freeSigma(&Sigma2);
-      memcpy(&Sigma,&Sigma3,sizeof(Sigma));
-
-      gn=gn2;
-      offset=offset2;
-      virtgn=virtgn/2;
-      }
-    } /* end of the symmetric case */
-
-  /* We are finished with the computation of c and can release any memory. */
-
-  freeSigma(&Sigma);
-  free(NEEDIT);
-  }
-
-
-/*
- * Error codes for the rainmat suite.
- *
- * 0 - No error
- *
- * Errors here:
- *
- * rainmat: 100 memory error for creation of w
- *      101 memory error for creation of subvectors of w
- *          J returns the number of the subvector
- *          that couldn't be created. 
- *
- * wlpart   110 memory error for creation of TheData 
- *      111 memory error for creation of ixvec
- *
- * rotateleft   120 memory error for creation of tmp
- *
- * rainmatPARENT 130    memory error for creation of lvec
- *
- * mkcoef   140 memory error for creation of ixvec
- *      141 memory error for creation of TheData
- *      142 memory error for creation of lcoefvec
- *      143 memory error for creation of tmpcfvec
- *
- * rainmatPARTIAL 150   memory error for creation of lvec
- *
- * PsiJonly:    160 wout is not int enough to store answer
- *          (change a constant in the S calling function,
- *          the variable lwout contains the number of doubles
- *          required)
- *      161 memory error for creation of w
- *      162 memory error for creation of subvectors of w
- *          J returns the number of the subvector
- *          that couldn't be created. 
- *
- * 
- *
- * Other error codes can occur from other parts of WaveThresh
- *
- */
-        
-
-/*
- * Compute the matrix that obtains S from I
- *
- */
-
-void rainmat(J, donej, coefvec, lvec, fmat, error)
-int *J;        /* The desired maximum level (positive)     */
-int *donej;        /* The first j columns already filled       */
-double **coefvec;   /* The \psi_{jk} stacked into one vector    */
-int *lvec;     /* A vector of lengths of each \psi_j vector in
-               coefvec. The jth element is the length of the
-               jth \psi_j in coefvec
-             */
-double *fmat;       /* This vector will contain the answer. This is
-               the lower triangular portion of the J*J matrix,
-               and therefore is of length J(J-1)/2 */
-int *error;        /* Error code                   */
-{
-
-/* First we compute the w. One for each j           */
-
-double **w;
-register int j,k,m,l;
-double sum;
-int lj,ll;
-
-
-if ((w = (double **)malloc((unsigned)*J*sizeof(double *)))==NULL)   {
-    *error = 100;
-    return;
-    }
-
-/* Now populate each of the *w */
-
-for(j=0; j<*J; ++j) {
-    if ((*(w+j) = (double *)malloc((unsigned)(*(lvec+j)*2-1)*sizeof(double)))==NULL)    {
-        *error = 101;
-        *J = (int)j;
-        return;
-        }
-    }
-
-/* Now compute each of the wjk */
-
-for(j=0; j< *J; ++j)    {
-    lj = *(lvec+j);
-    for(k = 1-lj; k <= lj-1; ++k)   {
-        sum = 0.0;
-        for(m = max(0, k); m <= min(lj-1, lj-1+k); ++m) {
-            sum += *((*(coefvec+j))+m) *
-                *((*(coefvec+j))+m-k);
-            }
-        ACCESSW(w, j, k-1+lj) = sum;
-        }
-    }
-
-/* Now compute the F */
-
-for(j=0; j<*J; ++j) {
-    lj = *(lvec+j);
-    for(l=j; l<*J; ++l) {
-        if (l >= *donej)    {
-            ll = *(lvec+l);
-            sum = 0.0;
-            for(k=max(1-ll, 1-lj); k <= min(lj-1, ll-1); ++k) {
-                sum += ACCESSW(w, j, k-1+lj) *
-                    ACCESSW(w, l, (-k)-1+ll);
-                }
-            *(fmat+*J*l+j) = *(fmat+*J*j+l) = sum;
-            }
-        }
-    }
-
-
-/* Now free the w */
-for(j=0; j<*J; ++j) {
-    free((void *)*(w+j));
-    }
-free((void *)w);
-}
-
-
-
-void wlpart(J, BigJ, H, LengthH, error)
-int *J;
-int *BigJ;
-double *H;
-int *LengthH;
-int *error;
-{
-register int KeepGoing;
-register int somefull;
-register int allnonzero;
-register int i;
-register int j;
-double *TheData;
-int ndata;
-double *C, *D;
-int *firstC, *lastC, *offsetC, *firstD, *lastD, *offsetD;
-int LengthC, LengthD, levels=0;
-int type,bc;
-int *ixvec;
-
-void simpleWT();
-void waverecons();
-
-*error=0;
-
-*BigJ = *J + 1;
-KeepGoing = TRUE;
-
-while(KeepGoing)    {
-
-/*     Rprintf("Entered loop BigJ is %d\n", *BigJ); */
-
-    ndata = (int)0x01 << *BigJ;
-
-    /*
-     * Basically a dummy wavelet transform to set up first/last stuff
-     */
-    if ((TheData = (double *)malloc((unsigned)ndata*sizeof(double)))==NULL) {
-        *error = 110;
-        return;
-        }
-
-    for(i=0; i<ndata; ++i)
-        *(TheData+i) = 0.0;
-
-    /*
-     * Do the wavelet transform
-     */
-
-/* MAN: 7/12/10. allocate memory for the inputs into simpleWT. 
-  The allocation should cover the present sizes (w.r.t the while
-loop).  This allocation should be done especially since the memory for
-the objects are free'd later on!  
-Maybe the D ones should be the same size as the Cs just in case.
-*/
-
-firstC=calloc(*BigJ+1,sizeof(int));
-lastC=calloc(*BigJ+1,sizeof(int));
-offsetC=calloc(*BigJ+1,sizeof(int));
-firstD=calloc(*BigJ,sizeof(int));
-lastD=calloc(*BigJ,sizeof(int));
-offsetD=calloc(*BigJ,sizeof(int));
-C=calloc(2*ndata-1,sizeof(double));
-D=calloc(ndata-1,sizeof(double));
-
-
-    
-    simpleWT(TheData, &ndata, H, LengthH,
-        C, &LengthC, D, &LengthD, &levels,
-        firstC, lastC, offsetC,
-        firstD, lastD, offsetD,
-        &type, &bc, error);
-
-    if (*error != 0)
-        return;
-
-    /*
-     * Create ixvec
-     */
-
-    if ((ixvec = (int *)malloc((unsigned)*BigJ*sizeof(int)))==NULL){
-        *error = 111;
-        return;
-        }
-
-    for(i=0; i< *BigJ; ++i)
-        *(ixvec+i) =(0x01 << (*BigJ -1 - i)); 
-
-    for(i=1; i< *BigJ; ++i)
-        *(ixvec+i) = *(ixvec+i-1) + *(ixvec+i);
-
-    for(i=0; i< *BigJ; ++i)
-        --*(ixvec+i);
-
-    somefull = FALSE;
-
-    for(i=0; i<*J; ++i) {
-
-        for(j=0; j<LengthD; ++j)
-            *(D+j) = 0;
-
-        *(D+ *(ixvec+i)) = 1;
-
-        waverecons(C, D, H, LengthH, &levels,
-            firstC, lastC, offsetC, firstD, lastD, offsetD,
-            &type, &bc, error);
-
-        if (*error != 0)
-            return;
-
-        allnonzero = TRUE;
-
-        for(j=0; j<ndata; ++j)  {
-            if (*(C+j) == 0.0)  {
-                allnonzero = FALSE;
-                break;
-                }
-            }
-        somefull = somefull || allnonzero;
-
-
-        if (somefull)
-            break;
-
-    } /* for loop */
-    /* Free memory */
-/* MAN:  frees. */
-
-    free((void *)C);
-    free((void *)D);
-    free((void *)firstC); free((void *)lastC);
-    free((void *)offsetC);
-    free((void *)firstD); free((void *)lastD);
-    free((void *)offsetD);
-
-    free((void *)ixvec);
-    free((void *)TheData);
-
-    if (!somefull)
-        KeepGoing = FALSE;
-    else
-        *BigJ = *BigJ + 1;
-    }	/* while */
-} /* function */
-
-
-/*
- * Return the index number of the last zero in a vector
- * Return -1 if no such exists
- */
-
-int idlastzero(v, nv)
-double *v;
-int *nv;
-{
-register int i;
-
-for(i= *nv-1; i>=0; --i)
-        if (*(v+i) == 0.0)
-                break;
-
-return(i);
-}
-
-/*
- * Cyclically rotate a vector n places to the left
- * (a C replacement for guyrot)
- */
-
-void rotateleft(v, nv, n, error)
-double *v;
-int *nv;
-int *n;
-int *error;
-{
-register int i;
-double *tmp;    /* Storage for the ones the fall off the left   */
-
-*error = 0;
-
-*n = *n % *nv;
-
-if (*n == 0)    /* No rotation required */
-    return;
-
-if ((tmp = (double *)malloc((unsigned)(*n)*sizeof(double))) == NULL)    {
-    *error = 120;
-    return;
-    }
-
-for(i=0; i< *n; ++i)    
-    *(tmp+i) = *(v+i);
-
-for(i=0; i< *nv - *n; ++i)
-    *(v+i) = *(v+i+*n);
-
-for(i=0; i< *n; ++i)
-    *(v+ i + *nv - *n) = *(tmp+i);
-    
-free((void *)tmp);
-}
-
-void rainmatPARENT(J, H, LengthH, fmat, tol, error)
-int *J;    /* The dimension of the problem             */
-double *H;  /* The wavelet filter coefficients          */
-int *LengthH;  /* The number of wavelet filter coefficients        */
-double *fmat;   /* The answer                       */
-double *tol;    /* Elements smaller than this will be deleted       */
-int *error;    /* Error code. Nonzero is an error          */
-{
-register int i;
-int BigJ;  /* The level we must go to to be able to compute
-         * coefficients without error
-         */
-int donej; /* Only for partial                 */
-
-double **coefvec;   /* These are the \Psi_j (\tau)          */
-int *lvec;     /* Vector of length *J contains the length  
-             * of each vector in coefvec
-             */
-
-void wlpart();  /* Substitute for whichlevel function           */
-void mkcoef();
-void rainmat();
-void haarmat(); /* Computes matrix exactly using formula        */
-
-donej = 0;
-
-if (*LengthH == 2)  /* Haar - can compute exactly */
-    {
-    haarmat(J, &donej, fmat, error);
-    return;
-    }
-
-/* whichlevel */
-
-wlpart(J, &BigJ, H, LengthH, error);
-
-if (*error != 0)
-    return;
-
-/* mkcoef */
-
-if ((lvec = (int *)malloc((unsigned)*J*sizeof(int)))==NULL)   {
-    *error = 130;
-    return;
-    }
-
-for(i=0; i<*J; ++i)
-    *(lvec+i) = 0;
-
-/* MAN 7/12/10.  coefvec initialization? */
-
-/* coefvec=calloc(*J,sizeof(double*));*/
-
-mkcoef(J, BigJ, H, LengthH, &coefvec, lvec, tol, error); 
-
-if (*error != 0)
-    return;
-
-/* rainmat */ 
-donej = 0;
-
-rainmat(J, &donej, coefvec, lvec, fmat, error);
-
-if (*error != 0)
-    return;
-
-free((void *)lvec);
-
-for(i=0; i<*J; ++i)
-    free((void *)*(coefvec+i));
-
-free((void *)coefvec);
-}
-
-/* Make \Psi_j(\tau) components */
-
-void mkcoef(J, BigJ, H, LengthH, coefvec, lvec, tol, error)
-int *J;    /* Dimension of the problem             */
-int BigJ;  /* The maximum depth that we have to go to      */
-double *H;  /* Wavelet filter coefficients              */
-int *LengthH;  /* Number of wavelet filter coefficients        */
-double ***coefvec; /* Coefficients of \Psi_j(\tau)          */
-int *lvec; /* Vector of length *J that will contain length of
-         * each component of coefvec */
-double *tol;    /* Elements smaller than this will be deleted       */
-int *error;    /* Error code                       */
-{
-register int i,j;
-register int large_ones;
-int ndata;
-int *ixvec;        /* Index vector for inserting 1s into blank WT  */
-double **lcoefvec;  /* Local version of coefvec         */
-double *tmpcfvec;   /* Temporary vector             */
-
-/* Things needed for the simpleWT */
-double *TheData;
-double *C, *D;
-int *firstC, *lastC, *offsetC, *firstD, *lastD, *offsetD;
-int LengthC, LengthD, levels;
-int type,bc;
-int n_to_rotate;
-
-void simpleWT();
-int idlastzero();
-void rotateleft();
-void waverecons();
-
-ndata = (int)0x01 << BigJ;
-
-/*
- * Create ixvec
- */
-
-if ((ixvec = (int *)malloc((unsigned)BigJ*sizeof(int)))==NULL){
-    *error = 140;
-    return;
-    }
-
-for(i=0; i< BigJ; ++i)
-    *(ixvec+i) =(0x01 << (BigJ -1 - i)); 
-
-for(i=1; i< BigJ; ++i)
-    *(ixvec+i) = *(ixvec+i-1) + *(ixvec+i);
-
-for(i=0; i< BigJ; ++i){
-    --*(ixvec+i);
-}
-
-
-/*
- * Basically a dummy wavelet transform to set up first/last stuff
- */
-if ((TheData = (double *)malloc((unsigned)ndata*sizeof(double)))==NULL) {
-    *error = 141;
-    return;
-    }
-
-for(i=0; i<ndata; ++i)
-    *(TheData+i) = 0.0;
-
-/*
- * Do the wavelet transform
- */
-
-/* MAN 7/12/10.  The call to simpleWT doesn't know what memory it's using
-and so during the next for loop, *D is being used when we don't know what 
-it contains.  I am going to allocate memory specifically for the input into
-simpleWT.
-*/
-
-firstC=calloc(BigJ+1,sizeof(int));
-lastC=calloc(BigJ+1,sizeof(int));
-offsetC=calloc(BigJ+1,sizeof(int));
-firstD=calloc(BigJ,sizeof(int));
-lastD=calloc(BigJ,sizeof(int));
-offsetD=calloc(BigJ,sizeof(int));
-C=calloc(2*ndata-1,sizeof(double));
-D=calloc(ndata-1,sizeof(double));
-
-simpleWT(TheData, &ndata, H, LengthH,
-    C, &LengthC, D, &LengthD, &levels,
-    firstC, lastC, offsetC,
-    firstD, lastD, offsetD,
-    &type, &bc, error);
-
-if (*error != 0)
-    return;
-
-if ((lcoefvec = (double **)malloc((unsigned)*J*sizeof(double *)))==NULL){
-    *error = 142;
-    return;
-    }
-
-for(i=1; i<= *J; ++i)   {
-    for(j=0; j<LengthD; ++j)
-        *(D+j) = 0.0;
-
-    *(D+ *(ixvec+i-1)) = 1;
-
-    waverecons(C, D, H, LengthH, &levels,
-        firstC, lastC, offsetC, firstD, lastD, offsetD,
-        &type, &bc, error);
-
-    if (*error != 0)
-        return;
-
-    /* Now copy reconstruction into TheData  (vec in S) */
-
-    for(j=0; j<ndata; ++j)
-        *(TheData+j) = *(C+j);
-
-    n_to_rotate = (int)idlastzero(TheData, &ndata);
-
-    if (n_to_rotate < 0)
-        n_to_rotate = 0;
-
-    rotateleft(TheData, &ndata, &n_to_rotate, error);
-
-    if (*error != 0)
-        return;
-
-    large_ones = 0;
-
-    for(j=0; j<ndata; ++j)
-        if (fabs(*(TheData+j)) > *tol)
-            ++large_ones;
-
-    /* Now get memory for the large ones */
-
-    if ((tmpcfvec = (double *)malloc((unsigned)large_ones*sizeof(double)))==NULL)   {
-        *error = 143;
-        return;
-        }
-
-    large_ones = 0;
-
-    for(j=0; j<ndata; ++j)
-        if (fabs(*(TheData+j)) > *tol)
-            *(tmpcfvec+large_ones++) = *(TheData+j);
-
-
-    /* Install this vector into the array */
-
-    *(lcoefvec+i-1) = tmpcfvec;
-    *(lvec+i-1) = (int)large_ones;
-    }
-
-/* Install the lcoefvec into the coefvec */
-
-*coefvec = lcoefvec;
-
-free((void *)ixvec);
-free((void *)TheData);
-
-
-/* MAN 7/12/10.  Free the memory allocated above for simpleWT. */
-
-/*
-free(tmpcfvec);
-free(lcoefvec);
-*/
-
-free((void *)C);
-free((void *)D);
-free((void *)firstC); free((void *)lastC);
-free((void *)offsetC);
-free((void *)firstD); free((void *)lastD);
-free((void *)offsetD);
-
-}
-
-void rainmatOLD(J, coefvec, ixvec, lvec, fmat, error)
-int *J;        /* The desired maximum level (positive)     */
-double *coefvec;    /* The \psi_{jk} stacked into one vector    */
-int *ixvec;
-int *lvec;     /* A vector of lengths of each \psi_j vector in
-               coefvec. The jth element is the length of the
-               jth \psi_j in coefvec
-             */
-double *fmat;       /* This vector will contain the answer. This is
-               the lower triangular portion of the J*J matrix,
-               and therefore is of length J(J-1)/2 */
-int *error;        /* Error code
-                1-  Generating **w
-                2+j Memory error on 2+j th one
-            */
-{
-
-/* First we compute the w. One for each j           */
-
-double **w;
-register int j,k,m,l,cnt;
-double sum;
-int lj,ll;
-
-if ((w = (double **)malloc((unsigned)*J*sizeof(double *)))==NULL)   {
-    *error = 1;
-    return;
-    }
-
-/* Now populate each of the *w */
-
-for(j=0; j<*J; ++j) {
-    if ((*(w+j) = (double *)malloc((unsigned)(*(lvec+j)*2-1)*sizeof(double)))==NULL)    {
-        *error = (int)(2+j);
-        return;
-        }
-    }
-
-/* Now compute each of the wjk */
-
-for(j=0; j< *J; ++j)    {
-    lj = *(lvec+j);
-    for(k = 1-lj; k <= lj-1; ++k)   {
-        sum = 0.0;
-        for(m = max(0, k); m <= min(lj-1, lj-1+k); ++m) {
-            sum += *(coefvec+*(ixvec+j)+m) *
-                *(coefvec+*(ixvec+j)+m-k);
-            }
-        ACCESSW(w, j, k-1+lj) = sum;
-        }
-    }
-
-/* Now compute the F */
-
-cnt = 0;
-for(j=0; j<*J; ++j) {
-    lj = *(lvec+j);
-    for(l=j; l<*J; ++l) {
-        ll = *(lvec+l);
-        sum = 0.0;
-        for(k=max(1-ll, 1-lj); k <= min(lj-1, ll-1); ++k)   {
-            sum += ACCESSW(w, j, k-1+lj) *
-                ACCESSW(w, l, (-k)-1+ll);
-            }
-        
-        *(fmat+*J*l+j) = *(fmat+*J*j+l) = sum;
-        ++cnt;
-        }
-    }
-
-/* Now free the w */
-for(j=0; j<*J; ++j) {
-    free((void *)*(w+j));
-    }
-free((void *)w);
-}
-
-/* rainmatPARTIAL - partial matrix filling              */
-
-void rainmatPARTIAL(J, donej, H, LengthH, fmat, tol, error)
-int *J;    /* The dimension of the problem             */
-int *donej;    /* The first j dimensions are already filled        */
-double *H;  /* The wavelet filter coefficients          */
-int *LengthH;  /* The number of wavelet filter coefficients        */
-double *fmat;   /* The answer                       */
-double *tol;    /* Elements smaller than this will be deleted       */
-int *error;    /* Error code. Nonzero is an error          */
-{
-register int i;
-int BigJ;  /* The level we must go to to be able to compute
-         * coefficients without error
-         */
-
-double **coefvec;   /* These are the \Psi_j (\tau)          */
-int *lvec;     /* Vector of length *J contains the length  
-             * of each vector in coefvec
-             */
-
-void wlpart();  /* Substitute for whichlevel function           */
-void mkcoef();
-void rainmat();
-void haarmat(); /* Computes matrix exactly using formula        */
-
-if (*LengthH == 2)  /* Haar - can compute exactly */
-    {
-    haarmat(J, donej, fmat, error);
-    return;
-    }
-
-/* whichlevel */
-
-wlpart(J, &BigJ, H, LengthH, error);
-
-if (*error != 0)
-    return;
-
-/* mkcoef */
-
-if ((lvec = (int *)malloc((unsigned)*J*sizeof(int)))==NULL)   {
-    *error = 150;
-    return;
-    }
-
-for(i=0; i<*J; ++i)
-    *(lvec+i) = 0;
-
-/* MAN 7/12/10.  Init. coefvec? */
-/* coefvec=calloc(*J,sizeof(double*));*/
-
-mkcoef(J, BigJ, H, LengthH, &coefvec, lvec, tol, error); 
-
-if (*error != 0)
-    return;
-
-/* rainmat */ 
-
-rainmat(J, donej, coefvec, lvec, fmat, error);
-
-if (*error != 0)
-    return;
-
-free((void *)lvec);
-
-for(i=0; i<*J; ++i)
-    free((void *)*(coefvec+i));
-
-free((void *)coefvec);
-}
-
-void PsiJ_impl(J, H, LengthH, tol, wout, lwout, rlvec, error)
-int *J;    /* The dimension of the problem             */
-double *H;  /* The wavelet filter coefficients          */
-int *LengthH;  /* The number of wavelet filter coefficients        */
-double *tol;    /* Elements smaller than this will be deleted       */
-double *wout;   /* Answers for \Psi_j(\tau)             */
-int *lwout;    /* Length of previous array             */
-int *rlvec;    /* Vector of length J contains lengths of \psi_j    */
-int *error;    /* Error code. Nonzero is an error          */
-{
-register int i;
-int BigJ=0;  /* The level we must go to to be able to compute
-         * coefficients without error
-         */
-double **coefvec;   /* These are the \psi_j (\tau)          */
-int *lvec;     /* Vector of length *J contains the length  
-             * of each vector in coefvec
-             */
-
-void wlpart();  /* Substitute for whichlevel function           */
-void mkcoef();
-void PsiJonly();
-
-/* whichlevel */
-
-wlpart(J, &BigJ, H, LengthH, error);
-
-if (*error != 0)
-    return;
-
-/* mkcoef */
-
-if ((lvec = (int *)malloc((unsigned)*J*sizeof(int)))==NULL)   {
-    *error = 130;
-    return;
-    }
-
-for(i=0; i<*J; ++i)
-    *(lvec+i) = 0;
-
-/* MAN 7/12/10.  Init for coefvec? */
-
-/* coefvec=calloc(*J,sizeof(double)); */
-
-mkcoef(J, BigJ, H, LengthH, &coefvec, lvec, tol, error); 
-
-if (*error != 0)
-    return;
-
-
-PsiJonly(J, coefvec, lvec, wout, lwout, error);
-
-if (*error != 0)
-    return;
-
-for(i=0; i<*J; ++i)
-    *(rlvec + i) = *(lvec+i);
-
-free((void *)lvec);
-
-for(i=0; i<*J; ++i)
-    free((void *)*(coefvec+i));
-
-free((void *)coefvec);
-}
-
-void PsiJonly(J, coefvec, lvec, wout, lwout, error)
-int *J;        /* The desired maximum level (positive)     */
-double **coefvec;   /* The \psi_{jk} stacked into one vector    */
-int *lvec;     /* A vector of lengths of each \psi_j vector in
-               coefvec. The jth element is the length of the
-               jth \psi_j in coefvec
-             */
-double *wout;       /* Output contains the \Psi_j(\tau)     */
-int *lwout;        /* Length of this vector. If it is not long
-             * enough an error code is returned     */
-int *error;        /* Error code                   */
-{
-
-/* First we compute the w. One for each j           */
-
-double **w;
-register int j,k,m;
-double sum;
-int totall;
-int lj,cnt;
-
-/* Check output vector is long enough to store answer */
-
-totall = 0;
-for(j=0; j < *J; ++j)
-    totall += *(lvec+j)*2l - 1l; 
-
-if (totall > *lwout)    {
-    *error = 160;
-    *lwout = totall;
-    return;
-    }
-
-
-if ((w = (double **)malloc((unsigned)*J*sizeof(double *)))==NULL)   {
-    *error = 161;
-    return;
-    }
-
-/* Now populate each of the *w */
-
-for(j=0; j<*J; ++j) {
-    if ((*(w+j) = (double *)malloc((unsigned)(*(lvec+j)*2-1)*sizeof(double)))==NULL)    {
-        *error = 162;
-        *J = (int)j;
-        return;
-        }
-    }
-
-/* Now compute each of the wjk */
-
-for(j=0; j< *J; ++j)    {
-    lj = *(lvec+j);
-    for(k = 1-lj; k <= lj-1; ++k)   {
-        sum = 0.0;
-        for(m = max(0, k); m <= min(lj-1, lj-1+k); ++m) {
-            sum += *((*(coefvec+j))+m) *
-                *((*(coefvec+j))+m-k);
-            }
-        ACCESSW(w, j, k-1+lj) = sum;
-        }
-    }
-
-/* Store the w */
-
-cnt = 0;
-
-for(j=0; j < *J; ++j)   {
-    lj = *(lvec+j);
-    for(k = 1-lj; k <= lj-1; ++k)   {
-        *(wout+cnt) = ACCESSW(w, j, k-1+lj);
-        ++cnt;
-        }
-    }
-
-
-/* Now free the w */
-for(j=0; j<*J; ++j) {
-    free((void *)*(w+j));
-    }
-free((void *)w);
-}
-
-/* haarmat - Computes matrix exactly using formula      */
-
-void haarmat(J, donej, fmat, error)
-int *J;        /* The desired maximum level (positive)     */
-int *donej;        /* The first j columns already filled       */
-double *fmat;       /* This vector will contain the answer. This is
-               the lower triangular portion of the J*J matrix,
-               and therefore is of length J(J-1)/2 */
-int *error;        /* Error code                   */
-{
-register int j,l;
-double a;
-double twoj, twol, two2j, two2jmo;
-
-for(j=0; j<*J; ++j) {
-    for(l=j; l<*J; ++l) {
-        if (l >= *donej)    {
-
-            if (l==j)   {
-                twoj = pow(2.0, ((double)j+1)); 
-                two2j = twoj*twoj;
-                a = (two2j + 5.0)/(3.0*twoj);
-                }
-
-            else    {
-                two2jmo = pow(2.0, (double)(2*j+1));
-                twol = pow(2.0, ((double)l+1));
-                a = (two2jmo + 1.0)/twol;
-                }
-            *(fmat+*J*l+j) = *(fmat+*J*j+l) = a;
-            }
-        }
-    }
-
-}
-
-/*
- * Now follows the code from swt2d.c
- */
-
-
-/*
- * Perform whole of SWT2D after initialising
- */
-
-void SWT2Dall(m, nm, am, J, H, LengthH, error)
-double *m;  /* The input data                   */
-int *nm;    /* The dimension of the square matrix m         */
-double *am; /* The *big* answer 3D array                */
-int *J; /* The level at which to store the initial information  */
-double *H;      /* The smoothing filter             */
-int *LengthH;       /* The length of the smoothing filter       */
-int *error; /* Error code 0=ok, anything else is memory error   */
-{
-int D1, D12;    /* Dimensions of am array               */
-int nm2, nm4;   /* nm divided by 2 then 4               */
-void initSWT2D();   /* Initialise the answer matrix         */
-void SWT2Drec();    /* Recursive array filler           */
-
-*error = 0;
-
-initSWT2D(m, nm, am, J, H, LengthH, error);
-
-if (*error != 0)
-    return;
-
-/*
- * Now for each level use the previous level as the coefficients to
- * do a 2D wavelet transform for the next level
- *
- * Produce level J-2 from J-1 (which was done in initSWT2D)
- * Produce level J-3 from J-2 ...
- * ...
- * Produce level 0 from 1
- * Go home!
- */
-D12 = (*J)*(*nm * 2);
-D1 = (*J);
-
-nm2 = *nm/2;
-nm4 = nm2/2;
-
-SWT2Drec(am, D1, D12, 0, 0, nm2, nm4, *J-1, H, LengthH, error);
-if (*error != 0)
-    return;
-SWT2Drec(am, D1, D12, *nm, 0, nm2, nm4, *J-1, H, LengthH, error);
-if (*error != 0)
-    return;
-SWT2Drec(am, D1, D12, 0, *nm, nm2, nm4, *J-1, H, LengthH, error);
-if (*error != 0)
-    return;
-SWT2Drec(am, D1, D12, *nm, *nm, nm2, nm4, *J-1, H, LengthH, error);
-if (*error != 0)
-    return;
-}
-
-void SmallStore(am, D1, D12, J, sl, x, y, ix, jy, hhout, hgout, ghout, ggout,nm)
-double *am; /* The *big* matrix to store everything in      */
-int D1; /* First dimension of am                */
-int D12;    /* First and second dimensions of am multiplied     */
-int J;      /* The level to fill                    */
-int sl; /* Side length of small packets             */
-int x;      /* The origin x coordinate              */
-int y;      /* The origin y coordinate              */
-int ix; /* The smaller matrix i offset              */
-int jy; /* The smaller matrix j offset              */
-double *hhout;  /* The new smoothed matrix              */
-double *hgout;  /* The new horizontal detail matrix         */
-double *ghout;  /* The new vertical detail matrix           */
-double *ggout;  /* The new diagonal detail matrix           */
-int nm; /* Size of the hhout, hgout, ghout, ggout       */
-{
-register int i,j;
-
-for(i=0; i< sl; ++i)
-  for(j=0; j< sl; ++j)  {
-    ACCESS3D(am, D1, D12, J, x+i, y+j) = ACCESS(hhout, nm, ix+i, jy+j);
-    ACCESS3D(am, D1, D12, J, x+i, sl+y+j) = ACCESS(hgout, nm, ix+i, jy+j);
-    ACCESS3D(am, D1, D12, J, sl+x+i, y+j) = ACCESS(ghout, nm, ix+i, jy+j);
-    ACCESS3D(am, D1, D12, J, sl+x+i, sl+y+j) = ACCESS(ggout, nm, ix+i, jy+j);
-    }
-}
-
-/* initialise the answer matrix */
-
-void initSWT2D(m, nm, am, J, H, LengthH, error)
-double *m;  /* The input data                   */
-int *nm;    /* The dimension of the square matrix m         */
-double *am; /* The *big* answer 3D array                */
-int *J; /* The level at which to store the initial information  */
-double *H;      /* The smoothing filter             */
-int *LengthH;       /* The length of the smoothing filter       */
-int *error; /* Error code 0=ok, anything else is memory error   */
-{
-int mlength;    /* Length of vector representing matrix         */
-int D1, D12;    /* 1st and Second dimension of answer matrix        */
-double *hhout, *hgout, *ghout, *ggout;  /* Intermediate stores      */
-int nm2;    /* Half of *nm                      */
-
-void SWT2D();   /* Carries out a step of the SWT2D algorithm        */
-void SmallStore();	/* MAN 7/12/10. Added call for function used later */
-
-*error = 0;
-
-mlength = *nm * *nm;
-
-/* First create some space for hhout, hgout, ghout and ggout.       */
-
-if ((hhout = (double *)malloc((size_t)(mlength* sizeof(double))))==NULL){
-    *error = 7;
-    return;
-    }
-
-if ((hgout = (double *)malloc((size_t)(mlength* sizeof(double))))==NULL){
-    *error = 8;
-    return;
-    }
-
-if ((ghout = (double *)malloc((size_t)(mlength* sizeof(double))))==NULL){
-    *error = 9;
-    return;
-    }
-
-if ((ggout = (double *)malloc((size_t)(mlength* sizeof(double))))==NULL){
-    *error = 10;
-    return;
-    }
-
-/* Apply the 2D SWT to the initial data and store the HH, GH, HG, GG
- * matrices in their appropriate place in the big matrix
- */
-
-SWT2D(m, nm, hhout, hgout, ghout, ggout, H, LengthH, error);
-
-#ifdef PRINTON
-Rprintf("First hhout matrix\n");
-{
-int i,j;
-for(i=0; i<*nm; ++i)    {
-    Rprintf("[%d, ] ", i);
-    for(j=0; j<*nm; ++j)
-      Rprintf("%lf ", ACCESS(hhout, *nm, i,j));
-    Rprintf("\n");
-    }
-}
-#endif
-    
-
-if (*error != 0)
-    return;
-
-/*
- * Now copy each of the results hhout, hgout, ghout and ggout to the answer
- * matrix am
- */
-
-
-D12 = (*J)*(*nm * 2);
-D1 = (*J);
-
-nm2 = *nm / 2;
-
-SmallStore(am, D1, D12, *J-1, nm2, 0l, 0l, 0l, 0l,
-    hhout, hgout, ghout, ggout, *nm);
-SmallStore(am, D1, D12, *J-1, nm2, *nm, 0l, nm2, 0l,
-    hhout, hgout, ghout, ggout, *nm);
-SmallStore(am, D1, D12, *J-1, nm2, 0l, *nm, 0l, nm2,
-    hhout, hgout, ghout, ggout, *nm);
-SmallStore(am, D1, D12, *J-1, nm2, *nm, *nm, nm2, nm2,
-    hhout, hgout, ghout, ggout, *nm);
-
-
-free((void *)hhout);
-free((void *)hgout);
-free((void *)ghout);
-free((void *)ggout);
-}
-
-    
-
-void SWT2Drec(am, D1, D12, x, y, TWOsl, sl, J, H, LengthH, error)
-double *am; /* The big storage array                */
-int D1; /* First dimension of am                */
-int D12;    /* First and second dimensions of am multiplied     */
-int x;      /* X origin coordinate of smoothed data         */
-int y;      /* Y origin coordinate of smoothed data         */
-int TWOsl;  /* Side length of smoothed data             */
-int sl; /* Side length of result packets (2*sl = TWOsl)     */
-int J;      /* Level we accessing from (and putting into j-1)   */
-double *H;      /* The smoothing filter             */
-int *LengthH;       /* The length of the smoothing filter       */
-int *error; /* Error code                       */
-{
-register int i,j;
-double *m;  /* Somewhere to put the smoothed data           */
-int mlength;    /* The length of this matrix                */
-double *hhout, *hgout, *ghout, *ggout; /* Smoothed, hori, verti & diag  */
-int sl2;    /* sl divided by 2                  */
-
-void SmallStore();
-void SWT2D();
-void SWT2Drec();
-
-*error = 0;
-
-#ifdef PRINTON
-Rprintf("SWT2Drec: x=%ld, y=%ld, TWOsl=%ld, sl=%ld, J=%ld\n",x,y,TWOsl,sl,J);
-#endif
-
-mlength = TWOsl * TWOsl;
-
-/* Create space for TWOsl * TWOsl matrix m*/
-
-if ((m = (double *)malloc((size_t)mlength*sizeof(double)))==NULL){
-    *error = 11;
-    return;
-    }
-
-/* Fill matrix from am from x,y at origin at level j*/
-
-for(i=0; i<TWOsl; ++i)
- for(j=0; j<TWOsl; ++j)
-  ACCESS(m, TWOsl, i, j) = ACCESS3D(am, D1, D12, J, x+i, y+j);
-
-/* Create space for hhout, etc */
-
-if ((hhout = (double *)malloc((size_t)mlength*sizeof(double)))==NULL){
-    *error = 12;
-    return;
-    }
-if ((hgout = (double *)malloc((size_t)mlength*sizeof(double)))==NULL){
-    *error = 13;
-    return;
-    }
-
-if ((ghout = (double *)malloc((size_t)mlength*sizeof(double)))==NULL){
-    *error = 14;
-    return;
-    }
-
-if ((ggout = (double *)malloc((size_t)mlength*sizeof(double)))==NULL){
-    *error = 15;
-    return;
-    }
-
-/* Process using SWT2D and into hhout, hgout, ghout, hhout */
-
-SWT2D(m, &TWOsl, hhout, hgout, ghout, ggout, H, LengthH, error);
-
-if (*error != 0)
-    return;
-
-#ifdef PRINTON
-Rprintf("HH matrix for level %ld\n", J); 
-for(i=0; i<TWOsl; ++i)  {
- Rprintf("[%d,] ",i);
- for(j=0; j<TWOsl; ++j)
-  Rprintf("%lf ", ACCESS(hhout, TWOsl, i, j));
- Rprintf("\n");
- }
-#endif
-
-/* Free m */
-
-free((void *)m);
-
-/* Small Store the hhout etc into am at level j-1 */
-
-SmallStore(am, D1, D12, J-1, sl, x, y, 0l, 0l, hhout, hgout, ghout, ggout,
-    TWOsl);
-SmallStore(am, D1, D12, J-1, sl, x+TWOsl, y, sl, 0l, hhout, hgout, ghout, ggout,
-    TWOsl);
-SmallStore(am, D1, D12, J-1, sl, x, y+TWOsl, 0l, sl, hhout, hgout, ghout, ggout,
-    TWOsl);
-SmallStore(am, D1, D12, J-1, sl, x+TWOsl, y+TWOsl, sl, sl, hhout, hgout, ghout,
-    ggout, TWOsl);
-
-/* Free hhout, etc */
-
-free((void *)hhout); free((void *)hgout);
-free((void *)ghout); free((void *)ggout);
-
-/* Call SWTrec again 4 times if J != 0 , otherwise return */
-
-if (J == 1)
-    return;
-
-sl2 = sl/2;
-
-SWT2Drec(am, D1, D12, x, y, sl, sl2, J-1, H, LengthH, error);
-if (*error != 0)
-    return;
-SWT2Drec(am, D1, D12, x+TWOsl, y, sl, sl2, J-1, H, LengthH, error);
-if (*error != 0)
-    return;
-SWT2Drec(am, D1, D12, x, y+TWOsl, sl, sl2, J-1, H, LengthH, error);
-if (*error != 0)
-    return;
-SWT2Drec(am, D1, D12, x+TWOsl, y+TWOsl, sl, sl2, J-1, H, LengthH, error);
-if (*error != 0)
-    return;
-}
-
-
-/* Performs "head" part of 2D packet SWT algorithm 
- *
- * This is just the decomposition step. The full algorithm is implemented
- * in S
- */
-
-
-void SWT2D(m, nm, hhout, hgout, ghout, ggout, H, LengthH, error)
-double *m;      /* The matrix to decompose          */
-int *nm;        /* The dimension of the square matrix m     */
-double *hhout;      /* The smoothed-smoothed matrix of dimension m  */
-double *ghout;      /* The detail-smoothed matrix of dimension m    */
-double *hgout;      /* The smoothed-detail matrix of dimension m    */
-double *ggout;      /* The detail-detail matrix of dimension m  */
-double *H;      /* The smoothing filter             */
-int *LengthH;       /* The length of the smoothing filter       */
-int *error;     /* Error code 0=ok, 1=memory error      */
-{
-int mlength;        /* The number of items in h and g       */
-double *h;      /* Intermediate smoothed matrix         */
-double *g;      /* Intermediate detail matrix           */
-
-void SWT2DROWblock();   /* Apply H and G smoothers across rows      */
-void SWT2DCOLblock();   /* Apply H and G smoothers across cols      */
-
-*error = 0;
-
-mlength = *nm * *nm;
-
-
-/* First need to create intermediate matrices h and g   */
-
-if ((h = (double *)malloc((size_t)(mlength* sizeof(double))))==NULL){
-    *error = 3;
-    return;
-    }
-if ((g = (double *)malloc((size_t)(mlength * sizeof(double))))==NULL){
-    *error = 4;
-    return;
-    }
-
-/* Fill up the h and g matrices by "across rows" operator       */
-
-SWT2DROWblock(m, nm, h, g, H, (int)*LengthH, error);
-
-if (*error != 0)
-    return;
-
-/* Now for each of h and g apply the "across cols" operator     */
-
-SWT2DCOLblock(h, nm, hhout, hgout, H, (int)*LengthH, error);
-
-if (*error != 0)
-    return;
-
-SWT2DCOLblock(g, nm, ghout, ggout, H, (int)*LengthH, error);
-
-if (*error != 0)
-    return;
-
-/* That's it */
-
-free((void *)h);
-free((void *)g);
-}
-
-/*
- * Performs part of 2D packet SWT algorithm. 
- *
- * Takes matrix m and applies the G and H filters across the rows of
- * the matrix. Then this is done again but to the rotated versions.
- */ 
-
-void SWT2DROWblock(m, nm, hout, gout, H, LengthH, error)
-double *m;      /* Input matrix                 */
-int *nm;        /* Dimension of square input matrix     */
-double *hout;       /* Smoothed answer matrix (same dim as m)   */
-double *gout;       /* Detail answer matrix (same dim as m)     */
-double *H;      /* The smoothing filter             */
-int LengthH;        /* The length of the smoothing filter       */
-int *error;     /* Error code. 0=ok, 1=memory error     */
-{
-register int i,j;
-int lengthout;      /* Length of out matrices (half of *nm)     */
-double *col;        /* A container for columns of matrices      */
-double *out;        /* A vector for storing the processed coeffs    */
-
-void convolveC();   /* Wavelet smoothing filter         */
-void convolveD();   /* Wavelet detail filter            */
-void rotater();     /* Do vector rotation               */
-
-*error = 0;
-
-/* Get some memory for a column container called col    */
-
-if ((col = (double *)malloc((unsigned)*nm*sizeof(double)))==NULL)   {
-    *error = 1;
-    return;
-    } 
-
-/* Get some memory for results of a filtering op    */ 
-
-lengthout = (int)*nm/2;
-
-if ((out = (double *)malloc((unsigned)lengthout*sizeof(double)))==NULL) {
-    *error = 2;
-    return;
-    } 
-
-/* Process one column at a time */
-
-for(j=0; j< *nm; ++j)   {
-
-    /* Copy column j */
-
-    for(i=0; i< *nm; ++i)
-        *(col+i) = ACCESS(m, *nm, i, j);
-
-    
-    /* Apply DWT-smooth to j */
-
-    convolveC(col, (int)*nm, 0, H, LengthH, out,
-        0, lengthout-1, WAVELET, 1, PERIODIC);  
-
-    /* Store this column */
-
-    for(i=0; i < lengthout; ++i)
-        ACCESS(hout, *nm, i, j) = *(out+i);
-
-    /* Apply DWT-detail to j */ 
-
-    convolveD(col, (int)*nm, 0, H, LengthH, out,
-        0, lengthout-1, WAVELET, 1, PERIODIC);  
-
-    /* Store this column */
-
-    for(i=0; i < lengthout; ++i)
-        ACCESS(gout, *nm, i, j) = *(out+i);
-
-
-    /* Rotate column j */
-
-    rotater(col, (int)*nm);
-
-    /* Apply DWT-smooth to rotated j */
-
-    convolveC(col, (int)*nm, 0, H, LengthH, out,
-        0, lengthout-1, WAVELET, 1, PERIODIC);  
-
-    /* Store this column */
-
-    for(i=0; i < lengthout; ++i)
-        ACCESS(hout, *nm, i+lengthout, j) = *(out+i);
-
-    /* Apply DWT-detail to j */ 
-
-    convolveD(col, (int)*nm, 0, H, LengthH, out,
-        0, lengthout-1, WAVELET, 1, PERIODIC);  
-
-    /* Store this column */
-
-    for(i=0; i < lengthout; ++i)
-        ACCESS(gout, *nm, i+lengthout, j) = *(out+i);
-    }
-
-/* That's it */
-free((void *)col);
-free((void *)out);
-return;
-}
-
-/*
- * Performs part of 2D packet SWT algorithm. 
- *
- * Takes matrix m and applies the G and H filters across the cols of
- * the matrix. Then this is done again but to the rotated versions.
- */ 
-
-void SWT2DCOLblock(m, nm, hout, gout, H, LengthH, error)
-double *m;      /* Input matrix                 */
-int *nm;        /* Dimension of square input matrix     */
-double *hout;       /* Smoothed answer matrix (same dim as m)   */
-double *gout;       /* Detail answer matrix (same dim as m)     */
-double *H;      /* The smoothing filter             */
-int LengthH;        /* The length of the smoothing filter       */
-int *error;     /* Error code. 0=ok, 1=memory error     */
-{
-register int i,j;
-int lengthout;      /* Length of out matrices (half of *nm)     */
-double *row;        /* A container for columns of matrices      */
-double *out;        /* A vector for storing the processed coeffs    */
-
-void convolveC();   /* Wavelet smoothing filter         */
-void convolveD();   /* Wavelet detail filter            */
-void rotater();     /* Do vector rotation               */
-
-*error = 0;
-
-/* Get some memory for a column container called row    */
-
-if ((row = (double *)malloc((unsigned)*nm*sizeof(double)))==NULL)   {
-    *error = 5;
-    return;
-    } 
-
-/* Get some memory for results of a filtering op    */ 
-
-lengthout = (int)*nm/2;
-
-if ((out = (double *)malloc((unsigned)lengthout*sizeof(double)))==NULL) {
-    *error = 6;
-    return;
-    } 
-
-/* Process one row at a time */
-
-for(i=0; i< *nm; ++i)   {
-
-    /* Copy row i */
-
-    for(j=0; j< *nm; ++j)
-        *(row+j) = ACCESS(m, *nm, i, j);
-
-    
-    /* Apply DWT-smooth to i */
-
-    convolveC(row, (int)*nm, 0, H, LengthH, out,
-        0, lengthout-1, WAVELET, 1, PERIODIC);  
-
-    /* Store this row */
-
-    for(j=0; j < lengthout; ++j)
-        ACCESS(hout, *nm, i, j) = *(out+j);
-
-    /* Apply DWT-detail to i */ 
-
-    convolveD(row, (int)*nm, 0, H, LengthH, out,
-        0, lengthout-1, WAVELET, 1, PERIODIC);  
-
-    /* Store this row */
-
-    for(j=0; j < lengthout; ++j)
-        ACCESS(gout, *nm, i, j) = *(out+j);
-
-
-    /* Rotate row i */
-
-    rotater(row, (int)*nm);
-
-    /* Apply DWT-smooth to rotated i */
-
-    convolveC(row, (int)*nm, 0, H, LengthH, out,
-        0, lengthout-1, WAVELET, 1, PERIODIC);  
-
-    /* Store this row */
-
-    for(j=0; j < lengthout; ++j)
-        ACCESS(hout, *nm, i, j+lengthout) = *(out+j);
-
-    /* Apply DWT-detail to rotated i */ 
-
-    convolveD(row, (int)*nm, 0, H, LengthH, out,
-        0, lengthout-1, WAVELET, 1, PERIODIC);  
-
-    /* Store this row */
-
-    for(j=0; j < lengthout; ++j)
-        ACCESS(gout, *nm, i, j+lengthout) = *(out+j);
-    }
-
-/* That's it */
-free((void *)row);
-free((void *)out);
-return;
-}
-
-void ixtoco(level, maxlevel, index, x, y)
-int *level;
-int *maxlevel;
-int *index;
-int *x;
-int *y;
-{
-register int i;
-int lic;
-int mf;
-
-mf = 0x01 << *level;
-
-for(i=*level; i<= *maxlevel; ++i)        {
-        lic = *index % 10;
-        *index /= 10;
-        *x += ((lic & 0x01) *  mf) << 1;
-        *y += ((lic & 0x02) *  mf) ;
-        mf <<= 1;
-        }
-}
-
-
-/* A reconstruction at level levj   */
-
-void SWTRecon(am, D1, D12, levj, out, x, y, H, LengthH, error)
-double *am; /* The big storage array                */
-int D1; /* First dimension of am                */
-int D12;    /* First and second dimensions of am multiplied     */
-int levj;   /* The level to reconstruct             */
-double *out;    /* The matrix where the reconstruction is put       */
-int x;      /* The x coordinate of the origin           */
-int y;      /* The y coordinate of the origin           */
-double *H;  /* The filter                       */
-int *LengthH;   /* The length of the filter             */
-int *error; /* Error code 0=ok                  */
-{
-register int i,j;
-int sl; /* Side length of matrix holding details        */
-int matele; /* Number of elements in matrix             */
-int bc=PERIODIC;    /* Periodic boundary conditions         */
-double *hhout, *hgout, *ghout, *ggout;
-
-void SWTGetSmooth();    /* Get the smooth coefficients at partclr level */
-void ImageReconstructStep();    /* Do the inverse transform step    */
-void tpose();
-
-*error = 0;
-
-sl = 1 << levj; /* Dim of detail arrays is 2^levj   */
-matele = sl*sl;     /* Number of elements in matrix     */
-
-/* Get memory for horizontal, vertical and diagonal detail and smooth   */
-
-if ((hhout = (double *)malloc((size_t)matele*sizeof(double)))==NULL)    {
-    *error = 16;
-    return;
-    }
-
-if ((hgout = (double *)malloc((size_t)matele*sizeof(double)))==NULL)    {
-    *error = 17;
-    return;
-    }
-
-if ((ghout = (double *)malloc((size_t)matele*sizeof(double)))==NULL)    {
-    *error = 18;
-    return;
-    }
-
-if ((ggout = (double *)malloc((size_t)matele*sizeof(double)))==NULL)    {
-    *error = 19;
-    return;
-    }
-
-/* Get hold of the horizontal, vertical and diagonal detail     */
-
-for(i=0; i<sl; ++i)
-  for(j=0; j<sl; ++j)   {
-    ACCESS(hgout, sl, i, j) = ACCESS3D(am, D1, D12, levj, x+i, y+sl+j);
-    ACCESS(ghout, sl, i, j) = ACCESS3D(am, D1, D12, levj, x+sl+i, y+j);
-    ACCESS(ggout, sl, i, j) = ACCESS3D(am, D1, D12, levj, x+sl+i, y+sl+j);
-    }
-
-/*
- * Get hold of the smooth at this level 
- *
- * If levj==0 then this is just the final smoothed scaling function coefficients
- *
- * If levj>0 then we have to recursively get hold of the smooth at the j-1
- * level
- * 
- */
-
-if (levj == 0)
-    ACCESS(hhout, sl, 0, 0) = ACCESS3D(am, D1, D12, levj, x, y);
-else    {
-    SWTGetSmooth(am, D1, D12, hhout, levj, x, y, sl, H, LengthH, error);
-    if (*error != 0)
-        return;
-    }
-
-/*
- * Use S,H,V, and D to reconstruct at level levj, x, y 
- * and put it into out.
- */
-
-#ifdef PRINTON
-Rprintf("This is ggout\n");
-for(i=0; i<sl; ++i) {
-  Rprintf("[%d,] ", i);
-  for(j=0; j<sl; ++j)
-    Rprintf("%lf ", ACCESS(ggout, sl, i, j));
-  Rprintf("\n");
-  }
-Rprintf("This is hgout\n");
-for(i=0; i<sl; ++i) {
-  Rprintf("[%d,] ", i);
-  for(j=0; j<sl; ++j)
-    Rprintf("%lf ", ACCESS(hgout, sl, i, j));
-  Rprintf("\n");
-  }
-Rprintf("This is ghout\n");
-for(i=0; i<sl; ++i) {
-  Rprintf("[%d,] ", i);
-  for(j=0; j<sl; ++j)
-    Rprintf("%lf ", ACCESS(ghout, sl, i, j));
-  Rprintf("\n");
-  }
-#endif
-
-/*
-tpose(hhout, sl); - this doesn't need to be done because its already been done
-*/
-tpose(hgout, sl);
-tpose(ghout, sl);
-tpose(ggout, sl);
-
-ImageReconstructStep(hhout, hgout, ghout, ggout, sl, 0, sl, 0,
-    H, *LengthH, 2*sl, 0, 2*sl-1, out, &bc, error);
-
-#ifdef PRINTON
-Rprintf("Immediate IRS\n");
-for(i=0; i<2*sl; ++i)   {
-    Rprintf("[%d, ] ", i);
-    for(j=0; j<2*sl; ++j)   {
-        Rprintf("%lf ", ACCESS(out, 2*sl, i,j));
-        }
-    Rprintf("\n");
-    }
-#endif
-
-if (*error != 0)
-    return;
-
-/*
- * Free memory if necessary
- */
-
-free((void *)hhout);
-free((void *)hgout);
-free((void *)ghout);
-free((void *)ggout);
-}
-
-void SAvBasis(am, D1, D12, TheSmooth, levj, H, LengthH, error)
-double *am; /* The big storage array                */
-int *D1;    /* First dimension of am                */
-int *D12;   /* First and second dimensions of am multiplied     */
-double *TheSmooth;  /* The returned smooth              */
-int *levj;      /* The level you want it at         */
-double *H;      /* The filter                   */
-int *LengthH;       /* Length of the filter             */
-int *error;     /* Error code. O=ok             */
-{
-void tpose();
-void SWTGetSmooth();
-
-*error = 0;
-
-SWTGetSmooth(am, *D1, *D12, TheSmooth, *levj, 0, 0, 1l<<*levj,
-    H, LengthH, error);
-
-if (*error != 0)
-    return;
-
-tpose(TheSmooth, 1<<*levj);
-
-}
-
-void SWTGetSmooth(am, D1, D12, TheSmooth, levj, x, y, sl, H, LengthH, error)
-double *am; /* The big storage array                */
-int D1; /* First dimension of am                */
-int D12;    /* First and second dimensions of am multiplied     */
-double *TheSmooth;  /* The returned smooth              */
-int levj;       /* The level you want it at         */
-int x;          /* The x ordinate for the origin        */
-int y;          /* The y ordinate for the origin        */
-int sl;     /* Sidelength of TheSmooth array        */
-double *H;      /* The filter                   */
-int *LengthH;       /* Length of the filter             */
-int *error;     /* Error code. O=ok             */
-{
-register int i,j;
-double *holder, *holder2;   /* Some storage space           */
-double *rc0, *rc1, *rc2, *rc3;
-            /* The four reconstructions         */
-int matele;     /* Number of elements in the recon matrices */
-
-void tpose();
-void rotateback();  /* Rotate a vector back             */
-void SWTRecon();    /* Get a reconstruction at level,x,y        */
-
-/*
- * Get memory for SWTRecon
- */
-
-matele = sl*sl;
-
-if ((rc0 = (double *)malloc((size_t)matele*sizeof(double)))==NULL)  {
-    *error = 20;
-    return;
-    } 
-
-if ((rc1 = (double *)malloc((size_t)matele*sizeof(double)))==NULL)  {
-    *error = 21;
-    return;
-    } 
-
-if ((rc2 = (double *)malloc((size_t)matele*sizeof(double)))==NULL)  {
-    *error = 22;
-    return;
-    } 
-
-if ((rc3 = (double *)malloc((size_t)matele*sizeof(double)))==NULL)  {
-    *error = 24;
-    return;
-    } 
-
-
-/*
- * Perform SWTRecon for each of the 4 indices
- *
- * and maybe do some rotation
- */
-SWTRecon(am, D1, D12, levj-1, rc0, x, y, H, LengthH, error);
-if (*error != 0) return;
-SWTRecon(am, D1, D12, levj-1, rc1, x+sl, y, H, LengthH, error);
-if (*error != 0) return;
-SWTRecon(am, D1, D12, levj-1, rc2, x, y+sl, H, LengthH, error);
-if (*error != 0) return;
-SWTRecon(am, D1, D12, levj-1, rc3, x+sl, y+sl, H, LengthH, error);
-if (*error != 0) return;
-
-/* Rotation -
- *
- * rc0  -   none
- * rc1  -   rotate rows
- * rc2  -   rotate columns
- * rc3  -   rotate rows and columns
- *
- */ 
-
-if ((holder = (double *)malloc((size_t)sl*sizeof(double)))==NULL)   {
-    *error = 25;
-    return;
-    }
-if ((holder2 = (double *)malloc((size_t)sl*sizeof(double)))==NULL)  {
-    *error = 26;
-    return;
-    }
-
-
-/* Rotate row by row */
-
-for(i=0; i<sl; ++i) {
-
-    /* Get row i */
-    for(j = 0; j<sl; ++j)   {
-        *(holder+j) = ACCESS(rc1,sl,i,j);
-        *(holder2+j) = ACCESS(rc3,sl,i,j);
-        }
-
-    rotateback(holder, (int)sl);
-    rotateback(holder2, (int)sl);
-
-    for(j=0; j<sl; ++j) {
-        ACCESS(rc1,sl,i,j) = *(holder+j);
-        ACCESS(rc3,sl,i,j) = *(holder2+j);
-        }
-    }
-
-/* Rotate col by col */
-
-for(j=0; j<sl; ++j) {
-
-    /* Get col j */
-    for(i = 0; i<sl; ++i)   {
-        *(holder+i) = ACCESS(rc2,sl,i,j);
-        *(holder2+i) = ACCESS(rc3,sl,i,j);
-        }
-
-    rotateback(holder, (int)sl);
-    rotateback(holder2, (int)sl);
-
-    for(i=0; i<sl; ++i) {
-        ACCESS(rc2,sl,i,j) = *(holder+i);
-        ACCESS(rc3,sl,i,j) = *(holder2+i);
-        }
-    }
-#ifdef PRINTON
-Rprintf("This is for level %ld\n", levj);
-Rprintf("r0\n");
-for(i=0; i<sl; ++i) {
-  Rprintf("[%d,] ", i);
-  for(j=0; j<sl; ++j)
-    Rprintf("%lf ", ACCESS(rc0, sl, i, j));
-  Rprintf("\n");
-  }
-Rprintf("r1\n");
-for(i=0; i<sl; ++i) {
-  Rprintf("[%d,] ",i );
-  for(j=0; j<sl; ++j)
-    Rprintf("%lf ", ACCESS(rc1, sl, i, j));
-  Rprintf("\n");
-  }
-Rprintf("r2\n");
-for(i=0; i<sl; ++i) {
-  Rprintf("[%d,] ", i);
-  for(j=0; j<sl; ++j)
-    Rprintf("%lf ", ACCESS(rc2, sl, i, j));
-  Rprintf("\n");
-  }
-Rprintf("r3\n");
-for(i=0; i<sl; ++i) {
-  Rprintf("[%d,] ", i);
-  for(j=0; j<sl; ++j)
-    Rprintf("%lf ", ACCESS(rc3, sl, i, j));
-  Rprintf("\n");
-  }
-#endif
-
-/*
- * Free holder memory
- */
-
-free((void *)holder);
-free((void *)holder2);
-
-
-/*
- * Work out the average and put it into TheSmooth
- */
-
-for(i=0; i<sl; ++i)
-  for(j=0; j<sl; ++j)   
-    ACCESS(TheSmooth, sl, i,j) = (ACCESS(rc0,sl,i,j)+
-                  ACCESS(rc1,sl,i,j)+
-                  ACCESS(rc2,sl,i,j)+
-                  ACCESS(rc3,sl,i,j))/4.0;
-
-#ifdef PRINTON
-Rprintf("Transposed TheSmooth\n");
-/*
-tpose(TheSmooth, sl);
-*/
-
-for(i=0; i<sl; ++i) {
-    Rprintf("[%d, ] ", i);
-    for(j=0; j<sl; ++j) {
-        Rprintf("%lf ", ACCESS(TheSmooth, sl, i,j));
-        }
-    Rprintf("\n");
-    }
-#endif
-
-
-/*
- * Free memory
- */
-
-free((void *)rc0);
-free((void *)rc1);
-free((void *)rc2);
-free((void *)rc3);
-}
-
-void tpose(m, l)
-double *m;
-int l;
-{
-double tmp;
-register int i,j;
-
-for(i=0; i<l; ++i)
-    for(j=0; j<i; ++j)  {
-        tmp = ACCESS(m, l, i, j);
-        ACCESS(m, l, i, j) = ACCESS(m, l, j, i);
-        ACCESS(m, l, j, i) = tmp;
-        }
-}
-
-void getpacketwst2D(am, D1, D12, maxlevel, level, index, type, out, sl)
-double *am; /* The big storage array                */
-int *D1;    /* First dimension of am                */
-int *D12;   /* First and second dimensions of am multiplied     */
-int *maxlevel; /* The maximum level (in C numbering)            */
-int *level; /* Which level of coefficients you require      */
-int *index; /* The index number of the packet           */
-int *type;  /* The type of coefficients S,H,V or D (TYPES etc.) */
-double *out;    /* A square matrix of dimension sl          */ 
-int *sl;    /* Dimension of out square matrix           */
-{
-register int i,j;
-int x,y;    /* The coordinates into am              */
-void ixtoco();  /* Convert index to coordinates             */
-void tpose();
-
-x=y=0;
-ixtoco(level, maxlevel, index, &x, &y);
-
-switch(*type)   {
-    case TYPES:
-        break;
-
-    case TYPEH:
-        y += *sl;
-        break;
-
-    case TYPEV:
-        x += *sl;
-        break;
-
-    case TYPED:
-        x += *sl;
-        y += *sl;
-        break;
-    };
-
-for(i=0; i<*sl; ++i)
-  for(j=0; j<*sl; ++j)
-    ACCESS(out, *sl, i, j) = ACCESS3D(am, *D1, *D12, *level, x+i, y+j);
-
-tpose(out, *sl);
-
-}
-
-void putpacketwst2D(am, D1, D12, maxlevel, level, index, type, in, sl)
-double *am; /* The big storage array                */
-int *D1;    /* First dimension of am                */
-int *D12;   /* First and second dimensions of am multiplied     */
-int *maxlevel; /* The maximum level (in C numbering)            */
-int *level; /* Which level of coefficients you require      */
-int *index; /* The index number of the packet           */
-int *type;  /* The type of coefficients S,H,V or D (TYPES etc.) */
-double *in; /* A square matrix of dimension sl          */ 
-int *sl;    /* Dimension of out square matrix           */
-{
-register int i,j;
-int x,y;    /* The coordinates into am              */
-void ixtoco();  /* Convert index to coordinates             */
-
-x=y=0;
-ixtoco(level, maxlevel, index, &x, &y);
-
-tpose(in, *sl);
-
-switch(*type)   {
-    case TYPES:
-        break;
-
-    case TYPEH:
-        y += *sl;
-        break;
-
-    case TYPEV:
-        x += *sl;
-        break;
-
-    case TYPED:
-        x += *sl;
-        y += *sl;
-        break;
-    };
-
-
-for(i=0; i<*sl; ++i)
-  for(j=0; j<*sl; ++j)
-    ACCESS3D(am, *D1, *D12, *level, x+i, y+j) = ACCESS(in, *sl, i, j);
-
-}
-
-/*
- * The following code was first written in C++ by Markus Monnerjahn, Universitat
- * Kaiserslautern. The code was rewritten in C (and a few errors corrected)
- * by Piotr Fryzlewicz, Wroclaw University whilst he was visiting University of
- * Bristol in 1998-9. The code is designed to integrate with S-Plus
- */
-
-/* The following was in Fryzlewicz's ``Filters.h'' */
-
-#define Nmax 8
-
-typedef struct {
-int Length;
-double H[2 * Nmax];
-double G[2 * Nmax];
-double HLeft[Nmax][3 * Nmax - 1];
-double GLeft[Nmax][3 * Nmax - 1];
-double HRight[Nmax][3 * Nmax - 1];
-double GRight[Nmax][3 * Nmax - 1];
-double PreLeft[Nmax][Nmax];
-double PreInvLeft[Nmax][Nmax];
-double PreRight[Nmax][Nmax];
-double PreInvRight[Nmax][Nmax];
-} Filter;
-
-Filter GetFilt(int);
-
-double Sum(double* vect, int length);
-
-/* The following was in Fryzlewicz's ``WavInt.h'' */
-
-#define NORMAL 0
-#define INVERSE 1
-
-#define NO_PRECOND 0
-#define PRECOND 1
-
-void Precondition(int Scale, int Direction, Filter F, double* Vect);
-
-void TransStep(int Scale, Filter F, double* Vect);
-
-void InvTransStep(int Scale, Filter F, double* Vect);
-
-void Transform(int MinScale, int Direction, int FilterNumber, double* Vect, int 
-Size, int Precond,
-int* FilterHistory);
-
-/* The following was in Fryzlewicz's ``Coef.h'' */
 
 const double Interior[] = {
 0.70710678, 0.70710678, 0.482962913145, 0.836516303738, 
@@ -8657,6 +657,7869 @@ const double RightPre[] = {
 0.7434539179E+00, 0.1345073280E+01
 };
 
+
+
+/*
+ * End of the swt2d  macro code
+ */
+
+
+/* The code starts here !! */
+
+/*
+ * Do wavelet cross-validation in C
+ */
+
+void CWaveletCV(double* noisy,
+		int* nnoisy,
+		double* UniversalThresh,
+		double* C,
+		double* D,
+		int*  LengthD,
+		double* H,
+		int*  LengthH,
+		int*  levels,
+		int*  firstC,
+		int*  lastC,
+		int* offsetC,
+		int* firstD,
+		int* lastD,
+		int* offsetD,
+		int* ntt,
+		int* ll,
+		int* bc,
+		double* tol,
+		double* xvthresh,
+		int* interptype,
+		int* error)
+{
+register int verbose=0;
+double ax, bx,cx;
+double x0, x1, x2, x3;
+/* NOT NEEDED
+double fa,fb,fc
+ * END */
+double f1,f2;
+double ssq, tmp;
+
+void Call_Crsswav(double* noisy,
+		  int* nnoisy,
+		  double* value,
+		  double* C,
+		  double* D,
+		  int* LengthD,
+		  double* H,
+		  int* LengthH,
+		  int* levels,
+		  int* firstC,
+		  int* lastC,
+		  int* offsetC,
+		  int* firstD,
+		  int* lastD,
+		  int* offsetD,
+		  int* ntt,
+		  int* ll,
+		  int* bc,
+		  double* ssq,
+		  int* interptype,
+		  int* error);
+
+ 
+ax = 0.0;
+bx = *UniversalThresh/2.0;
+cx = *UniversalThresh;
+x0 = ax;
+x3 = cx;
+
+if (*error != 0)    {
+    verbose=1;
+    *error = 0;
+    }
+else
+    verbose=0;
+
+if (verbose)    {
+    Rprintf("Entered WaveletCV\n");
+    }
+if (fabs(cx - bx) > fabs(bx - ax))  {
+    x1 = bx;
+    x2 = bx + Cons*(cx-bx);
+    }
+else    {
+    x2 = bx;
+    x1 = bx - Cons*(bx-ax);
+    }
+
+/* NOT NEEDED 
+
+Call_Crsswav(noisy, nnoisy, &ax, C, D, LengthD, H,
+    LengthH, levels, firstC, lastC, offsetC, firstD,
+    lastD, offsetD, ntt, ll, bc, &ssq, interptype, error);
+ 
+fa = ssq;
+
+if (*error != 0)    {
+    *error += 1000;
+    return;
+    }
+
+Call_Crsswav(noisy, nnoisy, &bx, C, D, LengthD, H, LengthH, levels,
+    firstC, lastC, offsetC, firstD, lastD, offsetD,
+    ntt, ll, bc, &ssq, interptype, error);
+fb = ssq;
+
+if (*error != 0)    {
+    *error += 1100;
+    return;
+    }
+
+Call_Crsswav(noisy, nnoisy, &cx, C, D, LengthD, H, LengthH, levels,
+    firstC, lastC, offsetC, firstD, lastD, offsetD,
+    ntt, ll, bc, &ssq, interptype, error);
+fc = ssq;
+
+if (*error != 0)    {
+    *error += 1200;
+    return;
+    }
+ * END OF NOT NEEDED */
+
+Call_Crsswav(noisy, nnoisy, &x1, C, D, LengthD, H, LengthH, levels,
+    firstC, lastC, offsetC, firstD, lastD, offsetD,
+    ntt, ll, bc, &ssq, interptype, error);
+f1 = ssq;
+
+if (*error != 0)    {
+    *error += 1300;
+    return;
+    }
+
+Call_Crsswav(noisy, nnoisy, &x2, C, D, LengthD, H, LengthH, levels,
+    firstC, lastC, offsetC, firstD, lastD, offsetD,
+    ntt, ll, bc, &ssq, interptype, error);
+f2 = ssq;
+
+if (*error != 0)    {
+    *error += 1400;
+    return;
+    }
+
+while(fabs(x3-x0) > *tol*(fabs(x1) + fabs(x2))) {
+    if (verbose)    {
+    Rprintf("x0=%lf, x1=%lf, x2=%lf, x3=%lf\n", x0,x1,x2,x3);
+    Rprintf("f1=%lf, f2=%lf\n", f1,f2);
+/* MAN 01/03/12. Removed fflush(stdout) call 
+    fflush(stdout);	*/
+        }
+    if (f2 < f1)    {
+        x0 = x1;
+        x1 = x2;
+        x2 = R*x1 + Cons*x3;
+        f1 = f2;
+        Call_Crsswav(noisy, nnoisy, &x2, C, D, LengthD, H,
+            LengthH, levels, firstC, lastC, offsetC, firstD, lastD,
+            offsetD, ntt, ll, bc, &ssq, interptype, error);
+        f2 = ssq;
+
+        if (*error != 0)    {
+            *error += 1500;
+            return;
+            }
+    }
+
+    else    {
+        x3 = x2;
+        x2 = x1;
+        x1 = R*x2 + Cons*x0;
+        f2 = f1;
+        Call_Crsswav(noisy, nnoisy, &x1, C, D, LengthD, H,
+            LengthH, levels, firstC, lastC, offsetC, firstD, lastD,
+            offsetD, ntt, ll, bc, &ssq, interptype, error);
+        f1 = ssq;
+
+        if (*error != 0)    {
+            *error += 1600;
+            return;
+            }
+    }
+  }
+
+if (f1 < f2)
+    tmp = x1;
+else
+    tmp = x2;
+
+x1 = tmp/sqrt(1 - log(2.0)/log((double)*nnoisy));
+
+*xvthresh = x1;
+return;
+}
+/*
+ * Wrapper to call Crsswav or Crsswav2 depending on the value of interptype
+ * This allows one to easily change which type of interpolation one does. 
+ *
+ */
+
+void Call_Crsswav(double* noisy,
+		  int* nnoisy,
+		  double* value,
+		  double* C,
+		  double* D,
+		  int* LengthD,
+		  double* H,
+		  int* LengthH,
+		  int* levels,
+		  int* firstC,
+		  int* lastC,
+		  int* offsetC,
+		  int* firstD,
+		  int* lastD,
+		  int* offsetD,
+		  int* ntt,
+		  int* ll,
+		  int* bc,
+		  double* ssq,
+		  int* interptype,
+		  int* error)
+{
+
+void Crsswav(double* noisy,
+	     int* nnoisy,
+	     double* value,
+	     double* C,
+	     double* D,
+	     int* LengthD,
+	     double* H,
+	     int* LengthH,
+	     int* levels,
+	     int* firstC,
+	     int* lastC,
+	     int* offsetC,
+	     int* firstD,
+	     int* lastD,
+	     int* offsetD,
+	     int* ntt,
+	     int* ll,
+	     int* bc,
+	     double* ssq,
+	     int* error);
+
+
+switch(*interptype) {
+
+    case 1:
+        Crsswav(noisy, nnoisy, value, C, D, LengthD,
+            H, LengthH, levels, firstC, lastC, offsetC, firstD,
+            lastD, offsetD, ntt, ll, bc, ssq, error);
+        break;
+    case 2:
+        Crsswav2(noisy, nnoisy, value, C, D, LengthD,
+            H, LengthH, levels, firstC, lastC, offsetC, firstD,
+            lastD, offsetD, ntt, ll, bc, ssq, error);
+        break;
+
+    default:
+        *error += 3000;
+        break;
+    }
+return;
+}
+/*
+ * Do rsswav in C
+ *
+ * This version interpolates the noisy data and compares it to the
+ * function values at the index points. (Crsswav2.c does it the other way
+ * round - i.e. interpolates the reconstructed function and compares these
+ * to the noisy values. Maybe this function is not as good as Crsswav2.c
+ * because we smooth the noise before comparison.
+ */
+
+void Crsswav(double* noisy,
+	     int* nnoisy,
+	     double* value,
+	     double* C,
+	     double* D,
+	     int* LengthD,
+	     double* H,
+	     int* LengthH,
+	     int* levels,
+	     int* firstC,
+	     int* lastC,
+	     int* offsetC,
+	     int* firstD,
+	     int* lastD,
+	     int* offsetD,
+	     int* ntt,
+	     int* ll,
+	     int* bc,
+	     double* ssq,
+	     int* error)
+{
+register int nodd,i;
+int type;
+int Dlevels;
+int *levs_to_do;
+int qlevels;
+int local_levels;
+double *interps;
+double ssq1=0.0;
+double tmp;
+
+
+
+/*
+Rprintf("Crsswav\n");
+Rprintf("LengthH is %ld\n", *LengthH);
+Rprintf("levels is %ld\n", *levels);
+Rprintf("ll is %ld\n", *ll); 
+fflush(stdout);
+*/
+
+/* Get memory for levels to do array */
+
+local_levels = *levels-1; 
+
+qlevels = local_levels - *ll;
+
+if ((levs_to_do = (int *)malloc((unsigned)qlevels*sizeof(int)))==NULL){
+    *error = 1;
+    return;
+    }
+else    for(i=0; i < qlevels; ++i)
+        *(levs_to_do+i) = *ll+i;
+
+/* Get memory for interps */
+
+nodd = *nnoisy/2; 
+
+if ((interps = (double *)malloc((unsigned)nodd*sizeof(double)))==NULL)  {
+    *error = 2;
+    return;
+    }
+
+type = (int)WAVELET;    /* Only for wavelet transform */
+
+/* Do the ODD analysis and reconstruction */
+/*
+ * Now copy odd elements to C array 
+ */
+
+for(i=0; i<nodd; ++i)   {
+    *(C+i) = *(noisy+(2*i));
+    /* Rprintf("Copied %lf to C[%d]\n", *(C+i), i); */
+    }
+
+/*
+ * Do wavelet decomposition of odd, then threshold, then reconstruction.
+ */
+
+wavedecomp(C, D, H, LengthH, &local_levels,
+    firstC, lastC, offsetC,
+    firstD, lastD, offsetD,
+    &type, bc, error); 
+
+/*Rprintf("Done wavelet decomposition\n");
+for(i=0; i< *LengthC; ++i)
+    Rprintf("C[%d] is %lf\n", i, *(C+i));
+for(i=0; i< *LengthD; ++i)
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n"); */
+
+if (*error != 0)    {
+    *error += 10;
+    return;
+    }
+/* Threshold */
+
+Dlevels = local_levels - 1;
+Cthreshold(D, LengthD, firstD, lastD, offsetD, &Dlevels, ntt, value,
+    levs_to_do, &qlevels, bc, error);
+
+if (*error != 0)    {
+    *error += 20;
+    return;
+    }
+/*
+Rprintf("Done thresholding\n");
+for(i=0; i< *LengthD; ++i)
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n");
+
+*/
+/* Reconstruct */
+
+waverecons(C, D, H, LengthH, &local_levels,
+    firstC, lastC, offsetC, firstD, lastD, offsetD,
+    &type, bc, error);
+
+if (*error != 0)    {
+    *error += 30;
+    return;
+    }
+/*
+Rprintf("Done reconstruction\n");
+for(i=0; i< *LengthC; ++i)
+    Rprintf("C[%d] is %lf\n", i, *(C+i));
+Rprintf("-----\n");
+*/
+
+/* Now work out interpolated evens from noisy */
+
+for(i=0; i<nodd-1; ++i) {
+    *(interps+i+1) = (*(noisy+2*i+1) + *(noisy+2*i+3))/2;
+    }
+*(interps) = *(noisy+1);
+
+/*
+for(i=0; i<nodd; ++i)
+    Rprintf("interps[%d] is %lf\n", i, *(interps+i));
+*/
+
+/* Now form sum of squares */
+
+for(i=0; i<nodd; ++i)   {
+    tmp = *(interps+i) - *(C+i);
+    ssq1 += tmp*tmp;
+    /*Rprintf("ssq1[%d] is %lf\n", i, ssq1); */
+    }
+
+*ssq = ssq1;
+
+/* Do the EVEN analysis and reconstruction */
+/*
+ * Now copy even elements to C array 
+ */
+
+for(i=0; i<nodd; ++i)   {
+    *(C+i) = *(noisy+(2*i+1));
+    /* Rprintf("Copied %lf to C[%d]\n", *(C+i), i); */
+    }
+
+/*
+ * Do wavelet decomposition of even, then threshold, then reconstruction.
+ */
+
+wavedecomp(C, D, H, LengthH, &local_levels,
+    firstC, lastC, offsetC,
+    firstD, lastD, offsetD,
+    &type, bc, error); 
+
+/*
+Rprintf("Done wavelet decomposition\n");
+for(i=0; i< *LengthC; ++i)
+    Rprintf("C[%d] is %lf\n", i, *(C+i));
+for(i=0; i< *LengthD; ++i)
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n");
+*/
+if (*error != 0)    {
+    *error += 40;
+    return;
+    }
+/* Threshold */
+
+Dlevels = local_levels - 1;
+Cthreshold(D, LengthD, firstD, lastD, offsetD, &Dlevels, ntt, value,
+    levs_to_do, &qlevels, bc, error);
+
+if (*error != 0)    {
+    *error += 50;
+    return;
+    }
+/*
+Rprintf("Done thresholding\n");
+for(i=0; i< *LengthD; ++i)
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n");
+*/
+
+/* Reconstruct */
+
+waverecons(C, D, H, LengthH, &local_levels,
+    firstC, lastC, offsetC, firstD, lastD, offsetD,
+    &type, bc, error);
+
+if (*error != 0)    {
+    *error += 60;
+    return;
+    }
+
+/* Now work out interpolated odds from noisy */
+
+for(i=0; i<nodd-1; ++i) {
+    *(interps+i+1) = (*(noisy+2*i) + *(noisy+2*i+2))/2;
+    }
+*(interps) = *(noisy);
+
+/* Now form sum of squares */
+
+ssq1 = 0.0;
+
+for(i=0; i<nodd; ++i)   {
+    tmp = *(interps+i) - *(C+i);
+    ssq1 += tmp*tmp;
+/*  Rprintf("ssq1[%d] is %lf\n", i, ssq1); */
+    }
+
+*ssq = (*ssq + ssq1)/2.0;
+free((char *)levs_to_do);
+free((char *)interps);
+}
+/*
+ * Do rsswav in C
+ *
+ * This version interpolates the reconstructed function and compares it to the
+ * noisy data at the noisy data index points. (Crsswav.c does it the other way
+ * round - i.e. interpolates the noise and compares this to the reconstruced
+ * function on the index points of the reconstruced function
+ * Maybe this function is better than Crsswav.c
+ * because we don't smooth the noise before comparison.
+ */
+
+void 
+Crsswav2 (
+    double *noisy,  /* The noisy data - power of 2              */
+    int *nnoisy,    /* The number of noisy data elements, must be power of 2*/
+    double *value,  /* The threshold value at which to estimate CV Score    */
+    double *C,
+    double *D,
+    int *LengthD,
+    double *H,  /* The wavelets to use                  */
+    int *LengthH,   /* The length of the filter             */
+    int *levels,
+    int *firstC,
+    int *lastC,
+    int *offsetC,
+    int *firstD,
+    int *lastD,
+    int *offsetD,
+    int *ntt,   /* The threshold type                   */
+    int *ll,    /* The lowest level to threshold; all levels above too  */
+    int *bc,    /* The boundary conditions              */
+    double *ssq,    /* The answer!                      */
+    int *error /* There was an error!                  */
+)
+{
+register int nodd,i;
+int type;
+int Dlevels;
+int *levs_to_do;
+int qlevels;
+int local_levels;
+double *interps;
+double ssq1=0.0;
+double tmp;
+
+
+
+/*
+Rprintf("Crsswav\n");
+Rprintf("LengthH is %ld\n", *LengthH);
+Rprintf("levels is %ld\n", *levels);
+Rprintf("ll is %ld\n", *ll); 
+fflush(stdout);
+*/
+
+/* Get memory for levels to do array */
+
+local_levels = *levels-1; 
+
+qlevels = local_levels - *ll;
+
+if ((levs_to_do = (int *)malloc((unsigned)qlevels*sizeof(int)))==NULL){
+    *error = 1;
+    return;
+    }
+else    for(i=0; i < qlevels; ++i)
+        *(levs_to_do+i) = *ll+i;
+
+/* Get memory for interps */
+
+nodd = *nnoisy/2; 
+
+if ((interps = (double *)malloc((unsigned)nodd*sizeof(double)))==NULL)  {
+    *error = 2;
+    return;
+    }
+
+type = (int)WAVELET;    /* Only for wavelet transform */
+
+/* Do the ODD analysis and reconstruction */
+/*
+ * Now copy odd elements to C array 
+ */
+
+for(i=0; i<nodd; ++i)   {
+    *(C+i) = *(noisy+(2*i));
+    /* Rprintf("Copied %lf to C[%d]\n", *(C+i), i); */
+    }
+
+/*
+ * Do wavelet decomposition of odd, then threshold, then reconstruction.
+ */
+
+wavedecomp(C, D, H, LengthH, &local_levels,
+    firstC, lastC, offsetC,
+    firstD, lastD, offsetD,
+    &type, bc, error); 
+
+/*Rprintf("Done wavelet decomposition\n");
+for(i=0; i< *LengthC; ++i)
+    Rprintf("C[%d] is %lf\n", i, *(C+i));
+for(i=0; i< *LengthD; ++i)
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n"); */
+
+if (*error != 0)    {
+    *error += 10;
+    return;
+    }
+/* Threshold */
+
+Dlevels = local_levels - 1;
+Cthreshold(D, LengthD, firstD, lastD, offsetD, &Dlevels, ntt, value,
+    levs_to_do, &qlevels, bc, error);
+
+if (*error != 0)    {
+    *error += 20;
+    return;
+    }
+/*
+Rprintf("Done thresholding\n");
+for(i=0; i< *LengthD; ++i)
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n");
+
+*/
+/* Reconstruct */
+
+waverecons(C, D, H, LengthH, &local_levels,
+    firstC, lastC, offsetC, firstD, lastD, offsetD,
+    &type, bc, error);
+
+if (*error != 0)    {
+    *error += 30;
+    return;
+    }
+/*
+Rprintf("Done reconstruction\n");
+for(i=0; i< *LengthC; ++i)
+    Rprintf("C[%d] is %lf\n", i, *(C+i));
+Rprintf("-----\n");
+*/
+
+/* This bit is different to Crsswav.
+ * We interpolate the reconstructed function returned in C
+ */
+
+for(i=0; i<nodd-1; ++i) {
+    *(interps+i) = (*(C+i+1) + *(C+i))/2.0;
+    }
+*(interps+nodd-1) = (*C + *(C+nodd-1))/2.0;
+
+/*
+for(i=0; i<nodd; ++i)
+    Rprintf("interps[%d] is %lf\n", i, *(interps+i));
+*/
+
+/* Now form sum of squares */
+
+for(i=0; i<nodd; ++i)   {
+    tmp = *(interps+i) - *(noisy+2*i+1);
+    ssq1 += tmp*tmp;
+    /*Rprintf("ssq1[%d] is %lf\n", i, ssq1); */
+    }
+
+*ssq = ssq1;
+
+/* Do the EVEN analysis and reconstruction */
+/*
+ * Now copy even elements to C array 
+ */
+
+for(i=0; i<nodd; ++i)   {
+    *(C+i) = *(noisy+(2*i+1));
+    /* Rprintf("Copied %lf to C[%d]\n", *(C+i), i); */
+    }
+
+/*
+ * Do wavelet decomposition of even, then threshold, then reconstruction.
+ */
+
+wavedecomp(C, D, H, LengthH, &local_levels,
+    firstC, lastC, offsetC,
+    firstD, lastD, offsetD,
+    &type, bc, error); 
+
+/*
+Rprintf("Done wavelet decomposition\n");
+for(i=0; i< *LengthC; ++i)
+    Rprintf("C[%d] is %lf\n", i, *(C+i));
+for(i=0; i< *LengthD; ++i)
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n");
+*/
+if (*error != 0)    {
+    *error += 40;
+    return;
+    }
+/* Threshold */
+
+Dlevels = local_levels - 1;
+Cthreshold(D, LengthD, firstD, lastD, offsetD, &Dlevels, ntt, value,
+    levs_to_do, &qlevels, bc, error);
+
+if (*error != 0)    {
+    *error += 50;
+    return;
+    }
+/*
+Rprintf("Done thresholding\n");
+for(i=0; i< *LengthD; ++i)
+    Rprintf("D[%d] is %lf\n", i, *(D+i));
+Rprintf("-------\n");
+*/
+
+/* Reconstruct */
+
+waverecons(C, D, H, LengthH, &local_levels,
+    firstC, lastC, offsetC, firstD, lastD, offsetD,
+    &type, bc, error);
+
+if (*error != 0)    {
+    *error += 60;
+    return;
+    }
+
+/* Now work out interpolated odds from noisy */
+
+for(i=0; i<nodd-1; ++i) {
+    *(interps+i) = (*(C+i+1) + *(C+i))/2.0;
+    }
+*(interps+nodd-1) = (*C + *(C+nodd-1))/2.0;
+
+/* Now form sum of squares */
+
+ssq1 = 0.0;
+
+for(i=0; i<nodd; ++i)   {
+    tmp = *(interps+i) - *(noisy+2*i);
+    ssq1 += tmp*tmp;
+/*  Rprintf("ssq1[%d] is %lf\n", i, ssq1); */
+    }
+
+*ssq = (*ssq + ssq1)/2.0;
+free((char *)levs_to_do);
+free((char *)interps);
+}
+/* 
+ * Do manual thresholding in C
+ */
+
+#define HardThreshold(coef, threshold) (fabs(coef) > (threshold) ? (coef):(0.0))
+
+void 
+Cthreshold (double *D, int *LengthD, int *firstD, int *lastD, int *offsetD, int *Dlevels, int *ntt, double *value, int *levels, int *qlevels, int *bc, int *error)
+{
+register int i,j, local_level;
+double cough;
+double *din;
+
+
+/*
+Rprintf("Cthreshold\n");
+Rprintf("LengthD is %ld\n", *LengthD);
+Rprintf("ntt is %ld\n", *ntt);
+Rprintf("value is %lf\n", *value);
+Rprintf("qlevels is %ld\n", *qlevels);
+*/
+
+*error = 0;
+
+/*
+ * Check that threshold value is positive or zero
+ */
+
+if (*value < 0.0)   {
+    *error = 3;
+    return;
+    }
+
+/*
+ * Check to see that the levels we are asked to look at are legal
+ */
+
+for(i=0; i<*qlevels; ++i)   {
+    if (*(levels+i) > *Dlevels) {
+        *error = 1;
+        return;
+        }
+    }
+/*
+ * Now do the thresholding
+ */
+
+if (*ntt == HARD)   {
+    for(i=0; i<*qlevels; ++i)   {
+        local_level =  *(levels+i);
+
+        /*
+         * Make din point to correct place in D array
+         */
+
+        din = D+*(offsetD+local_level);
+
+        /*
+         * Now go through this array doing the thresholding
+         */
+
+        for(j= *(firstD+local_level); j<= *(lastD+local_level); ++j){
+            cough = ACCESSC(din, (int)*firstD, (int)*LengthD, j,
+                (int)*bc);
+            cough = HardThreshold(cough, *value);
+            ACCESSC(din, (int)*firstD, (int)*LengthD, j, (int)*bc)
+                = cough;
+            }
+        }
+    }
+else if (*ntt == SOFT)  {
+    for(i=0; i<*qlevels; ++i)   {
+        local_level =  *(levels+i);
+
+        /*
+         * Make din point to correct place in D array
+         */
+
+        din = D+*(offsetD+local_level);
+
+        /*
+         * Now go through this array doing the thresholding
+         */
+
+        for(j= *(firstD+local_level); j<= *(lastD+local_level); ++j){
+            cough = ACCESSC(din, (int)*firstD, (int)*LengthD, j,
+                (int)*bc);
+            cough = SoftThreshold(cough, *value);
+            ACCESSC(din, (int)*firstD, (int)*LengthD, j, (int)*bc)
+                = cough;
+            }
+        }
+    }
+else    {
+    *error = 2;
+    return;
+    }
+}
+
+double 
+SoftThreshold (double cough, double threshold)
+{
+register double s=1.0;
+
+if (cough < 0.0)
+    s = -1.0;
+
+if (fabs(cough) > threshold)    {
+    return(s*(fabs(cough) - threshold));
+    }
+else
+    return(0.0);
+}
+/*
+ * Function that estimates function with removed observation
+ */
+
+void 
+EstWitRem (
+    double *ynoise,     /* The data                 */
+    int *Lynoise,       /* The length of the data           */
+    int *removed,       /* The index to remove from the data        */
+    double *thresh,
+    double *H,      /* The wavelets to use                                  */
+    int *LengthH,  /* The length of the filter                             */
+    int *ntt,      /* The threshold type                                   */
+    int *ll,       /* The lowest level to threshold; all levels above too  */
+    double *answer,
+    int *error     /* Possible errors              */
+)
+{
+register int i; /* Register int?                */
+int nleft, nright;  /* The number of data points to the left & right */
+int nleftExtend;    /* The length of the leftEx vector      */
+int nrightExtend;   /* The length of the rightEx vector     */
+double *leftEx;     /* Array that contains left and it's extension  */
+double *rightEx;    /* Array that contains right and it's extension */
+int Dlevels;
+int *levs_to_do;
+int qlevels;
+int local_levels;
+int bc;
+int type;
+double *C, *D;
+int LengthC, LengthD;
+int levels=0;
+int *firstC, *lastC, *offsetC;
+int *firstD, *lastD, *offsetD;
+
+
+int tmp;
+
+/* No errors yet */
+*error = 0;
+
+/*
+ * Compute number of elements in left and right sections
+ */
+
+--(*removed);
+
+nleft = *removed;   /* To the left there will be "removed" elements */
+
+nright = *Lynoise - *removed - 1;   /* To the right there is this   */
+
+
+/*
+ * Now to do the wavelet transform we have to make two vectors that are
+ * a power of two in length and that are just inter than twice nleft and nright
+ */
+
+nleftExtend = LargerPowerOfTwo(2*nleft);
+nrightExtend= LargerPowerOfTwo(2*nright);
+
+/* Now check that we can do the thresholding using the ll number of levels */
+
+/*
+ * Get memory for these extensions
+ */
+
+if ((leftEx = (double *)malloc((size_t)nleftExtend*sizeof(double)))==NULL){
+    *error = 2003;
+    return;
+    }
+
+if ((rightEx = (double *)malloc((size_t)nrightExtend*sizeof(double)))==NULL){
+    *error = 2004;
+    return;
+    }
+
+/*
+ * Now fill these extensions up
+ */
+
+for(i=0; i<nleft; ++i)  {
+    *(leftEx + (nleftExtend-nleft) + i) = *(ynoise+i);
+    *(leftEx + (nleftExtend-nleft)-1- i) = *(ynoise+i);
+    }
+
+for(i=0; i< (nleftExtend-2*nleft); ++i) /* Fill up left of left with first el*/
+    *(leftEx + i) = *(ynoise+nleft-1);
+
+for(i=0; i<nright; ++i) {
+    *(rightEx + i) = *(ynoise+*removed+i+1);
+    *(rightEx +2*nright-1-i) = *(ynoise+*removed+i);
+    }
+
+for(i=0; i< (nrightExtend-2*nright); ++i)
+    *(rightEx+i+2*nright) = *(ynoise+*removed+1);
+
+/*
+ * Now we can work out the wavelet transforms of leftExtend and rightExtend
+ */
+
+/* MAN 7/12/10.  The call to simpleWT doesn't know what memory it's using
+and so during the next for loop, *D is being used when we don't know what 
+it contains.  I am going to allocate memory specifically for the input into
+simpleWT.
+*/
+
+tmp=IsPowerOfTwo(nleftExtend);
+firstC=calloc(tmp+1,sizeof(int));
+lastC=calloc(tmp+1,sizeof(int));
+offsetC=calloc(tmp+1,sizeof(int));
+firstD=calloc(tmp,sizeof(int));
+lastD=calloc(tmp,sizeof(int));
+offsetD=calloc(tmp,sizeof(int));
+C=calloc(2*nleftExtend-1,sizeof(double));
+D=calloc(nleftExtend-1,sizeof(double));
+
+
+simpleWT(leftEx, &nleftExtend, H, LengthH,
+    C, &LengthC, D, &LengthD, &levels,
+    firstC, lastC, offsetC,
+    firstD, lastD, offsetD,
+    &type, &bc, error);
+
+if (*error != 0)    {
+    return;
+    }
+
+local_levels = levels;
+
+qlevels = local_levels - *ll;
+
+
+if (qlevels>0)  {
+    if ((levs_to_do = (int *)malloc((size_t)qlevels*sizeof(int)))==NULL){
+        *error = 2005;
+        return;
+        }
+    else    for(i=0; i < qlevels; ++i)
+            *(levs_to_do+i) = *ll+i;
+
+    /* Threshold */
+    Dlevels = local_levels - 1;
+    Cthreshold(D, &LengthD, firstD, lastD, offsetD, &Dlevels, ntt, thresh,
+        levs_to_do, &qlevels, &bc, error);
+
+    if (*error != 0)    {
+        return;
+        }
+
+    free((void *)levs_to_do);
+    }
+
+else if (qlevels <0)    {
+    *error = 2002;  /* ll, the depth of thresholding exceeded the number
+             * of levels that were available for this smaller
+             * wavelet transform 
+             */
+    return;
+    }
+
+waverecons(C, D, H, LengthH, &local_levels,
+        firstC, lastC, offsetC, firstD, lastD, offsetD,
+        &type, &bc, error);
+
+if (*error != 0)        {
+        return;
+        }
+
+/* Now transfer them back to leftEx */
+
+for(i=0; i<nleftExtend; ++i)
+    *(leftEx + i) = *(C+i);
+
+/* Now free the various arrays */
+
+free((void *)C);    free((void *)D);
+free((void *)firstC);   free((void *)lastC);    free((void *)offsetC);
+free((void *)firstD);   free((void *)lastD);    free((void *)offsetD);
+
+/* MAN 7/12/10.  The call to simpleWT doesn't know what memory it's using
+and so during the next for loop, *D is being used when we don't know what 
+it contains.  I am going to allocate memory specifically for the input into
+simpleWT.
+*/
+
+tmp=IsPowerOfTwo(nrightExtend);
+firstC=calloc(tmp+1,sizeof(int));
+lastC=calloc(tmp+1,sizeof(int));
+offsetC=calloc(tmp+1,sizeof(int));
+firstD=calloc(tmp,sizeof(int));
+lastD=calloc(tmp,sizeof(int));
+offsetD=calloc(tmp,sizeof(int));
+C=calloc(2*nrightExtend-1,sizeof(double));
+D=calloc(nrightExtend-1,sizeof(double));
+
+
+/* Now repeat everything for the right one */
+
+simpleWT(rightEx, &nrightExtend, H, LengthH,
+    C, &LengthC, D, &LengthD, &levels,
+    firstC, lastC, offsetC,
+    firstD, lastD, offsetD,
+    &type, &bc, error);
+
+if (*error != 0)    {
+    return;
+    }
+
+local_levels = levels;
+
+qlevels = local_levels - *ll;
+
+if (qlevels>0)  {
+    if ((levs_to_do = (int *)malloc((size_t)qlevels*sizeof(int)))==NULL){
+        *error = 2005;
+        return;
+        }
+    else    for(i=0; i < qlevels; ++i)
+            *(levs_to_do+i) = *ll+i;
+
+    /* Threshold */
+    Dlevels = local_levels - 1;
+    Cthreshold(D, &LengthD, firstD, lastD, offsetD, &Dlevels, ntt, thresh,
+        levs_to_do, &qlevels, &bc, error);
+
+    if (*error != 0)    {
+        return;
+        }
+
+    free((void *)levs_to_do);
+    }
+else if (qlevels<0) {
+    *error = 2001;
+    return; /* ll was too large for this smaller transform */
+    }
+
+waverecons(C, D, H, LengthH, &local_levels,
+        firstC, lastC, offsetC, firstD, lastD, offsetD,
+        &type, &bc, error);
+
+if (*error != 0)        {
+        return;
+        }
+
+/* Now transfer them back to rightEx */
+
+for(i=0; i<nrightExtend; ++i)
+    *(rightEx + i) = *(C+i);
+
+/* Now free the various arrays */
+
+free((void *)C);    free((void *)D);
+free((void *)firstC);   free((void *)lastC);    free((void *)offsetC);
+free((void *)firstD);   free((void *)lastD);    free((void *)offsetD);
+
+/* Now work out what the removed value should be        */
+
+*answer = *(leftEx + nleftExtend - 1) + *rightEx;
+*answer /= 2.0;
+
+/* Now free leftEx and rightEx */
+free((void *)leftEx);   free((void *)rightEx);
+*error = 0;
+return;
+}
+
+/*
+ * LargerPowerOfTwo:    Returns smallest power of two larger than n
+ */
+
+int 
+LargerPowerOfTwo (int n)
+{
+register int cnt=0;
+n--;
+
+while(n>>=1)
+    ++cnt;
+
+n = 1;
+++cnt;
+while(cnt--)
+    n<<=1;
+return(n);
+}
+/*
+ * Do wavelet cross-validation in C
+ */
+
+void 
+FullWaveletCV (
+    double *noisy,
+    int *nnoisy,
+    double *UniversalThresh,
+    double *H,  /* The wavelets to use                  */
+    int *LengthH,   /* The length of the filter             */
+    int *ntt,   /* The threshold type                   */
+    int *ll,    /* The lowest level to threshold; all levels above too  */
+    double *tol,
+    double *xvthresh,
+    int *error /* There was an error!                  */
+)
+{
+int verbose=0;
+double ax, bx,cx;
+double x0, x1, x2, x3;
+/* NOT NEEDED
+double fa,fb,fc; */
+double f1,f2;
+double ssq;
+
+int mRi;    /* This is required as an argument to GetRSS, but we don't
+         * make use of it here */
+
+
+
+ax = 0.0;
+bx = *UniversalThresh/2.0;
+cx = *UniversalThresh;
+x0 = ax;
+x3 = cx;
+
+if (*error != 0)    {
+    verbose=1;
+    *error = 0;
+    }
+else
+    verbose=0;
+
+if (verbose)    {
+    Rprintf("Entered FullWaveletCV\n");
+    }
+if (fabs(cx - bx) > fabs(bx - ax))  {
+    x1 = bx;
+    x2 = bx + Cons*(cx-bx);
+    }
+else    {
+    x2 = bx;
+    x1 = bx - Cons*(bx-ax);
+    }
+
+
+if (verbose)    {
+    Rprintf("About to enter GetRSS for the first time\n");
+    }
+
+/* NOT NEEDED 
+
+GetRSS(noisy, nnoisy, &ax, H, LengthH, ntt, ll, &ssq, &mRi, &verbose, error);
+if (verbose)    {
+    Rprintf("Just left GetRSS for the first time\n");
+    }
+fa = ssq;
+
+if (*error != 0)    {
+    *error += 1000;
+    return;
+    }
+
+GetRSS(noisy, nnoisy, &bx, H, LengthH, ntt, ll, &ssq, &mRi, &verbose, error);
+fb = ssq;
+
+if (*error != 0)    {
+    *error += 1100;
+    return;
+    }
+
+GetRSS(noisy, nnoisy, &cx, H, LengthH, ntt, ll, &ssq, &mRi, &verbose, error);
+fc = ssq;
+
+if (*error != 0)    {
+    *error += 1200;
+    return;
+    }
+
+ * END OF NOT NEEDED */
+
+GetRSS(noisy, nnoisy, &x1, H, LengthH, ntt, ll, &ssq, &mRi, &verbose, error);
+f1 = ssq;
+
+if (*error != 0)    {
+    *error += 1300;
+    return;
+    }
+
+GetRSS(noisy, nnoisy, &x2, H, LengthH, ntt, ll, &ssq, &mRi, &verbose, error);
+f2 = ssq;
+
+if (*error != 0)    {
+    *error += 1400;
+    return;
+    }
+
+while(fabs(x3-x0) > *tol*(fabs(x1) + fabs(x2))) {
+    if (verbose)    {
+    Rprintf("x0=%lf, x1=%lf, x2=%lf, x3=%lf\n", x0,x1,x2,x3);
+    Rprintf("f1=%lf, f2=%lf\n", f1,f2);
+/* MAN 01/03/12. Removed fflush(stdout) call 
+    fflush(stdout);	*/
+        }
+    if (f2 < f1)    {
+        x0 = x1;
+        x1 = x2;
+        x2 = R*x1 + Cons*x3;
+        f1 = f2;
+        GetRSS(noisy, nnoisy, &x2, H, LengthH, ntt, ll, &ssq, &mRi,
+            &verbose, error);
+        f2 = ssq;
+
+        if (*error != 0)    {
+            *error += 1500;
+            return;
+            }
+    }
+
+    else    {
+        x3 = x2;
+        x2 = x1;
+        x1 = R*x2 + Cons*x0;
+        f2 = f1;
+        GetRSS(noisy, nnoisy, &x1, H, LengthH, ntt, ll, &ssq, &mRi,
+            &verbose, error);
+        f1 = ssq;
+
+        if (*error != 0)    {
+            *error += 1600;
+            return;
+            }
+    }
+  }
+
+if (f1 < f2)
+    *xvthresh = x1;
+else
+    *xvthresh = x2;
+
+return;
+}
+#define GRSTART 4       /* The first index to remove for GetRSS */
+
+void 
+GetRSS (double *ynoise, int *Lynoise, double *thresh, double *H, int *LengthH, int *ntt, int *ll, double *rss, int *smallestRSSindex, int *verbose, int *error)
+{
+int removed, local_removed;
+int minRSSix;
+double TheMinRSS;
+double answer;
+
+
+/* No error yet!! */
+*error = 0;
+
+*rss = 0.0;
+minRSSix = 0;
+TheMinRSS = 0.0;
+
+for(removed=GRSTART; removed<= *Lynoise-GRSTART+1; ++removed)   {
+
+
+    local_removed = removed;
+    EstWitRem(ynoise, Lynoise, &local_removed, thresh, H, LengthH,
+        ntt, ll, &answer, error);
+
+    if (*error != 0)    {
+        return;
+        }
+    answer -= *(ynoise+removed-1);
+
+    *rss += answer*answer;
+
+    if (removed==GRSTART)   {
+        minRSSix = removed;
+        TheMinRSS = answer* answer;
+        }
+    else if (TheMinRSS > answer*answer) {
+        minRSSix = removed; 
+        TheMinRSS = answer*answer;
+        }
+
+    if (*verbose>1)
+      Rprintf("GetRSS: Removed is %d, ynoise[%d] is %lf RSS is %lf\n",     /*MAN: changed %ld to %d since declared as int (L1329) */
+        removed, removed, *(ynoise+removed-1), *rss);
+
+    }
+*rss /= (*Lynoise - 4);
+*smallestRSSindex = minRSSix;
+return;
+}
+/*
+ * ImageDecomposeStep   -   Take an image and do a one level decomp
+ *
+ * Error Codes
+ *
+ *  0   -   Ok.
+ *
+ *  1   -   Memory error for (afterC) temporary image
+ *
+ *  2   -   Memory error for (afterD) temporary image
+ *
+ *  3   -   Memory error for (ccopy) temporary row store
+ *
+ *  4   -   Memory error for (ccopy_out) temporary row store
+ *
+ *  5   -   Memory error for (dcopy_out) temporary row store
+ *
+ *  6-9 -   Memory errors for (afterCC,afterCD,afterDC,afterDD)
+ *          store for the answers
+ */
+
+
+
+void 
+ImageDecomposeStep (
+    double *C,  /* Input data image                 */
+    int Csize, /* Size of image (side length)              */
+    int firstCin,  /* Index number of first element in input "C" image */
+    double *H,  /* Filter coefficients                  */
+    int LengthH,   /* Length of filter                 */
+    int LengthCout,/* Length of C part of output image         */
+    int firstCout, /* Index number of first element in output "C" image    */
+    int lastCout,  /* Index number of last element             */
+    int LengthDout,/* Length of D part of output image         */
+    int firstDout, /* Index number of first element in output "D" image    */
+    int lastDout,  /* Index number of last element             */
+    double *cc_out,/* Smoothed output image                */
+    double *cd_out,/* Horizontal detail                    */
+    double *dc_out,/* Vertical detail                  */
+    double *dd_out,/* Diagonal detail                  */
+    int bc,    /* Method of boundary correction            */
+    int type,  /* Type of transform, wavelet or stationary     */
+    int *error    /* Error code                       */
+)
+{
+register int j,row,col;
+double *ccopy;  /* Used to copy input data to convolution routines  */
+double *ccopy_out;/* Used to copy output data to afterC after conv. */
+double *dcopy_out;/* Used to copy output data to afterD after conv. */
+double *afterC; /* Temporary store for image data after C convolution   */
+double *afterD; /* Temporary store for image data after D convolution   */
+double *afterCC,*afterCD,*afterDC,*afterDD; /* Results      */
+int step_factor;    /* This should always be 1 for the WAVELET trans*/
+
+
+
+*error = 0;
+
+step_factor = 1;
+
+/* Get memory for afterC */
+
+if ((afterC = (double *)malloc((unsigned)(Csize*LengthCout*sizeof(double))))==NULL){
+    *error = 1;
+    return;
+    }
+
+/* Get memory for afterD */
+
+if ((afterD = (double *)malloc((unsigned)(Csize*LengthDout*sizeof(double))))==NULL){
+        *error = 2;
+        return;
+        }
+
+/* Get memory for row of image to pass to convolution routines */
+
+if ((ccopy = (double *)malloc((unsigned)(Csize*sizeof(double)))) == NULL) {
+    *error = 3;
+    return;
+    }
+
+/* Get memory for output row after C convolution */
+
+if ((ccopy_out = (double *)malloc((unsigned)(LengthCout*sizeof(double))))==NULL) {
+    *error = 4;
+    return;
+    }
+
+/* Get memory for output row after D convolution */
+
+if ((dcopy_out = (double *)malloc((unsigned)(LengthDout*sizeof(double))))==NULL) {
+        *error = 5;
+        return;
+        }
+
+
+
+/* Do convolutions on rows of C */
+
+for(row=0; row < (int)Csize; ++row) {
+
+    /* Copy row of C into ccopy */
+
+    for(j=0; j<Csize; ++j)
+        *(ccopy+j) = ACCESS(C, Csize, row, j);
+
+    /* Now convolve this row with C filter */
+
+    convolveC(ccopy, (int)Csize, (int)firstCin,H, (int)LengthH, ccopy_out,
+        (int)firstCout, (int)lastCout,
+        (int)type, step_factor, (int)bc); 
+
+    /* Now convolve this row with D filter */
+
+    convolveD(ccopy, (int)Csize, (int)firstCin, H, (int)LengthH, dcopy_out,
+        (int)firstDout, (int)lastDout,
+        (int)type, step_factor, (int)bc);
+
+    /* Copy answer back to arrays */
+
+    for(j=0; j<(int)LengthCout; ++j)
+        ACCESS(afterC, (int)LengthCout, row, j) = *(ccopy_out + j);
+
+    for(j=0; j<(int)LengthDout; ++j)
+        ACCESS(afterD, (int)LengthDout, row, j) = *(dcopy_out + j);
+
+    }
+
+
+/* Now we have to apply both the C and D filters to afterC and afterD.
+ * We get four answers. First we get the necessary memory
+ */
+
+if ((afterCC = (double *)malloc((unsigned)(LengthCout*LengthCout*sizeof(double))
+        ))==NULL)   {
+    *error = 6;
+    return;
+    }
+
+if ((afterCD = (double *)malloc((unsigned)(LengthDout*LengthCout*sizeof(double))
+        ))==NULL)   {
+    *error = 7;
+    return;
+    }
+
+if ((afterDC = (double *)malloc((unsigned)(LengthCout*LengthDout*sizeof(double))
+        ))==NULL)   {
+    *error = 8;
+    return;
+    }
+
+if ((afterDD = (double *)malloc((unsigned)(LengthDout*LengthDout*sizeof(double))
+        ))==NULL)   {
+    *error = 9;
+    return;
+    }
+
+
+/* Link this memory to the returning pointers */
+/*
+*cc_out = afterCC;
+*cd_out = afterCD;
+*dc_out = afterDC;
+*dd_out = afterDD;
+*/
+
+/* Apply the filters, first to afterC to get afterCC and afterCD */
+
+for(col=0; col < (int)LengthCout; ++col)    {
+
+    /* Copy column to ccopy */
+
+    for(j=0; j<(int)Csize; ++j)
+        *(ccopy + j) = ACCESS(afterC, (int)LengthCout, j, col);
+
+    /* Apply C filter */
+
+    convolveC(ccopy, (int)Csize, (int)firstCin, H, (int)LengthH, ccopy_out,
+        (int)firstCout, (int)lastCout,
+        (int)type, step_factor, (int)bc);
+
+    /* Apply D filter */
+
+    convolveD(ccopy, (int)Csize, (int)firstCin, H, (int)LengthH, dcopy_out,
+        (int)firstDout, (int)lastDout,
+        (int)type, step_factor, (int)bc);
+
+    /* Copy answer back */
+
+    for(j=0; j<(int)LengthCout; ++j)
+        ACCESS(afterCC, (int)LengthCout, j, col) = *(ccopy_out+j);
+
+    for(j=0; j<(int)LengthDout; ++j)
+        ACCESS(afterCD, (int)LengthCout, j, col) = *(dcopy_out+j);
+    }
+
+/* Apply the filters, now to afterD to get afterDC and afterDD */
+
+for(col=0; col < (int)LengthDout; ++col)    {
+
+    /* Copy column to ccopy */
+
+    for(j=0; j<(int)Csize; ++j)
+        *(ccopy + j) = ACCESS(afterD, (int)LengthDout, j, col);
+
+    /* Apply C filter */
+
+    convolveC(ccopy, (int)Csize, (int)firstCin, H, (int)LengthH, ccopy_out,
+        (int)firstCout, (int)lastCout,
+        (int)type, step_factor, (int)bc);
+
+    /* Apply D filter */
+
+    convolveD(ccopy, (int)Csize, (int)firstCin, H, (int)LengthH, dcopy_out,
+        (int)firstDout, (int)lastDout,
+        (int)type, step_factor, (int)bc);
+
+    /* Copy answer back */
+
+    for(j=0; j<(int)LengthCout; ++j)
+        ACCESS(afterDC, (int)LengthDout, j, col) = *(ccopy_out+j);
+
+    for(j=0; j<(int)LengthDout; ++j)
+        ACCESS(afterDD, (int)LengthDout, j, col) = *(dcopy_out+j);
+    }
+
+/* That should be it ! */
+
+free((char *) afterD);
+free((char *) afterC);
+free((char *)dcopy_out);
+free((char *)ccopy_out);
+free((char *)ccopy);
+
+/* MAN  6/12/10 extra frees and out vectors*/
+
+int tmp;
+
+
+tmp=LengthCout*LengthCout;
+mycpyd(afterCC,&tmp,cc_out);
+
+tmp=LengthDout*LengthCout;
+mycpyd(afterCD,&tmp,cd_out);
+mycpyd(afterDC,&tmp,dc_out);
+
+tmp=LengthDout*LengthDout;
+mycpyd(afterDD,&tmp,dd_out);
+
+free(afterCC);
+free(afterDD);
+free(afterDC);
+free(afterCD);
+
+return;
+}
+
+
+void 
+StoIDS (double *C, int *Csize, int *firstCin, double *H, int *LengthH, int *LengthCout, int *firstCout, int *lastCout, int *LengthDout, int *firstDout, int *lastDout, double *ImCC, double *ImCD, double *ImDC, double *ImDD, int *bc, int *type, int *error)
+{
+register int i,j;
+double *cc_out, *cd_out, *dc_out, *dd_out;
+
+
+
+/* MAN 7/12/10.  I think the out vectors should be alloc'd - see frees at 
+the end 
+*/
+
+cc_out=calloc(*LengthCout**LengthCout,sizeof(double));
+dd_out=calloc(*LengthDout**LengthDout,sizeof(double));
+cd_out=calloc(*LengthCout**LengthDout,sizeof(double));
+dc_out=calloc(*LengthCout**LengthDout,sizeof(double));
+
+
+ImageDecomposeStep(C, *Csize, *firstCin, H, *LengthH,
+    *LengthCout, *firstCout, *lastCout,
+    *LengthDout, *firstDout, *lastDout,
+    cc_out, cd_out, dc_out, dd_out, *bc, *type,
+    error);
+
+/* Copy images */
+
+for(i=0; i<(int)*LengthDout; ++i)   {
+    for(j=0; j<(int)*LengthDout; ++j)
+        ACCESS(ImDD, (int)*LengthDout, i, j) = ACCESS(dd_out,
+            *LengthDout, i, j);
+
+    for(j=0; j<(int)*LengthCout; ++j)
+        ACCESS(ImDC, (int)*LengthDout, j,i) = ACCESS(dc_out,
+            *LengthDout, j,i);
+}
+
+for(i=0; i<(int)*LengthCout; ++i)   {
+    for(j=0; j<(int)*LengthDout; ++j)
+        ACCESS(ImCD, (int)*LengthCout, j,i) = ACCESS(cd_out,
+            *LengthCout, j,i);
+
+    for(j=0; j<(int)*LengthCout; ++j)
+        ACCESS(ImCC, (int)*LengthCout,j,i) = ACCESS(cc_out,
+            *LengthCout, j,i);
+}
+
+/* MAN 7/12/10.  With the allocs above, the frees now make sense. */
+
+free((void *)cc_out);
+free((void *)cd_out);
+free((void *)dc_out);
+free((void *)dd_out);
+}
+
+void 
+StoIRS (double *ImCC, double *ImCD, double *ImDC, double *ImDD, int *LengthCin, int *firstCin, int *LengthDin, int *firstDin, double *H, int *LengthH, int *LengthCout, int *firstCout, int *lastCout, double *ImOut, int *bc, int *error)
+{
+
+
+*error = 0;
+
+ImageReconstructStep(ImCC, ImCD, ImDC, ImDD,
+    *LengthCin, *firstCin, 
+    *LengthDin, *firstDin,
+    H, *LengthH,
+    *LengthCout, *firstCout, *lastCout,
+    ImOut, bc,
+    error);
+
+}
+
+void 
+ImageReconstructStep (double *ImCC, double *ImCD, double *ImDC, double *ImDD, int LengthCin, int firstCin, int LengthDin, int firstDin, double *H, int LengthH, int LengthCout, int firstCout, int lastCout, double *ImOut, int *bc, int *error)
+{
+register int i,j;
+double *c_in;
+double *d_in;
+double *c_out;
+double *toC;
+double *toD;
+int type=WAVELET;       /* The type of the WAVELET transform    */
+
+
+
+/* Get memory for c_in and d_in */
+
+if ((c_in = (double *)malloc((unsigned)LengthCin*sizeof(double)))==NULL) {
+        *error = 1;
+        return;
+        }
+
+if ((d_in = (double *)malloc((unsigned)LengthDin*sizeof(double)))==NULL) {
+        *error = 2;
+        return;
+        }
+
+if ((c_out = (double *)malloc((unsigned)LengthCout*sizeof(double)))==NULL) {
+        *error = 3;
+        return;
+        }
+
+if ((toC = (double *)malloc((unsigned)LengthCin*LengthCout*sizeof(double)))
+    == NULL)    {
+        *error = 4;
+        return;
+        }
+        
+/* Now apply C and D filters to CC and CD to obtain toC */
+
+for(i=0; i<LengthCin; ++i)  {
+
+    for(j=0; j < LengthDin; ++j)
+        *(d_in + j) = ACCESS(ImCD, (int)LengthCin, j, i);
+
+    for(j=0; j < LengthCin; ++j)
+        *(c_in + j) = ACCESS(ImCC, (int)LengthCin, j, i);
+
+    conbar(c_in, (int)LengthCin, (int)firstCin,
+           d_in, (int)LengthDin, (int)firstDin,
+           H, (int)LengthH,
+           c_out, (int)LengthCout, (int)firstCout, (int)lastCout,
+        type, (int)*bc);
+
+    for(j=0; j < LengthCout; ++j)
+        ACCESS(toC, (int)LengthCout, i, j) = *(c_out+j); 
+    }
+
+/* Now magically we can use c_in and d_in again, but we now need a toD
+ * to store the answer in */
+
+if ((toD = (double *)malloc((unsigned)LengthDin*LengthCout*sizeof(double)))== NULL)    {
+    *error = 5;
+    return;
+    }
+
+/* Now apply C and D filters to DC and DD to obtain toD */
+
+for(i=0; i<LengthDin; ++i)      {
+
+        for(j=0; j < LengthDin; ++j)
+                *(d_in + j) = ACCESS(ImDD, (int)LengthDin, j, i);
+
+        for(j=0; j < LengthCin; ++j)
+                *(c_in + j) = ACCESS(ImDC, (int)LengthDin, j, i);
+
+        conbar(c_in, (int)LengthCin, (int)firstCin,
+               d_in, (int)LengthDin, (int)firstDin,
+               H, (int)LengthH,
+               c_out, (int)LengthCout, (int)firstCout, (int)lastCout,
+        type, (int)*bc);
+
+        for(j=0; j < LengthCout; ++j)
+                ACCESS(toD, (int)LengthCout, i, j) = *(c_out+j);
+        }
+
+
+/* Now apply C and D filters to toC and toD to get ImOut */
+
+for(i=0; i<LengthCout; ++i) {
+
+    for(j=0; j< LengthDin; ++j)
+        *(d_in + j) = ACCESS(toD, (int)LengthCout, j, i);
+
+    for(j=0; j<LengthCin; ++j)
+        *(c_in + j) = ACCESS(toC, (int)LengthCout, j, i);
+
+    conbar(c_in, (int)LengthCin, (int)firstCin,
+               d_in, (int)LengthDin, (int)firstDin,
+               H, (int)LengthH,
+               c_out, (int)LengthCout, (int)firstCout, (int)lastCout,
+        type, (int)*bc);
+
+    for(j=0; j<LengthCout; ++j)
+        ACCESS(ImOut, (int)LengthCout, i, j)  = *(c_out+j);
+    }
+
+/* MAN 7/12/10 : there should be some frees here, though it might complain */
+
+free(c_in);
+free(c_out);
+free(d_in);
+free(toC);
+free(toD);
+
+}
+
+/* AV_BASIS Do the basis averaging */
+
+/*
+ * Error codes
+ *
+ * 1    -   Memory error in creating cl
+ * 2    -   Memory error in creating cr
+ * 3    -   Memory error in creating packet (getpacket)
+ */
+
+
+double *
+av_basis (
+    double *wst,    /* The stationary wavelet decomposition         */
+    double *wstC,   /* The stationary wavelet decomposition         */
+    int nlevels, /* The original length of the data         */
+    int level,  /* The level to reconstruct             */
+    int ix1,    /* The "left" packet index              */
+    int ix2,    /* The "right" packet index             */
+    double *H,  /* The filter                       */
+    int LengthH,    /* The length of the filter             */
+    int *error /* Error code                       */
+)
+{
+register int i;
+double *cl;
+double *cr;
+double *genericC;
+double *genericD;
+int LengthC;
+int LengthCin;
+
+
+
+*error = 0;
+
+/*
+ * Now we must create cl and cr. These will contain the reconstructions
+ * from the left and right packets respectively. The length of these
+ * vectors depends upon the level we're at.
+ */
+
+LengthC = 1 << (level+1);
+LengthCin = 1 << level;
+
+/*
+ * Create cl and cr
+ */
+
+if ((cl = (double *)malloc((unsigned)LengthC*sizeof(double)))==NULL) {
+    *error = 1;
+    return(NULL);
+    }
+
+if ((cr = (double *)malloc((unsigned)LengthC*sizeof(double)))==NULL) {
+    *error = 2;
+    return(NULL);
+    }
+    
+/*
+ * What we do next depends on the level.
+ *
+ * If level is zero then we've recursed all the way down to the bottom of
+ * the tree. And we can reconstruct the 2-vectors one-up-the-tree by using
+ * good old conbar().
+ *
+ * If the level is not zero then we construct at that stage using conbar()
+ * but to obtain the Cs we recurse. 
+ */
+
+if (level != 0) {
+
+    /* Get C's at this level by asking the next level down. */
+
+    genericC = av_basis(wst, wstC, nlevels, level-1, 2*ix1, 2*ix1+1,
+            H, LengthH, error);
+
+    if (*error != 0)
+        return(NULL); 
+
+    /* Get D's straight from the wst matrix */
+
+    genericD = getpacket(wst, nlevels, level, ix1, error);
+
+    if (*error != 0)
+        return(NULL);
+
+    /* Do the reconstruction */
+
+    conbar(genericC, LengthCin, 0, 
+           genericD, LengthCin, 0, 
+           H, LengthH,
+           cl, LengthC, 0, LengthC-1,
+           WAVELET, PERIODIC);
+
+    free((void *)genericC);
+    free((void *)genericD);
+
+    /* Now do the RHS */
+    
+    genericC = av_basis(wst, wstC, nlevels, level-1, 2*ix2, 2*ix2+1,
+        H, LengthH, error);
+
+    if (*error != 0)
+        return(NULL); 
+
+    /* Get D's straight from the wst matrix */
+
+    genericD = getpacket(wst, nlevels, level, ix2, error);
+
+    if (*error != 0)
+        return(NULL);
+
+    /* Do the reconstruction */
+
+    conbar(genericC, LengthCin, 0, 
+           genericD, LengthCin, 0,
+           H, LengthH,
+           cr, LengthC, 0, LengthC-1,
+           WAVELET, PERIODIC);
+
+    /* Rotate the RHS back */
+
+    rotateback(cr, LengthC);
+
+    /* Can get rid of generics now */
+
+    free((void *)genericC);
+    free((void *)genericD);
+    }
+
+else    {
+    /* Have to really do it! */
+
+    genericC = getpacket(wstC, nlevels, level, ix1, error);
+
+    if (*error != 0)
+        return(NULL);
+
+    genericD = getpacket(wst, nlevels, level, ix1, error);
+
+    if (*error != 0)
+        return(NULL);
+
+    /* Do the reconstruction */
+
+    conbar(genericC, LengthCin, 0, 
+           genericD, LengthCin, 0, 
+           H, LengthH,
+           cl, LengthC, 0, LengthC-1,
+           WAVELET, PERIODIC);
+
+    free((void *)genericC);
+    free((void *)genericD);
+
+    genericC = getpacket(wstC, nlevels, level, ix2, error);
+
+    if (*error != 0)
+        return(NULL);
+
+    genericD = getpacket(wst, nlevels, level, ix2, error);
+
+    if (*error != 0)
+        return(NULL);
+
+    /* Do the reconstruction */
+
+    conbar(genericC, LengthCin, 0,
+           genericD, LengthCin, 0,
+           H, LengthH,
+           cr, LengthC, 0, LengthC-1,
+           WAVELET, PERIODIC);
+
+    /* Rotate the RHS back */
+
+    rotateback(cr, LengthC);
+
+    free((void *)genericC);
+    free((void *)genericD);
+    }
+
+for(i=0; i<LengthC; ++i)
+    *(cl+i) = ((double)0.5)*( *(cl+i) + *(cr+i) );
+
+/* MAN 7/12/10.  Free cr.  Probably won't make much difference. */
+
+free(cr);
+
+return(cl);
+}
+
+
+/* Note this is different to what is in wavepackst.c */
+#define AVBPOINTD(w, l,i) (w + (nlevels*(i)) + (l))
+
+/*
+ * A C version of getpacket
+ *
+ * Warning. The argument list is the same as for the WaveThresh Splus version
+ * except that nlevels here should be one more!
+ */
+
+double *
+getpacket (
+    double *wst,
+    int nlevels,    /* This looks like it should be nlevels+1 for somereason */
+    int level,
+    int index,
+    int *error
+)
+{
+register int i;
+double *packet;
+int PacketLength;
+
+PacketLength = 1 << level;
+
+if ((packet = (double *)malloc((unsigned)PacketLength*sizeof(double)))==NULL){
+    *error = 3;
+    return(NULL);
+    }
+
+
+for(i=0; i< PacketLength; ++i)
+    *(packet+i) = *AVBPOINTD(wst, level, (index*PacketLength+i));
+
+return(packet);
+}
+
+/* Wrapper for av_basis */
+
+
+void 
+av_basisWRAP (double *wst, double *wstC, int *LengthData, int *level, double *H, int *LengthH, double *answer, int *error)
+{
+register int i;
+int nlevels;
+double *acopy;
+
+
+nlevels = 2 + (int)*level;
+
+acopy =  av_basis(wst, wstC, nlevels, (int)*level, 0, 1, H,
+        (int)*LengthH, error);
+
+for(i=0; i< (int)*LengthData; ++i)
+    *(answer+i) = *(acopy+i);
+
+free((void *)acopy);
+}
+/*
+ * CONBAR: Does the reconstruction convolution
+ */
+
+#define CEIL(i) ( ((i)>0) ? ( ((i)+1)/2):((i)/2) )
+
+void 
+conbar (
+    double *c_in,
+    int LengthCin,
+    int firstCin,
+    double *d_in,
+    int LengthDin,
+    int firstDin,
+    double *H,
+    int LengthH,
+    double *c_out,
+    int LengthCout,
+    int firstCout,      /* This determines summation over n     */
+    int lastCout,       /* and this does too                */
+    int type,       /* The type of wavelet reconstruction       */
+    int bc
+)
+{
+register int n,k;
+register int cfactor;
+double sumC, sumD;
+
+
+switch(type)    {
+
+    case WAVELET:   /* Standard wavelets */
+        cfactor = 2;
+        break;
+
+    case STATION:   /* Stationary wavelets */
+        cfactor = 1;
+        break;
+
+    default:    /* This should never happen */
+        cfactor=0;       /* MAN: added for total cover: shouldn't happen */
+        break;
+    }
+
+
+/* Compute each of the output C */
+
+for(n=firstCout; n<=lastCout; ++n)  {
+
+    /* We want  n+1-LengthH <= 2*k to start off */
+
+
+    k = CEIL(n+1-LengthH);
+
+    sumC = 0.0;
+
+    while( cfactor*k <= n ) {
+
+        sumC += *(H + n - cfactor*k)*ACCESSC(c_in, firstCin, LengthCin,
+                    k, bc);
+
+        ++k;
+        }
+
+    /* Now do D part */
+
+    k = CEIL(n-1);
+
+    sumD = 0.0;
+
+    while( cfactor*k <= (LengthH +n -2) )   {
+
+        sumD += *(H+1+cfactor*k-n) * ACCESSC(d_in, firstDin, LengthDin,
+                    k, bc);
+
+        ++k;
+
+        }
+
+    if (n & 1)      /* n odd */
+        sumC -= sumD;
+    else
+        sumC += sumD;
+
+    ACCESSC(c_out, firstCout, LengthCout, n, bc) = sumC;
+    }
+
+}
+/*
+ * CONBARL: Wrapper called by SPlus conbar() to call C conbar.
+ */
+
+void 
+conbarL (
+    double *c_in,
+    int *LengthCin,
+    int *firstCin,
+    double *d_in,
+    int *LengthDin,
+    int *firstDin,
+    double *H,
+    int *LengthH,
+    double *c_out,
+    int *LengthCout,
+    int *firstCout, /* This determines summation over n     */
+    int *lastCout,      /* and this does too                */
+    int *type,      /* The type of wavelet reconstruction       */
+    int *bc
+)
+{
+int LLengthCin;
+int LfirstCin;
+int LLengthDin;
+int LfirstDin;
+int LLengthH;
+int LLengthCout;
+int LfirstCout;
+int LlastCout;
+int Ltype;
+int Lbc;
+
+
+LLengthCin = (int)*LengthCin;
+LfirstCin = (int)*firstCin;
+LLengthDin = (int)*LengthDin;
+LfirstDin = (int)*firstDin;
+LLengthH = (int)*LengthH;
+LLengthCout = (int)*LengthCout;
+LfirstCout = (int)*firstCout;
+LlastCout = (int)*lastCout;
+Ltype = (int)*type;
+Lbc = (int)*bc;
+
+
+conbar(c_in, LLengthCin, LfirstCin,
+       d_in, LLengthDin, LfirstDin,
+       H, LLengthH,
+       c_out, LLengthCout, LfirstCout, LlastCout, Ltype, Lbc);
+}
+/*
+ * CONVOLVE -   Do filter H filter convolution with boundary
+ */
+
+
+
+
+void 
+convolveC (
+    double *c_in,   /* Input data                       */
+    int LengthCin,  /* Length of this array                 */
+    int firstCin,   /* The first C value                    */
+    double *H,  /* Filter                       */
+    int LengthH,    /* Length of filter                 */
+    double *c_out,  /* Output data                      */
+    int firstCout,  /* First index of C array               */
+    int lastCout,   /* Last index of C array                */
+    int type,   /* Type of wavelet decomposition            */
+    int step_factor,/* For stationary wavelets only             */
+    int bc     /* Method of boundary correction PERIODIC, SYMMETRIC    */
+)
+{
+double sum;
+register int k;
+register int count_out;
+register int m;
+register int cfactor;   /* This determines what sort of dilation we do  */
+            /* and depends on the type argument     */
+
+
+count_out = 0;
+
+switch(type)    {
+
+    case WAVELET:   /*  Ordinary wavelets   */
+            cfactor = 2;    /* Pick every other coefficient */
+            break;
+
+    case STATION:   /* Stationary wavelets  */
+            cfactor = 1;    /* Pick every coefficient   */
+            break;
+
+
+    default:    /* This is an error, one of the above must have */
+            /* been picked */
+            /* However, this must be tested in a previous   */
+            /* routine.                 */
+            cfactor=0;       /* MAN: added for total cover: shouldn't happen */
+            break;
+        }
+
+for(k=firstCout; k<=lastCout; ++k)  {
+    sum = 0.0;
+
+
+    for(m=0; m<LengthH; ++m)    {
+
+
+        sum += *(H+m) * ACCESSC(c_in, firstCin, LengthCin,
+            ((step_factor*m)+(cfactor*k)),bc);
+        }
+
+    *(c_out + count_out) = sum;
+    ++count_out;
+    }
+}
+
+void 
+convolveD (
+    double *c_in,   /* Input data                       */
+    int LengthCin,  /* Length of this array                 */
+    int firstCin,   /* The first index of the C input array         */
+    double *H,  /* Filter                       */
+    int LengthH,    /* Length of filter                 */
+    double *d_out,  /* Output data                      */
+    int firstDout,  /* First index of D array               */
+    int lastDout,   /* Last index of D array                */
+    int type,   /* Type of wavelet decomposition            */
+    int step_factor,/* For stationary wavelets only             */
+    int bc     /* Method of boundary correction PERIODIC or SYMMETRIC  */
+)
+{
+double sum;
+double tmp;
+register int k;
+register int count_out;
+register int m;
+register int cfactor;
+
+
+
+count_out = 0;
+
+switch(type)    {
+
+    case WAVELET:   /*  Ordinary wavelets   */
+            cfactor = 2;    /* Pick every other coefficient */
+            break;
+
+    case STATION:   /* Stationary wavelets  */
+            cfactor = 1;    /* Pick every coefficient   */
+            break;
+
+
+    default:    /* This is an error, one of the above must have */
+            /* been picked */
+            /* However, this must be tested in a previous   */
+            /* routine.                 */
+            cfactor=0;       /* MAN: added for total cover: shouldn't happen */
+            break;
+        }
+
+for(k=firstDout; k<=lastDout; ++k)  {
+    sum = 0.0;
+
+
+    for(m=0; m<LengthH; ++m)    {
+
+        tmp = ACCESSC(c_in, firstCin, LengthCin,
+                (cfactor*k+(step_factor*(1-m))),bc);
+        
+        if (m&1)    /* odd */
+            sum += *(H+m) *  tmp;
+        else
+            sum -= *(H+m) *  tmp;
+        
+        }
+
+    *(d_out + count_out) = sum;
+    ++count_out;
+    }
+}
+
+
+/* Works out reflection, as REFLECT, but reports access errors */
+int 
+reflect (int n, int lengthC, int bc)
+{
+
+if ((n >= 0) && (n < lengthC))
+    return(n);
+else if (n<0)   {
+    if (bc==PERIODIC)   {
+        /*
+        n = lengthC+n;
+        */
+        n = n%lengthC + lengthC*((n%lengthC)!=0);
+        if (n < 0)      {
+		/* MAN 01/03/12. Remove stderr write x 2 
+            fRprintf(stderr, "reflect: access error (%d,%d)\n",
+                n,lengthC);
+            fRprintf(stderr, "reflect: left info from right\n"); */
+            Rprintf("reflect: access error (%d,%d)\n",
+                n,lengthC);
+            Rprintf("reflect: left info from right\n");
+		/* MAN 01/03/12.  Remove C exit
+            exit(2);	*/
+            }
+        else
+            return(n);
+        }
+
+    else if (bc==SYMMETRIC) {
+        n = -1-n;
+        if (n >= lengthC)       {
+		/* MAN 01/03/12. Remove stderr write x 1
+            fRprintf(stderr, "reflect: access error (%d,%d)\n",
+                n,lengthC);	*/
+            Rprintf("reflect: access error (%d,%d)\n",
+                n,lengthC);
+		/* MAN 01/03/12.  Remove C exit
+            exit(3);	*/
+            }
+        else
+            return(n);
+        }
+
+    else    {
+		/* MAN 01/03/12. Remove stderr write x 2
+        fRprintf(stderr, "reflect: Unknown boundary correction");
+        fRprintf(stderr, " value of %d\n", bc);	*/
+        Rprintf("reflect: Unknown boundary correction");
+        Rprintf(" value of %d\n", bc);
+		/* MAN 01/03/12.  Remove C exit
+            exit(4);	*/
+        }
+
+    }
+else    {
+    if (bc==PERIODIC)   {
+        /*
+        Rprintf("periodic extension, was %d (%d) now ",n,lengthC);
+        n = n - lengthC; 
+        */
+        n %= lengthC;
+        /*
+        Rprintf("%d\n", n);
+        */
+        if (n >= lengthC)   {
+		/* MAN 01/03/12. Remove stderr write x 2
+            fRprintf(stderr, "reflect: access error (%d,%d)\n",
+                n,lengthC);
+            fRprintf(stderr, "reflect: right info from left\n");	*/
+            Rprintf("reflect: access error (%d,%d)\n",
+                n,lengthC);
+            Rprintf("reflect: right info from left\n");
+		/* MAN 01/03/12.  Remove C exit
+            exit(5);	*/
+            }
+        else
+            return(n);
+        }
+    else if (bc==SYMMETRIC) {
+        n = 2*lengthC - n - 1;
+        if (n<0)        {
+		/* MAN 01/03/12. Remove stderr write x 1
+            fRprintf(stderr, "reflect: access error (%d,%d)\n",
+                n,lengthC);	*/
+            Rprintf("reflect: access error (%d,%d)\n",
+                n,lengthC);
+		/* MAN 01/03/12.  Remove C exit
+            exit(6);    */
+            }
+        else
+            return(n);
+        }
+    else    {
+		/* MAN 01/03/12. Remove stderr write x 1
+        fRprintf(stderr, "reflect: Unknown boundary correction\n");	*/
+        Rprintf("reflect: Unknown boundary correction\n");
+		/* MAN 01/03/12.  Remove C exit
+            exit(7);    */
+        }
+
+
+    }
+/* Safety */
+/* MAN 01/03/12. Remove stderr write x 1
+fRprintf(stderr, "reflect: SHOULD NOT HAVE REACHED THIS POINT\n");	*/
+Rprintf("reflect: SHOULD NOT HAVE REACHED THIS POINT\n");
+/* MAN 01/03/12.  Remove C exit
+            exit(8);    */
+return(0); /* for lint only */
+}
+
+/* Rotate a vector */
+
+/* Vector: a_1, a_2, a_3, ..., a_{n-1}, a_n
+
+    becomes
+
+       a_2, a_3, a_4, ..., a_n, a_1
+
+   rotateback() does the opposite
+
+*/
+
+void 
+rotater (double *book, int length)
+{
+register int i;
+double tmp;
+
+tmp = *book;
+
+for(i=0; i<length-1; ++i)
+        *(book+i) = *(book+i+1);
+
+*(book+length-1) = tmp;
+}
+
+void 
+rotateback (double *book, int length)
+{
+register int i;
+double tmp;
+
+tmp = *(book+length-1);
+
+for(i= length-1; i>0; --i)
+    *(book+i) = *(book+i-1);
+
+*book = tmp;
+}
+/*
+ * Does a simple wavelet transform
+ *
+ * This is just like the ordinary periodic wavelet transform
+ *
+ * The purpose of this function is simplicity. All you need supply is the
+ * data and some pointers for the arguments
+ *
+ * This function uses Calloc to create the arrays:
+ *
+ *   firstC,lastC,offsetC,firstD,lastD,offsetD,C,D
+ *
+ * When you have used their contents it is a good idea for you to destroy
+ * the memory associated with these arrays. To do this call
+ *
+ * free((char *)C);     - This frees the memory associated with the pointer
+ *
+ * [We recommend you declare these arrays in the calling program like
+ *
+ *  double *C, *D;
+ *  int *firstC, *lastC, *offsetC, *firstD, *lastD, *offsetD;
+ *
+ * Then PASS the ADDRESS of these to this function, e.g. 
+ * &C, &D etc.]
+ */
+
+void 
+simpleWT (
+    double *TheData,/* The data to transform; must be a power of two els    */
+    int *ndata, /* The length of the data               */
+    double *H,  /* The wavelet filter that you want to use      */
+    int *LengthH,   /* The length of the wavelet filter         */
+    double *C, /* A pointer to the array of C answers is returned  */
+    int *LengthC,   /* The length of the C array is returned        */
+    double *D, /* A pointer to the array of D answers is returned  */
+    int *LengthD,   /* The length of the D array is returned        */
+    int *levels,    /* The number of levels of the transform is returned    */
+    int *firstC,
+    int *lastC,
+    int *offsetC,/* These are computed and returned   */
+    int *firstD,
+    int *lastD,
+    int *offsetD,/* These are computed and returned   */
+    int *type,  /* This is filled in with type WAVELET          */
+    int *bc,    /* This is filled in with PERIODIC          */
+    int *error /* Returns any error condition              */
+)
+{
+int *lfC,*llC,*loC; /* Local versions of firstC,lastC,offsetC   */
+int *lfD,*llD,*loD; /* Local versions of firstD,lastD,offsetD   */
+double *lC, *lD;    /* Local versions of C and D            */
+int cnt,i;
+
+
+
+/* No errors yet */
+
+*error = 0;
+
+/* Fill in type of transform and type of boundary handling conditions   */
+
+*type = (int)WAVELET;
+*bc = (int)PERIODIC;
+
+/* Now work out the size of the arrays needed for the transform     */
+
+*levels = (int)IsPowerOfTwo(*ndata);
+
+/* Now create memory for first/last and offset */
+
+if ((lfC = (int *)malloc((size_t)(*levels+1)*sizeof(int)))==NULL) {
+    *error = 3001;
+    return;
+    }
+
+if ((llC = (int *)malloc((size_t)(*levels+1)*sizeof(int)))==NULL) {
+    *error = 3002;
+    return;
+    }
+
+if ((loC = (int *)malloc((size_t)(*levels+1)*sizeof(int)))==NULL) {
+    *error = 3003;
+    return;
+    }
+
+if ((lfD = (int *)malloc((size_t)(*levels)*sizeof(int)))==NULL)   {
+    *error = 3004;
+    return;
+    }
+
+if ((llD = (int *)malloc((size_t)(*levels)*sizeof(int)))==NULL)   {
+    *error = 3005;
+    return;
+    }
+
+if ((loD = (int *)malloc((size_t)(*levels)*sizeof(int)))==NULL)   {
+    *error = 3006;
+    return;
+    }
+
+/* Now fill up these arrays */
+
+*lfC = *llC = 0;
+cnt = 1;
+
+for(i=1; i<*levels+1; ++i)  {
+    *(lfC+i) = 0;
+    *(llC+i) = *(llC+i-1) + cnt;
+    cnt<<=1;
+    } 
+
+*(loC+*levels+1-1) = 0;
+for(i=*levels+1-2; i>=0; --i)   {
+    *(loC+i) = *(loC+i+1) + *(llC+i+1)+1;
+    }
+
+*lfD = *llD = 0;
+cnt = 1;
+
+for(i=1; i<*levels; ++i)    {
+    *(lfD+i) = 0;
+    *(llD+i) = *(llD+i-1) + cnt;
+    cnt<<=1;
+    }
+
+*(loD+*levels-1) = 0;
+for(i=*levels-2; i>=0; --i) {
+    *(loD+i) = *(loD+i+1) + *(llD+i+1)+1;
+    }
+
+
+/* Now we have to create the C and D arrays */
+
+*LengthC = *loC + 1;
+*LengthD = *loD + 1;
+
+
+if ((lC = (double *)calloc((size_t)*LengthC,(size_t)sizeof(double)))==NULL) {
+    *error = 3007;
+    return;
+    }
+
+if ((lD = (double *)calloc((size_t)*LengthD,(size_t)sizeof(double)))==NULL) {
+    *error = 3008;
+    return;
+    }
+/* Calloc should already zero these arrays */
+
+for(i=0; i<*ndata; ++i)
+    *(lC+i) = *(TheData+i);
+
+/* Sorted, now do the wavelet transform */
+
+wavedecomp(lC, lD, H, LengthH, levels,
+    lfC, llC, loC, lfD, llD, loD, type, bc, error);
+
+if (*error != 0)    {
+    *error = 3009;
+    return;
+    }
+
+
+/* Now we can return all the answers. To do this we have to link the information
+ * in the l* arrays to the real ones
+ */
+/*
+*C = lC;
+*D = lD;
+*firstC = lfC;
+*lastC = llC;
+*offsetC = loC;
+*firstD = lfD;
+*lastD = llD;
+*offsetD = loD;
+*/
+
+
+
+int tmp;
+
+tmp=*levels;
+mycpyi(lfD,&tmp,firstD);
+mycpyi(llD,&tmp,lastD);
+mycpyi(loD,&tmp,offsetD);
+tmp++;
+mycpyi(lfC,&tmp,firstC);
+mycpyi(llC,&tmp,lastC);
+mycpyi(loC,&tmp,offsetC);
+tmp=*LengthC;
+mycpyd(lC,&tmp,C);
+tmp=*LengthD;
+mycpyd(lD,&tmp,D);
+
+/* That's it, time to go home */
+
+/* MAN frees: 7/12/10 <-> mycpyi, d above */
+
+free(lC);
+free(lD);
+free(lfC);
+free(lfD);
+free(llC);
+free(llD);
+free(loD);
+free(loC);
+
+return;
+}
+
+void 
+wavedecomp (
+    double *C,              /* Input data, and the subsequent smoothed data */
+    double *D,              /* The wavelet coefficients                     */
+    double *H,              /* The smoothing filter H                       */
+    int *LengthH,          /* Length of smoothing filter                   */
+    int *levels,           /* The number of levels in this decomposition   */
+    int *firstC,           /* The first possible C coef at a given level   */
+    int *lastC,            /* The last possible C coef at a given level    */
+    int *offsetC,          /* Offset from C[0] for certain level's coeffs  */
+    int *firstD,           /* The first possible D coef at a given level   */
+    int *lastD,            /* The last possible D coef at a given level    */
+    int *offsetD,          /* Offset from D[0] for certain level's coeffs  */
+    int *type,      /* The type of wavelet decomposition        */
+    int *bc,        /* Method of boundary correction        */
+    int *error            /* Error code                                   */
+)
+{
+register int next_level,at_level;
+register int step_factor;   /* Controls width of filter for station */
+register int verbose;   /* Controls message printing, passed in error var*/
+
+
+if (*error == 1l)   /* Error switches on verbosity */
+    verbose = 1;
+else
+    verbose = 0;
+
+switch(*bc) {
+
+    case PERIODIC:  /* Periodic boundary conditions */
+        if (verbose) Rprintf("Periodic boundary method\n");
+        break;
+
+    case SYMMETRIC: /* Symmetric boundary conditions */
+        if (verbose) Rprintf("Symmetric boundary method\n");
+        break;
+
+    default:    /* The bc must be one of the above */
+        Rprintf("Unknown boundary correction method\n");
+        *error = 1;
+        return;
+    }
+
+switch(*type)   {
+
+    case WAVELET:   /* Standard wavelets */
+        if (verbose) Rprintf("Standard wavelet decomposition\n");
+        break;
+
+    case STATION:   /* Stationary wavelets */
+        if (verbose) Rprintf("Stationary wavelet decomposition\n");
+        break;
+
+    default:    /* The type must be of one the above */
+        if (verbose) Rprintf("Unknown decomposition type\n");
+        *error = 2;
+        return;
+    }
+        
+if (verbose) Rprintf("Decomposing into level: ");
+
+*error = 0;
+
+step_factor = 1;    /* This variable should *always* be 1 for standard
+             * wavelets. It should start at 1 for stationary
+             * wavelets and multiply itself by 2 each stage
+             */
+
+for(next_level = *levels - 1; next_level >= 0; --next_level)    {
+
+    if (verbose)
+        Rprintf("%d ", next_level);
+
+    at_level = next_level + 1;
+
+/* For stationary wavelets we need to define a step factor.
+ * This widens the span of the filter. At the top level (*levels->*levels-1)
+ * it is one, as usual. Then for the next step it becomes 2, then 4 etc.
+ */
+
+    convolveC( (C+*(offsetC+at_level)),
+        (int)(*(lastC+ at_level) - *(firstC+at_level)+1),
+        (int)(*(firstC+at_level)),
+        H,
+        (int)*LengthH,
+        (C+*(offsetC+next_level)),
+        (int)(*(firstC+next_level)),
+        (int)(*(lastC+next_level)) , (int)*type,
+        step_factor, (int)*bc);
+
+    convolveD( (C+*(offsetC+at_level)),
+                (int)(*(lastC+ at_level) - *(firstC+at_level)+1),
+                (int)(*(firstC+at_level)),
+                H,
+                (int)*LengthH,
+        (D+*(offsetD+next_level)),
+        (int)(*(firstD+next_level)),
+        (int)(*(lastD+next_level)), (int)*type,
+        step_factor, (int)*bc );
+
+    if (*type == STATION)
+        step_factor *= 2;   /* Any half decent compiler should
+                     * know what to do here ! */
+    }
+if (verbose)
+    Rprintf("\n");
+return;
+}
+
+void 
+accessDwp (
+    double *Data,       /* This is a 2D array. Top level contains data */
+    int *LengthData,    /* Length of Data, this is power of 2              */
+    int *nlevels,       /* The number of levels in this decomposition   */
+    int *level,     /* Which level you want to extract      */
+    double *answer,     /* The level of coefficients            */
+    int *error     /* Error code                   */
+)
+{
+register int i;
+
+*error = 0;
+
+/*
+ * Check variable integrity
+ */
+
+if (*level < 0) {
+    *error =4000;
+    return;
+    }
+
+else if (*level > *nlevels) {
+    *error = 4001;
+    return;
+    }
+
+for(i=0; i< *LengthData; ++i)
+    *(answer+i) = ACCESSD(*level, i);
+
+
+}
+
+
+void 
+wavepackde (
+    double *Data,       /* This is a 2D array. Top level contains data */
+    int *LengthData,    /* Length of Data, this is power of 2              */
+    int *levels,        /* The number of levels, 2^(levels+1)=LengthData   */
+    double *H,      /* The filter to use                   */
+    int *LengthH       /* Length of filter                */
+)
+{
+int startin, outstart1, outstart2;
+/*
+int i,j;
+*/
+
+
+/*
+Rprintf("This routine is wavepackde\n");
+Rprintf("Length of data is %ld\n", *LengthData);
+Rprintf("Number of levels is %ld\n", *levels);
+Rprintf("Data array is:\n");
+for(i= (int)*levels; i>=0; --i)
+    for(j=0; j< *LengthData; ++j)   {
+        Rprintf("Level %d, Item %d is %lf\n", i,j, ACCESSD(i,j));
+        }
+*/
+
+startin = 0;
+outstart1 = 0;
+outstart2 = ((int)*LengthData)/2;
+
+wvpkr(Data, startin, (int)*LengthData, outstart1, outstart2, (int)*levels, H,
+ (int)*LengthH, LengthData);
+}
+
+void 
+wvpkr (
+    double *Data,
+    int startin,
+    int lengthin,
+    int outstart1,
+    int outstart2,
+    int level,  /* The level where we're at         */
+    double *H,
+    int LengthH,
+    int *LengthData
+)
+{
+int lengthout;
+
+
+lengthout = lengthin/2;
+
+
+convolveC( POINTD(level, startin), lengthin, 0, H, LengthH,
+    POINTD(level-1, outstart1), 0, lengthout-1, 
+    WAVELET, 1, PERIODIC);
+
+convolveD( POINTD(level, startin), lengthin, 0, H, LengthH,
+    POINTD(level-1, outstart2), 0, lengthout-1, 
+    WAVELET, 1, PERIODIC);
+
+if (lengthout==1)
+    return;
+else    {
+    /*
+     * Now apply both filters to the LOW pass filtered data
+     */
+    wvpkr(Data, outstart1, lengthout, outstart1, outstart1+lengthout/2,
+        level-1, H, LengthH, LengthData); 
+    /*
+     * Now apply both filters to the HIGH pass filtered data
+     */
+    wvpkr(Data, outstart2, lengthout, outstart2, outstart2+lengthout/2,
+        level-1, H, LengthH, LengthData); 
+    }
+}
+/* WAVEPACKRECON    -   inverse swt             */
+/*
+ * Error codes
+ *
+ *  1   -   As the reconstruction is built up the vector
+            ldata should contain a doubling sequence (apart
+            from the first two numbers which should be the
+            same. This error is returned if this is not the case.
+
+ *  2   -   memory error on creating c_in
+ *  3   -   memory error on creating c_out
+ */
+
+
+void 
+wavepackrecon (
+    double *rdata,  /* The transformed data, packets are packed together    */
+    int *ldata, /* Array of lengths of packets in rdata         */
+    int *nrsteps,   /* The number of reconstruction steps           */
+    int *rvector,   /* Integer whose binary decomposition reveals rotate/not
+           instruction                      */
+    double *H,  /* Filter                       */
+    int *LengthH,   /* Length of filter                 */
+    int *error /* Error code                       */
+)
+{
+register int i,j;
+register int msb;
+register int ldctr;
+int LengthCin;
+int LengthCout;
+int LengthDin;
+double *c_in;
+double *c_out;
+
+
+/* Set error code to zero as no error has occured yet!  */
+
+*error = 0;
+
+/* We can use conbar to do all our hard work for us         */
+/* This is the reconstruction step in the ordinary DWT. The only    */
+/* modification that we have to make is to rotate the data at each  */
+/* step if we need to. This information is stored in "rvector" (rotate  */
+/* vector). This is a single integer whose information is stored in */
+/* binary form. Each bit refers to a rotate/non rotate operation and    */
+/* should be applied by the following method:               */
+/*
+ *
+ *  a. do conbar
+ *  b. check next most sig bit of rvector and rotate if 1
+ *
+ * And start with the most significant bit.
+ */
+
+/*
+Rprintf("Rvector is %d\n", (int)*rvector);
+*/
+
+/* First let's generate the MSB */
+
+msb = 0x01 << ((int)*nrsteps-1);
+
+/* Get initial C data stored    */
+
+LengthCin = (int)*(ldata+0);
+
+ldctr = LengthCin;  /* ldctr measures how far aint rdata we have gone */
+
+if ((c_in = (double *)malloc((unsigned)LengthCin*sizeof(double)))==NULL) {
+        *error = 2;
+        return;
+        }
+
+for(j=0; j< LengthCin; ++j)
+    *(c_in+j) = *(rdata+j);
+
+LengthCout = LengthCin;
+
+c_out=calloc(LengthCout,sizeof(double));    /* MAN: added initialization.  Hopefully shouldn't have any bad
+                                                consequences... */
+for(i=0; i< (int)*nrsteps; ++i) {
+    LengthCout *= 2;
+
+    if (i != 0)
+        free((void *)c_out);
+
+    if ((c_out=(double *)malloc((unsigned)LengthCout*sizeof(double)))==NULL)    {
+        *error = 3;
+        return;
+        }
+
+    /* Now store D data at this level   */
+    LengthDin = (int)*(ldata+(i+1));
+
+    /* Don't need to store cos we can put rdata+ldctr straight in for d_in
+     * for(j=0; j < LengthDin; ++j)
+     *  *(d_in+j) = *(rdata+ldctr+j);
+     */
+
+    conbar(c_in, LengthCin, 0,
+           rdata+ldctr, LengthDin, 0,
+           H, (int)*LengthH,
+           c_out, LengthCout, 0, LengthCout-1,
+           WAVELET, PERIODIC);
+
+    ldctr += LengthDin; /* update cos we've moved aint rdata */ 
+
+    /* O.k. chaps, c_out must now become c_in, and we should check
+       that the lengths match */
+
+    /*
+    Rprintf("LengthCout is %d\n", LengthCout);
+    Rprintf("i is %d\n", i);
+    Rprintf("nrsteps is %d\n", (int)*nrsteps);
+    */
+    /*Rprintf("ldata+i+2 is %d\n", (int)*(ldata+i+2));*/
+    if (i+1 != (int)*nrsteps && LengthCout != (int)*(ldata+i+2))    {
+        *error = 1;
+        return;
+        }
+
+    /* Do we rotate back ? */
+
+    if (msb & (int)*rvector)    {
+        /*
+        Rprintf("Rotating\n");
+        */
+        rotateback(c_out, LengthCout);
+        }
+
+    /*
+    Rprintf("msb is: %d\n", msb);
+    */
+
+    msb >>= 1;
+
+    /* Now c_in <- c_out */
+
+    free((void *)c_in);
+
+    if ((c_in = (double *)malloc((unsigned)LengthCout*sizeof(double)))==NULL)   {
+        *error = 2;
+        return;
+        }
+
+    for(j=0; j<LengthCout; ++j)
+        *(c_in+j) = *(c_out+j);
+
+    LengthCin = LengthCout;
+
+    }
+/* Now copy c_out into rdata - they should be the same length at this stage */
+
+for(j=0; j<LengthCout; ++j)
+    *(rdata+j) = *(c_out+j);
+
+free((void *)c_out);
+free((void *)c_in);
+
+}
+/*
+ * Routine to perform the stationary wavelet decomposition in a wavelet
+ * packet fashion.
+ */
+
+void 
+wavepackst (
+    double *Carray,     /* Will contain bottom most Cs             */
+    double *Data,       /* This is a 2D array. Zeroeth level contains data */
+    int *LengthData,    /* Length of Data, this is power of 2              */
+    int *levels,        /* The number of levels, 2^(*levels)=LengthData    */
+    double *H,      /* The filter to use                   */
+    int *LengthH,       /* Length of filter                */
+    int *error     /* Error code, if non-zero then it's a mem error   */
+)
+{
+int startin, outstart1, outstart2;
+register int i;
+double *book;
+
+
+
+*error = 0;
+
+/*
+Rprintf("This routine is wavepackst\n");
+Rprintf("Length of data is %ld\n", *LengthData);
+Rprintf("Number of levels is %ld\n", *levels);
+Rprintf("Data array is:\n");
+for(i= (int)*levels; i>=0; --i)
+    for(j=0; j< *LengthData; ++j)   {
+        Rprintf("Level %d, Item %d is %lf\n", i,j, ACCESSD(i,j));
+        }
+*/
+
+/* Create a bookeeping vector. That contains the C,C' level smooths
+   thoughout the algorithm */
+
+if ((book = (double *)malloc((unsigned)*LengthData*sizeof(double)))==NULL){
+    *error = 1;
+    return;
+    }
+    
+/* Copy original data to book keeping vector */
+
+for(i=0; i< *LengthData; ++i)
+    *(book+i) = *POINTD(*levels, i);
+
+
+startin = 0;
+outstart1 = 0;
+outstart2 = ((int)*LengthData)/2;
+
+wvpkstr(Carray, Data, startin, (int)*LengthData, outstart1, outstart2,
+    (int)*levels, H, (int)*LengthH, LengthData, book, error);
+
+if (*error != 0)
+    return;
+else
+    free((void *)book);
+}
+
+void 
+wvpkstr (
+    double *Carray,
+    double *Data,
+    int startin,
+    int lengthin,
+    int outstart1,
+    int outstart2,
+    int level,  /* The level where we're at         */
+    double *H,
+    int LengthH,
+    int *LengthData,
+    double *book,
+    int *error
+)
+{
+register int i;
+int lengthout;
+double *book1, *book2;
+
+
+
+/*
+Rprintf("wvpkstr entry\n");
+Rprintf("lengthout is %d\n", lengthout);
+*/
+
+lengthout = lengthin/2;
+
+if ((book1 = (double *)malloc((unsigned)lengthout*sizeof(double)))==NULL) {
+    *error = 1;
+    return;
+    }
+
+else if ((book2 = (double *)malloc((unsigned)lengthout*sizeof(double)))==NULL){
+    *error = 1;
+    return;
+    }
+
+
+convolveC(book, lengthin, 0, H, LengthH,
+    book1, 0, lengthout-1, 
+    WAVELET, 1, PERIODIC);
+
+
+for(i=0; i < lengthout; ++i)
+    * POINTC(level-1, (outstart1+i)) = *(book1+i);
+
+/*
+Rprintf("book1 coefficients \n");
+for(i=0; i<lengthout; ++i)
+    Rprintf("%lf ", *(book1+i));;
+Rprintf("\n");
+*/
+
+convolveD( book, lengthin, 0, H, LengthH,
+    POINTD(level-1, outstart1), 0, lengthout-1, 
+    WAVELET, 1, PERIODIC);
+
+/* Now cycle book around one, and do the convolutions again */
+
+/* COMMENT OUT
+ * tmp = *(book+lengthin-1);
+ *
+ * for(i=lengthin-1; i>0; --i)
+ *  *(book+i) = *(book+i-1);
+ * book = tmp;
+ */
+
+/* COMMENT OUT (replaced by rotater function) tmp = *book;
+ * for(i=0; i<lengthin-1; ++i)
+ *  *(book+i) = *(book+i+1);
+ *
+ * *(book+lengthin-1) = tmp;
+ */
+
+rotater(book, lengthin);
+
+convolveC( book, lengthin, 0, H, LengthH,
+    book2, 0, lengthout-1, 
+    WAVELET, 1, PERIODIC);
+
+for(i=0; i < lengthout; ++i)
+    *POINTC(level-1, (outstart2+i)) = *(book2+i);
+
+/*
+Rprintf("book2 coefficients \n");
+for(i=0; i<lengthout; ++i)
+    Rprintf("%lf ", *(book2+i));
+Rprintf("\n");
+*/
+
+
+convolveD( book, lengthin, 0, H, LengthH,
+    POINTD(level-1, outstart2), 0, lengthout-1, 
+    WAVELET, 1, PERIODIC);
+
+
+if (lengthout!=1)   {
+    /*
+     * Now pass book1 and book2 to the next level 
+     */
+    wvpkstr(Carray, Data, outstart1, lengthout, outstart1,
+        outstart1+lengthout/2, level-1, H, LengthH, LengthData,
+        book1, error); 
+
+    if (*error != 0)
+        return;
+
+    wvpkstr(Carray, Data, outstart2, lengthout, outstart2,
+        outstart2+lengthout/2, level-1, H, LengthH, LengthData,
+        book2, error); 
+
+    if (*error != 0)
+        return;
+    }
+
+
+free((void *)book1);
+free((void *)book2);
+}
+/*
+ * waverecons:  Do 1D wavelet reconstruction
+ */
+
+void 
+waverecons (
+    double *C,              /* Input data, and the subsequent smoothed data */
+    double *D,              /* The wavelet coefficients                     */
+    double *H,              /* The smoothing filter H                       */
+    int *LengthH,          /* Length of smoothing filter                   */
+    int *levels,           /* The number of levels in this decomposition   */
+    int *firstC,           /* The first possible C coef at a given level   */
+    int *lastC,            /* The last possible C coef at a given level    */
+    int *offsetC,          /* Offset from C[0] for certain level's coeffs  */
+    int *firstD,           /* The first possible D coef at a given level   */
+    int *lastD,            /* The last possible D coef at a given level    */
+    int *offsetD,          /* Offset from D[0] for certain level's coeffs  */
+    int *type,      /* The type of wavelet decomposition        */
+    int *bc,        /* Which boundary handling are we doing     */
+    int *error            /* Error code                                   */
+)
+{
+register int next_level, at_level;
+register int verbose;   /* Printing messages, passed in error       */
+
+
+
+if (*error == 1)
+    verbose = 1;
+else
+    verbose = 0;
+
+switch(*bc) {
+
+    case PERIODIC:  /* Periodic boundary conditions */
+        if (verbose) Rprintf("Periodic boundary method\n");
+        break;
+
+    case SYMMETRIC: /* Symmetric boundary conditions */
+        if (verbose) Rprintf("Symmetric boundary method\n");
+        break;
+
+    default:    /* The bc must be one of the above */
+        Rprintf("Unknown boundary correction method\n");
+        *error = 1;
+        return;
+    }
+
+switch(*type)   {
+
+    case WAVELET:   /* Standard wavelets */
+        if (verbose) Rprintf("Standard wavelet decomposition\n");
+        break;
+
+    case STATION:   /* Stationary wavelets */
+        if (verbose) Rprintf("Stationary wavelet decomposition\n");
+        break;
+
+    default:    /* The type must be of one the above */
+        if (verbose) Rprintf("Unknown decomposition type\n");
+        *error = 2;
+        return;
+    }
+
+if (verbose) Rprintf("Building level: ");
+
+*error = 0;
+
+for(next_level = 1; next_level <= *levels; ++next_level)    {
+
+    
+    if (verbose)
+        Rprintf("%d ", next_level);
+
+    at_level = next_level - 1; 
+
+    conbar( (C+*(offsetC+at_level)),
+        (int)(*(lastC+at_level) - *(firstC+at_level) + 1),
+        (int)(*(firstC+at_level)),
+        (D+*(offsetD+at_level)),
+        (int)(*(lastD+at_level) - *(firstD+at_level) + 1),
+        (int)(*(firstD+at_level)),
+        H,
+        (int)*LengthH,
+        (C+*(offsetC+next_level)),
+        (int)(*(lastC+next_level) - *(firstC+next_level)+1),
+                (int)(*(firstC+next_level)),
+                (int)(*(lastC+next_level)),
+        (int)(*type),
+        (int)(*bc) );
+    }
+if (verbose)
+    Rprintf("\n");
+
+return;
+}
+/*
+ * Functions to do complex arithmetic
+ *
+ */
+
+/*
+ * Addition: a+ib + c+id = a+c +i(b+d) = e + i f
+ */
+
+void 
+comadd (double a, double b, double c, double d, double *e, double *f)
+{
+*e = a+c;
+*f = b+d;
+}
+
+/*
+ * Subtraction: a+ib - c+id = a+c -i(b+d) = e + i f
+ */
+
+void 
+comsub (double a, double b, double c, double d, double *e, double *f)
+{
+*e = a-c;
+*f = b-d; 
+}
+
+/*
+ * Multiplication: (a+ib)(c+id) = ac-bd +i(bc+ad) = e + i f
+ */
+
+void 
+commul (double a, double b, double c, double d, double *e, double *f)
+{
+*e = (a*c - b*d);
+*f = (b*c + a*d);
+}
+
+
+/*
+ * Division: (a+ib)(c+id) = (ac+bd +i(bc-ad))/(c^2+d^2) = e + i f
+ */
+
+void 
+comdiv (double a, double b, double c, double d, double *e, double *f)
+{
+double tmp;
+
+tmp = c*c + d*d;
+
+*e = (a*c + b*d)/tmp;
+*f = (b*c - a*d)/tmp;
+}
+/*
+ * Complex wavelet version
+ */
+
+/*
+ * COMCBR: Does the reconstruction convolution
+ */
+
+void 
+comcbr (
+    double *c_inR,
+    double *c_inI,
+    int LengthCin,
+    int firstCin,
+    int lastCin,        /* Code probably doesn't need this      */
+    double *d_inR,
+    double *d_inI,
+    int LengthDin,
+    int firstDin,
+    int lastDin,
+    double *HR,
+    double *HI,
+    double *GR,
+    double *GI,
+    int LengthH,
+    double *c_outR,
+    double *c_outI,
+    int LengthCout,
+    int firstCout,      /* This determines summation over n     */
+    int lastCout,       /* and this does too                */
+    int type,       /* The type of wavelet reconstruction       */
+    int bc
+)
+{
+register int n,k;
+register int cfactor;
+double sumCR, sumCI, sumDR, sumDI;
+double a,b,c,d,e,f;
+
+switch(type)    {
+
+    case WAVELET:   /* Standard wavelets */
+        cfactor = 2;
+        break;
+
+    case STATION:   /* Stationary wavelets */
+        cfactor = 1;
+        break;
+
+    default:    /* This should never happen */
+        cfactor=0;       /* MAN: added for total cover: shouldn't happen */
+        break;
+    }
+
+
+/* Compute each of the output C */
+
+for(n=firstCout; n<=lastCout; ++n)  {
+
+    /* We want  n+1-LengthH <= 2*k to start off */
+
+
+    k = CEIL(n+1-LengthH);
+
+    sumCR = 0.0;
+    sumCI = 0.0;
+    sumDR = 0.0;
+    sumDI = 0.0;
+
+    while( cfactor*k <= n ) {
+
+        a = *(HR + n - cfactor*k);
+        b = *(HI + n - cfactor*k);
+
+        c = ACCESSC(c_inR, firstCin, LengthCin, k, bc);
+        d = ACCESSC(c_inI, firstCin, LengthCin, k, bc);
+
+        commul(a,b,c,d, &e, &f);
+
+        sumCR += e;
+        sumCI += f;
+
+        /* Now D part */
+
+        a = *(GR + n - cfactor*k);
+        b = *(GI + n - cfactor*k);
+
+        c = ACCESSC(d_inR, firstDin, LengthDin, k, bc);
+        d = ACCESSC(d_inI, firstDin, LengthDin, k, bc);
+
+        commul(a,b,c,d, &e, &f);
+
+        sumDR += e;
+        sumDI += f;
+
+        ++k;
+        }
+
+    sumCR += sumDR;
+    sumCI += sumDI;
+
+    ACCESSC(c_outR, firstCout, LengthCout, n, bc) = sumCR;
+    ACCESSC(c_outI, firstCout, LengthCout, n, bc) = sumCI;
+    }
+
+}
+/*
+ * This routine is identical to the convolve.c routine except it
+ * does it for complex wavelets.
+
+ * COMCONC  -   Do filter H filter convolution with boundary
+ */
+
+
+void 
+comconC (
+    double *c_inR,  /* Input data (real)                    */
+    double *c_inI,  /* Input data (imaginary)               */
+    int LengthCin,  /* Length of this array                 */
+    int firstCin,   /*  <-- MAN: added since missing...     */
+    double *HR, /* Lowpass Filter                   */
+    double *HI, /* Lowpass Filter                   */
+    int LengthH,    /* Length of filter                 */
+    double *c_outR, /* Output data (real)                   */
+    double *c_outI, /* Output data (imaginary)              */
+    int LengthCout, /* Length of above array                */
+    int firstCout,  /* First index of C array               */
+    int lastCout,   /* Last index of C array                */
+    int type,   /* Type of wavelet decomposition            */
+    int step_factor,/* For stationary wavelets only             */
+    int bc     /* Method of boundary correction PERIODIC, SYMMETRIC    */
+)
+{
+double sumR,sumI;
+double a,b,c,d,e,f;
+register int k;
+register int count_out;
+register int m;
+register int cfactor;   /* This determines what sort of dilation we do  */
+            /* and depends on the type argument     */
+
+count_out = 0;
+
+switch(type)    {
+
+    case WAVELET:   /*  Ordinary wavelets   */
+            cfactor = 2;    /* Pick every other coefficient */
+            break;
+
+    case STATION:   /* Stationary wavelets  */
+            cfactor = 1;    /* Pick every coefficient   */
+            break;
+
+
+    default:    /* This is an error, one of the above must have */
+            /* been picked */
+            /* However, this must be tested in a previous   */
+            /* routine.                 */
+            cfactor=0;       /* MAN: added for total cover: shouldn't happen */
+            break;
+        }
+
+for(k=firstCout; k<=lastCout; ++k)  {
+    sumR = 0.0;
+    sumI = 0.0;
+
+
+    for(m=0; m<LengthH; ++m)    {
+
+        a = *(HR + m);  /* real part */
+        b = *(HI + m);  /* imaginary part */
+
+        c = ACCESSC(c_inR, firstCin, LengthCin,
+            ((step_factor*m)+(cfactor*k)),bc);
+        d = ACCESSC(c_inI, firstCin, LengthCin,
+            ((step_factor*m)+(cfactor*k)),bc);
+
+        commul(a,b,c,d,&e, &f);
+
+        sumR += e;
+        sumI += f;
+        }
+
+    *(c_outR + count_out) = sumR;
+    *(c_outI + count_out) = sumI;
+    ++count_out;
+    }
+}
+
+void 
+comconD (
+    double *c_inR,  /* Input data                       */
+    double *c_inI,  /* Input data                       */
+    int LengthCin,  /* Length of this array                 */
+    int firstCin,
+    double *GR, /* highpass Filter                  */
+    double *GI, /* highpass Filter                  */
+    int LengthH,    /* Length of filter                 */
+    double *d_outR, /* Output data                      */
+    double *d_outI, /* Output data                      */
+    int LengthDout, /* Length of above array                */
+    int firstDout,  /* First index of D array               */
+    int lastDout,   /* Last index of D array                */
+    int type,   /* Type of wavelet decomposition            */
+    int step_factor,/* For stationary wavelets only             */
+    int bc     /* Method of boundary correction PERIODIC or SYMMETRIC  */
+)
+{
+double sumR, sumI;
+double a,b,c,d,e,f;
+register int k;
+register int count_out;
+register int m;
+register int cfactor;
+
+count_out = 0;
+
+switch(type)    {
+
+    case WAVELET:   /*  Ordinary wavelets   */
+            cfactor = 2;    /* Pick every other coefficient */
+            break;
+
+    case STATION:   /* Stationary wavelets  */
+            cfactor = 1;    /* Pick every coefficient   */
+            break;
+
+
+    default:    /* This is an error, one of the above must have */
+            /* been picked */
+            /* However, this must be tested in a previous   */
+            /* routine.                 */
+            cfactor=0;       /* MAN: added for total cover: shouldn't happen */
+            break;
+        }
+
+for(k=firstDout; k<=lastDout; ++k)  {
+    sumR = 0.0;
+    sumI = 0.0;
+
+
+    for(m=0; m<LengthH; ++m)    {
+
+        a = *(GR+m);
+
+        b = *(GI+m);
+
+        c = ACCESSC(c_inR, firstCin, LengthCin,
+            ((step_factor*m)+(cfactor*k)),bc);
+        d = ACCESSC(c_inI, firstCin, LengthCin,
+            ((step_factor*m)+(cfactor*k)),bc);
+        /*
+        c = ACCESSC(c_inR, firstCin, LengthCin,
+                (cfactor*k+(step_factor*(1-m))),bc);
+        d = ACCESSC(c_inI, firstCin, LengthCin,
+                (cfactor*k+(step_factor*(1-m))),bc);
+
+        Rprintf("%d: (%lf, %lf)* (%lf, %lf)\n", a,b,c,d);
+        */
+        commul(a,b,c,d,&e,&f);
+
+        sumR += e;
+        sumI += f;
+        }
+
+    *(d_outR + count_out) = sumR;
+    *(d_outI + count_out) = sumI;
+    ++count_out;
+    }
+}
+
+
+/*
+ * Complex version of wavelet transform
+ */
+
+void 
+comwd (
+    double *CR,              /* Input data, and the subsequent smoothed data */
+    double *CI,              /* Input data, and the subsequent smoothed data */
+    int *LengthC,          /* Length of C array                            */
+    double *DR,              /* The wavelet coefficients                     */
+    double *DI,              /* The wavelet coefficients                     */
+    int *LengthD,          /* Length of D array                            */
+    double *HR,              /* The smoothing filter H                       */
+    double *HI,              /* The smoothing filter H                       */
+    double *GR,              /* The highpass filter H                       */
+    double *GI,              /* The highpass filter H                       */
+    int *LengthH,          /* Length of smoothing filter                   */
+    int *levels,           /* The number of levels in this decomposition   */
+    int *firstC,           /* The first possible C coef at a given level   */
+    int *lastC,            /* The last possible C coef at a given level    */
+    int *offsetC,          /* Offset from C[0] for certain level's coeffs  */
+    int *firstD,           /* The first possible D coef at a given level   */
+    int *lastD,            /* The last possible D coef at a given level    */
+    int *offsetD,          /* Offset from D[0] for certain level's coeffs  */
+    int *type,      /* The type of wavelet decomposition        */
+    int *bc,        /* Method of boundary correction        */
+    int *error            /* Error code                                   */
+)
+{
+register int next_level,at_level;
+register int step_factor;   /* Controls width of filter for station */
+register int verbose;   /* Controls message printing, passed in error var*/
+
+if (*error == 1)   /* Error switches on verbosity */
+    verbose = 1;
+else
+    verbose = 0;
+
+switch(*bc) {
+
+    case PERIODIC:  /* Periodic boundary conditions */
+        if (verbose) Rprintf("Periodic boundary method\n");
+        break;
+
+    case SYMMETRIC: /* Symmetric boundary conditions */
+        if (verbose) Rprintf("Symmetric boundary method\n");
+        break;
+
+    default:    /* The bc must be one of the above */
+        Rprintf("Unknown boundary correction method\n");
+        *error = 1;
+        return;
+        break;
+    }
+
+switch(*type)   {
+
+    case WAVELET:   /* Standard wavelets */
+        if (verbose) Rprintf("Standard wavelet decomposition\n");
+        break;
+
+    case STATION:   /* Stationary wavelets */
+        if (verbose) Rprintf("Stationary wavelet decomposition\n");
+        break;
+
+    default:    /* The type must be of one the above */
+        if (verbose) Rprintf("Unknown decomposition type\n");
+        *error = 2;
+        return;
+        break;
+    }
+        
+if (verbose) Rprintf("Decomposing into level: ");
+
+*error = 0;
+
+step_factor = 1;    /* This variable should *always* be 1 for standard
+             * wavelets. It should start at 1 for stationary
+             * wavelets and multiply itself by 2 each stage
+             */
+
+for(next_level = *levels - 1; next_level >= 0; --next_level)    {
+
+    if (verbose)
+        Rprintf("%d ", next_level);
+
+    at_level = next_level + 1;
+
+/* For stationary wavelets we need to define a step factor.
+ * This widens the span of the filter. At the top level (*levels->*levels-1)
+ * it is one, as usual. Then for the next step it becomes 2, then 4 etc.
+ */
+
+    comconC( (CR+*(offsetC+at_level)),
+           (CI+*(offsetC+at_level)),
+        (int)(*(lastC+ at_level) - *(firstC+at_level)+1),
+        (int)(*(firstC+at_level)),
+        HR, HI,
+        (int)*LengthH,
+        (CR+*(offsetC+next_level)),
+        (CI+*(offsetC+next_level)),
+        (int)(*(lastC+next_level) - *(firstC+next_level)+1),
+        (int)(*(firstC+next_level)),
+        (int)(*(lastC+next_level)) , (int)*type,
+        step_factor, (int)*bc);
+
+    comconD( (CR+*(offsetC+at_level)),
+           (CI+*(offsetC+at_level)),
+                (int)(*(lastC+ at_level) - *(firstC+at_level)+1),
+                (int)(*(firstC+at_level)),
+                GR, GI,
+                (int)*LengthH,
+        (DR+*(offsetD+next_level)),
+        (DI+*(offsetD+next_level)),
+        (int)(*(lastD+next_level) - *(lastD+next_level)+1),
+        (int)(*(firstD+next_level)),
+        (int)(*(lastD+next_level)), (int)*type,
+        step_factor, (int)*bc );
+
+    if (*type == STATION)
+        step_factor *= 2;   /* Any half decent compiler should
+                     * know what to do here ! */
+    }
+if (verbose)
+    Rprintf("\n");
+return;
+}
+/*
+ * waverecons:  Do 1D wavelet reconstruction
+ */
+
+void 
+comwr (
+    double *CR,              /* Input data, and the subsequent smoothed data */
+    double *CI,              /* Input data, and the subsequent smoothed data */
+    int *LengthC,          /* Length of C array                            */
+    double *DR,              /* The wavelet coefficients                     */
+    double *DI,              /* The wavelet coefficients                     */
+    int *LengthD,          /* Length of D array                            */
+    double *HR,              /* The smoothing filter H                       */
+    double *HI,              /* The smoothing filter H                       */
+    double *GR,              /* The bandpass filter G                       */
+    double *GI,              /* The bandpass filter G                       */
+    int *LengthH,          /* Length of smoothing filter                   */
+    int *levels,           /* The number of levels in this decomposition   */
+    int *firstC,           /* The first possible C coef at a given level   */
+    int *lastC,            /* The last possible C coef at a given level    */
+    int *offsetC,          /* Offset from C[0] for certain level's coeffs  */
+    int *firstD,           /* The first possible D coef at a given level   */
+    int *lastD,            /* The last possible D coef at a given level    */
+    int *offsetD,          /* Offset from D[0] for certain level's coeffs  */
+    int *type,      /* The type of wavelet decomposition        */
+    int *bc,        /* Which boundary handling are we doing     */
+    int *error            /* Error code                                   */
+)
+{
+register int next_level, at_level;
+register int verbose;   /* Printing messages, passed in error       */
+
+if (*error == 1)
+    verbose = 1;
+else
+    verbose = 0;
+
+switch(*bc) {
+
+    case PERIODIC:  /* Periodic boundary conditions */
+        if (verbose) Rprintf("Periodic boundary method\n");
+        break;
+
+    case SYMMETRIC: /* Symmetric boundary conditions */
+        if (verbose) Rprintf("Symmetric boundary method\n");
+        break;
+
+    default:    /* The bc must be one of the above */
+        Rprintf("Unknown boundary correction method\n");
+        *error = 1;
+        return;
+        break;
+    }
+
+switch(*type)   {
+
+    case WAVELET:   /* Standard wavelets */
+        if (verbose) Rprintf("Standard wavelet decomposition\n");
+        break;
+
+    case STATION:   /* Stationary wavelets */
+        if (verbose) Rprintf("Stationary wavelet decomposition\n");
+        break;
+
+    default:    /* The type must be of one the above */
+        if (verbose) Rprintf("Unknown decomposition type\n");
+        *error = 2;
+        return;
+        break;
+    }
+
+if (verbose) Rprintf("Building level: ");
+
+*error = 0;
+
+for(next_level = 1; next_level <= *levels; ++next_level)    {
+
+    
+    if (verbose)
+        Rprintf("%d ", next_level);
+
+    at_level = next_level - 1; 
+
+    comcbr( (CR+*(offsetC+at_level)),
+        (CI+*(offsetC+at_level)),
+        (int)(*(lastC+at_level) - *(firstC+at_level) + 1),
+        (int)(*(firstC+at_level)),
+        (int)(*(lastC+at_level)),
+        (DR+*(offsetD+at_level)),
+        (DI+*(offsetD+at_level)),
+        (int)(*(lastD+at_level) - *(firstD+at_level) + 1),
+        (int)(*(firstD+at_level)),
+        (int)(*(lastD+at_level)),
+        HR, HI, GR, GI,
+        (int)*LengthH,
+        (CR+*(offsetC+next_level)),
+        (CI+*(offsetC+next_level)),
+        (int)(*(lastC+next_level) - *(firstC+next_level)+1),
+                (int)(*(firstC+next_level)),
+                (int)(*(lastC+next_level)),
+        (int)(*type),
+        (int)(*bc) );
+    }
+if (verbose)
+    Rprintf("\n");
+
+return;
+}
+/*
+ * Emulate the WavDE function in C (but not plotting information)
+ * and don't return the wavelet coefficients.
+ */
+
+#define HARDTHRESH(w,t) ( fabs((w)) > (t) ? (w) : (0.0))
+
+void 
+CWavDE (
+    double *x,  /* The data                     */
+    int *n, /* The length of the data               */
+    double *minx,   /* The min of the data                  */
+    double *maxx,   /* The max of the data                  */
+    int *Jmax,  /* The number of levels in the expansion        */
+    double *threshold,  /* Threshold value for thresholding the wv coefs*/
+    double *xout,   /* The grid on which the density estimate is defined    */
+    double *fout,   /* The density estimate defined on the above grid   */
+    int *nout,  /* The length of the grid               */
+    double *PrimRes,/* The primary resolution               */
+    double *SFx,    /* The grid on which the scaling function is defined    */
+    double *SFy,    /* The scaling function                 */
+    int *lengthSF,  /* The length of the grid               */
+    double *WVx,    /* The grid on which the wavelet is defined     */
+    double *WVy,    /* The wavelet function                 */
+    int *lengthWV,  /* The length of the grid               */
+    int *kmin,  /* minimum k for scaling function coefficient comp. */
+    int *kmax,  /* maximum k for scaling function coefficient comp. */
+    int *kminW, /* as above but for each wavelet level (1:Jmax)     */
+    int *kmaxW, /* as above but for each wavelet level (1:Jmax)     */
+    double *xminW,  /* minimum x value for each level for wavelet       */
+    double *xmaxW,  /* maximum x value for each level for wavelet       */
+    double *phiLH,  /* left hand end of support of Phi          */
+    double *phiRH,  /* right hand end of support of Phi         */
+    double *psiLH,  /* left hand end of support of psi          */
+    double *psiRH,  /* right hand end of support of psi         */
+    int *verbose,   /* Print messages or not?               */
+    int *error /* Error codes                      */
+)
+
+/* Error codes
+
+    0   -   O.k.
+    1   -   Memory error
+
+ */
+{
+register int i,k,l,j,twopowjp1;
+register int la;
+double atmp;
+double *a;
+double sum;
+double divisor;
+double widthSF,widthWV;
+
+double xmin, xmax; /* Note these are not the same as maxx and minx */
+double SFYscale, WVYscale; /* I forgot to multiply by p^{1/2} etc. */
+
+if (*verbose > 1)
+    Rprintf("Entered CWavDE function\n");
+
+*kmin = (int)floor(*minx - *phiRH/ *PrimRes);
+*kmax = (int)ceil(*maxx - *phiLH/ *PrimRes);
+
+if (*verbose > 1)
+    Rprintf("kmin is %d, kmax is %d\n", *kmin, *kmax);       /*MAN: changed %ld to %d since declared as int (L1329) */
+
+la = (int)(*kmax - *kmin) + 1;
+
+if ((a = (double *)malloc((unsigned)(sizeof(double)*la)))==NULL)    {
+    *error = 1;
+    return;
+    }
+
+/* Now compute the widths of the wavelet/scaling function supports */
+
+widthSF = *(SFx+(int)*lengthSF-1) - *SFx;
+widthWV = *(WVx+(int)*lengthWV-1) - *WVx;
+
+/* 
+ * Now work out all of the scaling function coefficients
+ */
+
+k = (int)*kmin;
+
+/* I forgot to multiply by p^{1/2} ! */
+SFYscale = sqrt(*PrimRes);
+
+for (i=0; i<la; ++i)    {
+    sum = 0.0;
+    for(l=0; l<(int)*n; ++l)    {
+        sum += evalF(SFx, SFy, lengthSF, widthSF,
+            (*PrimRes* *(x+l))-(double)k);
+        }
+    *(a+i) = SFYscale*sum/(double)*n;
+    ++k;
+    }
+/*
+ * Now compute the wavelet supports
+ */
+
+for(j=0; j< (int)*Jmax; ++j)    {
+
+    twopowjp1 = 1 << (j+1);     /* MAN: added parentheses for bit shift */
+
+    divisor = *PrimRes*(double)twopowjp1;
+
+    *(kminW+j) = (int)floor(*minx - *psiRH/divisor);
+    *(kmaxW+j) = (int)ceil(*maxx - *psiLH/divisor);
+    *(xminW+j) = (double)*(kminW+j) + *psiLH/divisor;
+    *(xmaxW+j) = (double)*(kmaxW+j) + *psiRH/divisor;
+    }
+
+/* Now figure out range of x values over which the density estimate
+ * is compactly supported
+ */
+
+xmin = (double)*kmin + *phiLH/ *PrimRes;
+xmax = (double)*kmax + *phiRH/ *PrimRes;
+
+for(j=0; j< (int)*Jmax; ++j)    {
+    if (*(xminW + j) < xmin)
+        xmin = *(xminW + j);
+
+    if (*(xmaxW + j) > xmax)
+        xmax = *(xmaxW + j);
+    }
+
+divisor = (xmax-xmin)/(double)(*nout-1);
+
+for(i=0; i< (int)*nout; ++i)    {
+    *(fout+i) = 0.0;
+    *(xout+i) = xmin + (double)i*divisor; 
+    }
+
+k = *kmin;
+
+
+for (i=0; i<la; ++i)    {
+    for(l=0; l<(int)*nout; ++l) {
+        *(fout+l) += *(a+i) *
+            evalF(SFx, SFy, lengthSF, widthSF,
+                ((*PrimRes * *(xout+l))-(double)k));
+        }
+    ++k;
+    }
+
+for(l=0; l<(int)*nout; ++l)
+    *(fout+l) = SFYscale * *(fout+l);
+
+/* That was the easy part. Now we have to repeat the same operations
+ * as above for the wavelets themselves
+ *
+ * Go round in a loop and get the wavelet coefficients for each level
+ * reuse a
+ */
+
+free((void *)a);
+
+for(j=0; j<(int)*Jmax; ++j) {
+    if (*verbose > 0)
+      {
+        Rprintf("Wavelet step: level %d\n", j);
+      }
+
+        twopowjp1 = 1 << (j+1);           /* MAN: added parentheses for bit shift */
+
+        divisor = *PrimRes*(double)twopowjp1;
+
+        WVYscale = sqrt(divisor);
+
+        la = (int)(*(kmaxW+j) - *(kminW+j)) + 1;
+
+        if ((a = (double *)malloc((unsigned)(sizeof(double)*la)))==NULL) {
+            *error = 1;
+            return;
+            }
+
+        /* Now compute the coefficients for this level j */
+
+        k = *(kminW+j);
+        for(i=0; i<la; ++i) {
+            sum = 0.0;
+            for(l=0; l<(int)*n; ++l)    {
+              sum += evalF(WVx, WVy, lengthWV, widthWV,
+               ((double)twopowjp1* *PrimRes * *(x+l))
+               -(double)k);
+            }
+            sum *= WVYscale;
+            *(a+i) = HARDTHRESH(sum/(double)*n, *threshold);
+            atmp = WVYscale * *(a+i);
+            for(l=0; l<(int)*nout; ++l)     {
+                *(fout+l) += atmp *
+                  evalF(WVx, WVy, lengthWV, widthWV,
+            ((double)twopowjp1* *PrimRes * *(xout+l))-(double)k);
+            }
+            ++k;
+            }
+        free((void *)a);
+        }
+
+
+
+*error = 0;
+}
+
+void 
+SCevalF (
+    double *Fx, /* Grid upon which function is defined          */
+    double *Fy, /* Function definition                  */
+    int *lengthF,   /* Length of above grids                */
+    double *widthF, /* Width end Fx - start Fx              */
+    double *x,  /* Vector x to evaluate function at         */
+    int *nx,    /* Length of x                      */
+    double *answer /* The answer (again vector of length x)        */
+)
+{
+register int i;
+
+
+for(i=0; i< (int)*nx; ++i)  {
+    *(answer+i) = evalF(Fx, Fy, lengthF, *widthF, *(x+i));
+    }
+}
+
+
+/*
+ * Evaluate the function Fx,Fy at x. Function is deemed to be zero outside
+ * of range of Fx
+ *
+ * Fx must be a strictly increasing equally spaced design
+ */
+
+double 
+evalF (
+    double *Fx, /* Grid upon which function is defined          */
+    double *Fy, /* Function definition                  */
+    int *lengthF,   /* Length of above grids                */
+    double widthF,  /* Width end Fx - start Fx              */
+    double x   /* Value of x to evaluate function at           */
+)
+{
+register int il,ir;
+double a;
+double fp;
+
+/*
+ * First get approximate index of point to return
+ */
+
+if (x < *Fx || x > *(Fx + (int)*lengthF - 1))
+    return(0.0);
+
+a = (double)((int)*lengthF - 1) * (x - *Fx)/widthF;
+
+/* Now a should always be >= 0, since we've already rejected any
+   possible negatives, so we don't have to use floor & ceil here
+   Just (int) will do. */
+
+
+il = (int)a;
+ir = il+1;
+
+fp = a - (double)il;
+
+return( ((1.0-fp)* *(Fy+il)) + (fp* *(Fy+ir)) );
+}
+#define MAX(a,b)    ( (a) < (b) ? (b) : (a))
+#define MIN(a,b)    ( (a) < (b) ? (a) : (b))
+
+void 
+CScalFn (double *v, double *ans, int *res, double *H, int *lengthH)
+{
+register int k,n;
+double sum;
+int b,e;
+
+for(n=0; n< (int)*res; ++n) {
+    sum = 0.0;
+    b = MAX(0, (int )ceil( ((float)(n+1- *lengthH))/2.0));
+        e = MIN(*res, (int )floor(((float) n)/2.0));
+    for(k=b; k<= e; ++k)    {
+        sum += *(H+n-2*k) * *(v+k);
+        }
+    *(ans+n) = sum;
+    }
+}
+
+/* Perform tensor product wavelet transform */
+
+void 
+tpwd (
+    double *image,      /* The image to decompose           */
+    int *nrow,      /* The number of rows in the image      */
+    int *ncol,      /* The number of cols in the image      */
+    int *levr,      /* The number of levels as rows in the image    */
+    int *levc,      /* The number of levels as cols in the image    */
+    int *firstCr,           /* The first possible C coef at a given level   */
+    int *lastCr,            /* The last possible C coef at a given level    */
+    int *offsetCr,          /* Offset from C[0] for certain level's coeffs  */
+    int *firstDr,           /* The first possible D coef at a given level   */
+    int *lastDr,            /* The last possible D coef at a given level    */
+    int *offsetDr,          /* Offset from D[0] for certain level's coeffs  */
+    int *firstCc,           /* The first possible C coef at a given level   */
+    int *lastCc,            /* The last possible C coef at a given level    */
+    int *offsetCc,          /* Offset from C[0] for certain level's coeffs  */
+    int *firstDc,           /* The first possible D coef at a given level   */
+    int *lastDc,            /* The last possible D coef at a given level    */
+    int *offsetDc,          /* Offset from D[0] for certain level's coeffs  */
+    int *type,             /* The type of wavelet decomposition            */
+    int *bc,               /* Method of boundary correction                */
+    double *H,      /* The wavelet filter               */
+    int *LengthH,       /* The length of the wavelet filter     */
+    int *error     /* 0=no error, various errors possible      */
+)
+{
+register int i,j;
+
+double *C;      /* temporary store for input/output data    */
+double *D;      /* temporary store for wavelet coefficients */
+
+
+
+
+*error = 0;
+
+if ((C = (double *)malloc(2*(unsigned)*ncol *sizeof(double)))==NULL)    {
+    *error = 1;
+    return;
+    }
+if ((D = (double *)malloc((unsigned)*ncol *sizeof(double)))==NULL)  {
+    *error = 2;
+    return;
+    }
+
+/* First do the wavelet transform across all rows in the image for each row
+ */
+
+for(i=0; i< *nrow; ++i) {
+
+    /* Copy the row across - sorry there is probably a more efficient
+       way to do this in-place, but what the hell. */
+
+
+    for(j=0; j< *ncol; ++j) {
+        *(D+j) = 0.0;
+        *(C+j) = ACCESS(image, *ncol, i, j);
+        }
+
+    /* Now do the jolly old wavelet transform */
+
+
+    wavedecomp(C, D, H, LengthH, levc,
+        firstCc, lastCc, offsetCc,
+        firstDc, lastDc, offsetDc,
+        type, bc, error);
+
+
+    if (*error != 0)
+        return;
+
+    /* And put the answers back in the image array  */
+
+    ACCESS(image, *ncol, i, 0) = *(C+ (*ncol*2)-2);
+
+
+    for(j=1; j< *ncol; ++j) {
+        ACCESS(image, *ncol, i, j) = *(D+j-1);
+        } 
+
+    }
+
+free(C);
+free(D);
+
+/* Now do it the other way around */
+
+if ((C = (double *)malloc(2*(unsigned)*nrow *sizeof(double)))==NULL)    {
+    *error = 1;
+    return;
+    }
+if ((D = (double *)malloc((unsigned)*nrow *sizeof(double)))==NULL)  {
+    *error = 2;
+    return;
+    }
+    
+/* Second do the wavelet transform across all cols in the image for each col
+ */
+
+for(j=0; j< *ncol; ++j) {
+
+    /* Copy the row across - sorry there is probably a more efficient
+       way to do this in-place, but what the hell. */
+
+
+    for(i=0; i< *nrow; ++i) {
+        *(D+i) = 0.0;
+        *(C+i) = ACCESS(image, *ncol, i, j);
+        }
+
+    /* Now do the jolly old wavelet transform */
+
+
+    wavedecomp(C, D, H, LengthH, levr,
+        firstCr, lastCr, offsetCr,
+        firstDr, lastDr, offsetDr,
+        type, bc, error);
+
+
+    if (*error != 0)
+        return;
+
+    /* And put the answers back in the image array  */
+
+    ACCESS(image, *ncol, 0, j) = *(C+ (*nrow*2)-2);
+
+
+    for(i=1; i< *nrow; ++i) {
+        ACCESS(image, *ncol, i, j) = *(D+i-1);
+        } 
+
+    }
+
+free(C);
+free(D);
+    
+}
+
+/* Inverse tensor product wavelet transform             */
+
+void 
+tpwr (
+    double *image,      /* The tpwd coefficients to reconstruct     */
+    int *nrow,      /* The number of rows in the image      */
+    int *ncol,      /* The number of cols in the image      */
+    int *levr,      /* The number of levels as rows in the image    */
+    int *levc,      /* The number of levels as cols in the image    */
+    int *firstCr,           /* The first possible C coef at a given level   */
+    int *lastCr,            /* The last possible C coef at a given level    */
+    int *offsetCr,          /* Offset from C[0] for certain level's coeffs  */
+    int *firstDr,           /* The first possible D coef at a given level   */
+    int *lastDr,            /* The last possible D coef at a given level    */
+    int *offsetDr,          /* Offset from D[0] for certain level's coeffs  */
+    int *firstCc,           /* The first possible C coef at a given level   */
+    int *lastCc,            /* The last possible C coef at a given level    */
+    int *offsetCc,          /* Offset from C[0] for certain level's coeffs  */
+    int *firstDc,           /* The first possible D coef at a given level   */
+    int *lastDc,            /* The last possible D coef at a given level    */
+    int *offsetDc,          /* Offset from D[0] for certain level's coeffs  */
+    int *type,             /* The type of wavelet decomposition            */
+    int *bc,               /* Method of boundary correction                */
+    double *H,      /* The wavelet filter               */
+    int *LengthH,       /* The length of the wavelet filter     */
+    int *error     /* 0=no error, various errors possible      */
+)
+{
+register int i,j;
+
+double *C;      /* temporary store for input data       */
+double *D;      /* temporary store for wavelet coefficients */
+
+
+/* Basically just do tpwd backwards! */
+
+*error = 0;
+
+if ((C = (double *)malloc(2*(unsigned)*nrow *sizeof(double)))==NULL)    {
+    *error = 1;
+    return;
+    }
+if ((D = (double *)malloc((unsigned)*nrow *sizeof(double)))==NULL)  {
+    *error = 2;
+    return;
+    }
+
+/*
+ * First do the wavelet reconstruction over all cols in the image for each col
+ */
+
+for(j=0; j< *ncol; ++j) {
+
+    /* Copy the row across - sorry there is probably a more efficient
+       way to do this in-place, but what the hell. */
+
+    *(C+ (*nrow*2)-2) = ACCESS(image, *ncol, 0, j);
+
+    for(i=1; i< *nrow; ++i) {
+        *(D+i-1) = ACCESS(image, *ncol, i, j); 
+        } 
+
+
+    /* Now do the jolly old wavelet RECONSTRUCTION */
+
+    waverecons(C, D, H, LengthH, levc,
+        firstCc, lastCc, offsetCc,
+        firstDc, lastDc, offsetDc,
+        type, bc, error);
+
+
+    if (*error != 0)
+        return;
+
+    /* And put the answers back in the image array  */
+
+    for(i=0; i< *nrow; ++i)
+        ACCESS(image, *ncol, i, j) = *(C+i);
+
+    }
+
+free(C);
+free(D);
+
+if ((C = (double *)malloc(2*(unsigned)*ncol *sizeof(double)))==NULL)    {
+    *error = 1;
+    return;
+    }
+if ((D = (double *)malloc((unsigned)*ncol *sizeof(double)))==NULL)  {
+    *error = 2;
+    return;
+    }
+
+/*
+ * Second do the wavelet reconstruction over all rows in the image for each row
+ */
+
+for(i=0; i< *nrow; ++i) {
+
+    /* Copy the row across - sorry there is probably a more efficient
+       way to do this in-place, but what the hell. */
+
+    *(C+ (*ncol*2)-2) = ACCESS(image, *ncol, i, 0); 
+
+    for(j=1; j< *ncol; ++j) {
+        *(D+j-1) = ACCESS(image, *ncol, i, j);
+        } 
+
+
+    /* Now do the jolly old wavelet reconstruction */
+
+
+    waverecons(C, D, H, LengthH, levr,
+        firstCr, lastCr, offsetCr,
+        firstDr, lastDr, offsetDr,
+        type, bc, error);
+
+
+    if (*error != 0)
+        return;
+
+    /* And put the answers back in the image array  */
+
+    for(j=0; j< *ncol; ++j)
+        ACCESS(image, *ncol, i, j) = *(C+j);
+
+    }
+
+free(C);
+free(D);
+}
+
+
+#define ZILCHTOL    1.0E-300    /* Zero tolerance for Shannon entropy */
+#define STOP        1       /* Code for stopping        */
+#define LEFT        2       /* Code for going left      */
+#define RIGHT       3       /* Code for going right     */
+
+/* Compute Shannon-Weaver entropy substitute - the l^2 log (l^2) "norm" */
+void 
+ShannonEntropy (double *v, int *lengthv, double *zilchtol, double *answer, int *error)
+{
+register int i;
+double *vsq;
+double sum=0.0;
+double SW=0.0;
+
+/* Make private copy of squared coefficients    */
+
+*error = 0;
+
+if ((vsq = (double *)malloc((unsigned)*lengthv*sizeof(double)))==NULL)  {
+    *error = 15000;
+    return;
+    }
+
+for(i=0; i < *lengthv; ++i) {
+    *(vsq + i) = *(v+i) * *(v+i);
+    sum += *(vsq+i);
+    if ( *(vsq+i) == 0.0)
+        *(vsq+i) = 1.0;
+    SW += *(vsq+i) * log(*(vsq+i));
+    }
+
+if (sum < *zilchtol)
+    *answer = 0.0;
+
+else
+    *answer = -SW;
+
+free(vsq);
+
+return;
+
+}
+
+#define ACCESSU(uvec, fv, lev, j)   *(uvec + *(fv+lev) + j)
+
+void 
+Cmnv (
+    double *wst,        /* Table of wavelet packet coefficients     */
+    double *wstC,       /* Table of scaling function coefficients   */
+    int *LengthData,    /* Length of original data set          */
+    int *nlevels,       /* Number of levels in the decomposition    */
+    int *upperctrl, /* Vector to record "control" decisions     */
+    double *upperl,     /* Vector to record minimum entropies       */
+    int *firstl,        /* Index vector into previous two vectors   */
+    int *verbose,       /* Print out verbose messages (1=yes, 0=no) */
+    int *error     /* Error condition              */
+)
+{
+register int i,j,k;
+register int nll, nul;  /* Number of packets in lower and upper levels  */
+register int kl, kr;    /* Daughter packet indices, left and right  */
+int PacketLength;   /* Generic packet lengths           */
+double *pkt, *pktl, *pktr;  /* Generic packets          */
+double *cpkt;       /* Combined packet for level zero computations  */
+double mpE, dlE, drE;   /* Entropies for mother and left & right daughters */
+double zilchtol;    /* A zero tolerance             */
+
+
+
+*error = 0;
+zilchtol = ZILCHTOL;
+
+if (*verbose == 1)
+    Rprintf("Cmnv: function entered\n");
+
+nll = (int)*LengthData;
+nul = nll >> 1;
+
+/* Go through each level. i refers to the lower level */
+
+for(i=0; i <= *nlevels-1; ++i)  {
+    if (*verbose==1)
+        Rprintf("Cmnv: Packets. Lower: %d Upper %d\n", nll, nul);
+
+    for(j=0; j<nul; ++j)    {
+        if (*verbose==1)
+            Rprintf("Upper level index: %d\n", j);
+        kl = j << 1;
+        kr = kl + 1;
+
+        /* Get mother packet */
+
+        pkt = getpacket(wstC, 1+(int)*nlevels, i+1, j, error);
+        PacketLength = 1 << (i+1);
+
+        if (*error != 0)
+            return;
+
+        /* Compute mother packet entropy */
+
+        ShannonEntropy(pkt, &PacketLength, &zilchtol, &mpE, error);
+
+        if (*error != 0)
+            return;
+
+        /* Don't need mummy packet now, so free her */
+
+        free((void *)pkt);
+
+        /* Now get daughter packets and entropies. The procedure
+         * for this depends on whether we're at the bottom level
+         * or not
+         */
+
+        if (i==0)   {
+
+            pkt = getpacket(wst, 1+(int)*nlevels, i, kl, error);
+            PacketLength = 1 << i;
+
+            if (*error != 0)
+                return;
+
+            pktl = getpacket(wstC, 1+(int)*nlevels, i, kl, error);
+
+            if (*error != 0)
+                return;
+
+            /* Now create a combined packet of both these two */
+
+            if ((cpkt = (double *)malloc((unsigned)2*PacketLength*sizeof(double)))==NULL) {
+                *error = 4;
+                return;
+                }
+
+            for(k = 0; k<PacketLength; ++k) {
+                *(cpkt+k) = *(pkt+k);
+                *(cpkt+PacketLength+k) = *(pktl+k);
+                }
+
+            /* And work out the entropy of this combined packet */
+
+            PacketLength <<= 1;
+
+            ShannonEntropy(cpkt, &PacketLength, &zilchtol, &dlE, error);
+            if (*error != 0)
+                return;
+
+            /* Don't need combined packets or daughter left pax any
+             * more. We can use cpkt again, so don't free it now
+             */
+
+            free((void *)pkt);
+            free((void *)pktl);
+
+            /* Now do the same for the daughter right packets */
+
+            pkt = getpacket(wst, 1+(int)*nlevels, i, kr, error);
+            PacketLength = 1 << i;
+
+            if (*error != 0)
+                return;
+
+
+            pktr = getpacket(wstC, 1+(int)*nlevels, i, kr, error);
+
+            if (*error != 0)
+                return;
+
+            for(k = 0; k<PacketLength; ++k) {
+                *(cpkt+k) = *(pkt+k);
+                *(cpkt+PacketLength+k) = *(pktr+k);
+                }
+
+            /* And work out the entropy of this combined packet */
+
+            PacketLength <<= 1;
+
+            ShannonEntropy(cpkt, &PacketLength, &zilchtol, &drE, error);
+            if (*error != 0)
+                return;
+
+            /* Don't need combined packets or daughter left pax any
+             * more
+             */
+
+            free((void *)cpkt);
+            free((void *)pkt);
+            free((void *)pktr);
+            }
+        else    {   /* We're not at the bottom */
+
+            if (*verbose==1)
+              Rprintf("Left Ent C contrib %lf\n",
+                ACCESSU(upperl,firstl, i-1, kl));
+
+            pktl = getpacket(wst, 1+(int)*nlevels, i, kl, error);
+            PacketLength = 1 << i;
+
+            if (*error != 0)
+                return;
+
+            ShannonEntropy(pktl, &PacketLength, &zilchtol, &dlE,
+                error);
+
+            if (*error != 0)
+                return;
+
+    
+            dlE += ACCESSU(upperl,firstl, i-1, kl);
+
+            /* Loose the daughter packet */
+
+            free((void *)pktl);
+
+
+            /* now the right daughter */
+
+            if (*verbose==1)
+              Rprintf("Right Ent C contrib %lf\n",
+                ACCESSU(upperl,firstl, i-1, kr));
+
+            pktr = getpacket(wst, 1+(int)*nlevels, i, kr, error);
+            PacketLength = 1 << i;
+
+            if (*error != 0)
+                return;
+
+            ShannonEntropy(pktr, &PacketLength, &zilchtol, &drE,
+                error);
+
+            if (*error != 0)
+                return;
+
+    
+            drE += ACCESSU(upperl,firstl, i-1, kr);
+
+            /* Loose the daughter packet */
+
+            free((void *)pktr);
+            }
+
+        if (*verbose==1)    {
+            Rprintf("Mother ent.: %lf\n", mpE);
+            Rprintf("Daug. l. ent.: %lf\n", dlE);
+            Rprintf("Daug. r. ent.: %lf\n", drE);
+            }
+
+
+        if (mpE < dlE)
+          if (mpE < drE)    {
+            ACCESSU(upperl, firstl, i, j) = mpE;
+            ACCESSU(upperctrl, firstl, i, j) = STOP; 
+            }
+          else  {
+            ACCESSU(upperl, firstl, i, j) = drE;
+            ACCESSU(upperctrl, firstl, i, j) = RIGHT; 
+            }
+        else if (dlE < drE) {
+            ACCESSU(upperl, firstl, i, j) = dlE;
+            ACCESSU(upperctrl, firstl, i, j) = LEFT; 
+            }
+          else  {
+            ACCESSU(upperl, firstl, i, j) = drE;
+            ACCESSU(upperctrl, firstl, i, j) = RIGHT; 
+            }
+
+        if (*verbose==1)
+          Rprintf("\tSelected %d %lf\n", ACCESSU(upperctrl,firstl,i,j),
+            ACCESSU(upperl, firstl, i, j));
+        }
+
+    nul >>= 1;
+    nll >>= 1;
+    }
+}
+
+/*
+ * Wavelet packet node vector computations
+ *
+ * (from ~guy/projects/WAVELETS/PACKET/wpCmnv.c)
+ */
+
+
+#define TOP 1
+#define BOTTOM  2
+
+void 
+wpCmnv (
+    double *wp,     /* Table of wavelet packet coefficients     */
+    int *LengthData,    /* Length of original data set          */
+    int *nlevels,       /* Number of levels in the decomposition    */
+    int *upperctrl, /* Vector to record "control" decisions     */
+    double *upperl,     /* Vector to record minimum entropies       */
+    int *firstl,        /* Index vector into previous two vectors   */
+    int *verbose,       /* Print out verbose messages (1=yes, 0=no) */
+    int *error     /* Error condition              */
+)
+{
+register int i,j;
+register int nll, nul;  /* Number of packets in lower and upper levels  */
+register int kl, kr;    /* Daughter packet indices, left and right  */
+int PacketLength;   /* Generic packet lengths           */
+double *pkt, *pktl, *pktr;  /* Generic packets          */
+double mpE, dE;     /* Entropies for mother and daughters */
+double zilchtol;    /* A zero tolerance             */
+double tmp;     /* Temporary holder             */
+
+
+
+*error = 0;
+zilchtol = ZILCHTOL;
+
+if (*verbose == 1)
+    Rprintf("wpCmnv: function entered\n");
+
+nll = (int)*LengthData;
+nul = nll >> 1;
+
+/* Go through each level. i refers to the lower level */
+
+for(i=0; i <= *nlevels-1; ++i)  {
+    if (*verbose==1)
+        Rprintf("wpCmnv: Packets. Lower: %d Upper %d\n", nll, nul);
+
+    for(j=0; j<nul; ++j)    {
+        if (*verbose==1)
+            Rprintf("Upper level index: %d\n", j);
+        kl = j << 1;
+        kr = kl + 1;
+
+        /* Get mother packet */
+
+        pkt = getpacket(wp, 1+(int)*nlevels, i+1, j, error);
+        PacketLength = 1 << (i+1);
+
+        if (*error != 0)
+            return;
+
+        /* Compute mother packet entropy */
+
+        ShannonEntropy(pkt, &PacketLength, &zilchtol, &mpE, error);
+
+        if (*error != 0)
+            return;
+
+        /* Don't need mummy packet now, so free her */
+
+        free((void *)pkt);
+
+        /*
+         * Now get daughter packets and entropies.
+         *
+         * If this is at level 0 then it is really the entropies
+         *
+         * Otherwise the daugther entropy is just the minimum
+         * that we decided on before
+         * 
+         */
+        if (i==0)   {
+
+            pktl = getpacket(wp, 1+(int)*nlevels, i, kl, error);
+            PacketLength = 1 << i;
+
+            if (*error != 0)
+                return;
+
+            pktr = getpacket(wp, 1+(int)*nlevels, i, kr, error);
+
+            if (*error != 0)
+                return;
+
+            /* And work out the entropy of the left and right and
+             * add them
+             */
+
+
+            ShannonEntropy(pktl, &PacketLength, &zilchtol, &dE, error);
+            if (*error != 0)
+                return;
+
+            tmp = dE;
+
+            ShannonEntropy(pktr, &PacketLength, &zilchtol, &dE, error);
+            if (*error != 0)
+                return;
+
+            dE += tmp;
+
+
+            /* Don't need combined packets or daughter left pax any
+             * more. We can use cpkt again, so don't free it now
+             */
+
+            free((void *)pktl);
+            free((void *)pktr);
+        }
+        else    {
+            dE =  ACCESSU(upperl, firstl, i-1, kl);
+            dE += ACCESSU(upperl, firstl, i-1, kr);
+        }
+
+        if (*verbose==1)    {
+            Rprintf("Mother ent.: %lf\n", mpE);
+            Rprintf("Daug. ent.: %lf\n", dE);
+            }
+
+
+        if (mpE < dE)   {
+            ACCESSU(upperl, firstl, i, j) = mpE;
+            ACCESSU(upperctrl, firstl, i, j) = TOP; 
+            }
+        else    {
+            ACCESSU(upperl, firstl, i, j) = dE;
+            ACCESSU(upperctrl, firstl, i, j) = BOTTOM; 
+            }
+
+        if (*verbose==1)
+          Rprintf("\tSelected %d %lf\n", ACCESSU(upperctrl,firstl,i,j),
+            ACCESSU(upperl, firstl, i, j));
+        }
+
+    nul >>= 1;
+    nll >>= 1;
+    }
+}
+
+/*
+ * WPST -   Stationary wavelet packet algorithm (i.e "The nightmare")
+ */
+
+void 
+wpst (
+    double *ansvec, /* Vector of length *lansvec that contains the original
+         * data and will contain the stationary wavelet packet
+         * coefficients on exit
+         */
+    int *lansvec,   /* Length of the ansvec vector              */
+    int *nlev,  /* The number of levels in this transform       */
+    int *finish_level, /* The last level to decompose to            */
+    int *avixstart,/* A vector of length (*nlev+1). The index ranging from
+         * 0 to *nlev. The entries in this vector are indices into
+         * the ansvec vector indicating the start index for
+         * packets for a given level.
+         * e.g.  *(avixstart + 0) = 0 (always). So that the first
+         * index for level 0 packets in ansvec is 0.
+         *
+         * e.g. *(avixstart+1)=256 (for *nlev=4). So that the first
+         * index for level 1 packets in ansvec is 256 etc.
+         */
+    double *H,  /* Filter smoothing coefficients as with all other algs */
+    int *LengthH,   /* The number of filter smoothing coefficients      */
+    int *error /* Error code. 0=o.k.                   */
+)
+        /*  1 - memory error in creating c_in       */
+        /*  2-5 - memory error for c_out, d_out, c_outR, d_outR */
+{
+register int i,j,k, plev;
+int pnpkts, ppktlength;
+double *c_in, *c_out, *d_out, *c_outR, *d_outR;
+
+
+
+/*
+ * i represents the child level. Go through each child level, filling in
+ * coefficients as you go
+ */
+
+for(i=(int)*nlev-1; i>=(int)*finish_level; --i) {
+
+    plev = i+1;     /* Parent level             */
+    pnpkts = NPKTS((int)plev, *nlev);   /* Number of pkts at p lev */
+    ppktlength = PKTLENGTH((int)plev);  /* Length at parent level  */
+
+    /* Create input and output packets  */
+
+    if ((c_in = (double *)malloc((unsigned)(ppktlength*sizeof(double))))==NULL) {
+        *error = 1;
+        return;
+        }
+
+    if ((c_out = (double *)malloc((unsigned)(sizeof(double)*ppktlength/2)))==NULL)  {
+        *error = 2;
+        return;
+        }
+
+    if ((d_out = (double *)malloc((unsigned)(sizeof(double)*ppktlength/2)))==NULL)  {
+        *error = 3;
+        return;
+        }
+
+
+    if ((c_outR = (double *)malloc((unsigned)(sizeof(double)*ppktlength/2)))==NULL) {
+        *error = 4;
+        return;
+        }
+
+    if ((d_outR = (double *)malloc((unsigned)(sizeof(double)*ppktlength/2)))==NULL) {
+        *error = 5;
+        return;
+        }
+        
+    for(j=0; j< pnpkts; ++j)    {   /* Go thru each parent pkt */
+
+        /* Copy parent packet to c_in */
+
+        for(k=0; k<ppktlength; ++k)
+            *(c_in+k) = ACCWPST(ansvec, plev, avixstart, j, k);
+
+        /* Now compute answer using filter application */ 
+
+        wpsub(c_in, (int)ppktlength, c_out, d_out, c_outR, d_outR,
+            H, LengthH);
+
+
+        /* Now store the answer packets */
+
+        for(k=0; k < ppktlength/2; ++k) {
+            ACCWPST(ansvec, i, avixstart, 4*j, k) = *(c_out+k);
+            ACCWPST(ansvec, i, avixstart, 4*j+1, k) = *(d_out+k);
+            ACCWPST(ansvec, i, avixstart, 4*j+2, k) = *(c_outR+k);
+            ACCWPST(ansvec, i, avixstart, 4*j+3, k) = *(d_outR+k);
+            }
+
+        /* Next parent packet */
+        }
+
+    /* Free packet memory */
+    free((void *)c_in);
+    free((void *)c_out);
+    free((void *)d_out);
+    free((void *)c_outR);
+    free((void *)d_outR);
+
+    /* Next level */
+    }
+}
+
+/*
+ * WPSUB    -   Subroutine to compute basic step of stationary
+ *          wavelet packet algorithm.
+ */
+
+void 
+wpsub (
+    double *c_in,   /* Data input                       */
+    int lc_in,  /* Length of input                  */
+    double *c_out,  /* result of low pass applied to input          */
+    double *d_out,  /* result of high pass applied to input         */
+    double *c_outR, /* result of low pass applied to rotated input      */
+    double *d_outR, /* result of high pass applied to rotated input     */
+    double *H,  /* Wavelet filter                   */
+    int *LengthH   /* Length of wavelet filter             */
+)
+{
+int lengthout;
+
+
+
+lengthout = lc_in/2;
+
+/* Obtain the father and mother wavelet coefficients of the data */
+
+convolveC(c_in, lc_in, 0, H, (int)*LengthH,
+        c_out, 0, (lengthout-1l),
+        WAVELET, 1, PERIODIC);
+
+convolveD(c_in, lc_in, 0, H, (int)*LengthH,
+        d_out, 0, (lengthout-1l),
+        WAVELET, 1, PERIODIC);
+
+/* Obtain the father and mother wavelet coefficients of the rotated data */
+
+rotater(c_in, lc_in);
+        
+convolveC(c_in, lc_in, 0, H, (int)*LengthH,
+        c_outR, 0, (lengthout-1l),
+        WAVELET, 1, PERIODIC);
+
+convolveD(c_in, lc_in, 0, H, (int)*LengthH,
+        d_outR, 0, (lengthout-1l),
+        WAVELET, 1, PERIODIC);
+
+/* That's it */
+
+}
+
+
+void 
+accessDwpst (
+    double *coefvec,    /* Vector storing the stat. wavelet pack. coefs */
+    int *lansvec,       /* Length of previous vector            */
+    int *nlev,      /* The number of levels in the transform    */
+    int *avixstart, /* Index into coefvec for starting position
+             * of each level of coefficients        */
+    int *primaryindex,  /* Packet numbers in the SWPT scheme to take out
+             * and interweave
+             */
+    int *nwppkt,        /* The number of ordinary WP packets at this level
+             * Also the length of the primaryindex vector
+             */
+    int *pklength,      /* The length of an SWPT packet         */
+    int *level,     /* The level that we're extracting from     */
+    double *weave,      /* A vector to store the answer         */
+    int *lweave,        /* The length of the weave vector       */
+    int *error     /* An error code                */
+)
+{
+register int counter, pklcount, i;
+
+*error = 0;
+
+counter = 0;
+
+
+for(pklcount=0; pklcount< *pklength; ++pklcount)    {
+    for(i=0; i<*nwppkt; ++i)    {   /* For each SWPT packet */
+
+        *(weave+counter) = ACCWPST(coefvec, *level, avixstart,
+            (*(primaryindex+i)), pklcount);
+        ++counter;
+        }
+    }
+
+}
+
+/*
+ * Use the binary representation of *l to build a number in base 4
+ */
+
+void 
+c2to4 (int *l, int *a)
+{
+register int ndigits,i ;
+int mask;
+int multiplier;
+
+*a = 0;
+
+if (*l == 0)
+    return;
+
+ndigits = (int)ceil( log((double)*l)/log(2.00));
+
+ndigits++;  /* For exact powers of 2 */
+
+mask = 1;
+multiplier=1;
+
+for(i=0; i<ndigits; ++i)    {
+    *a += multiplier*((mask& *l)>>i);
+    mask <<= 1;
+    multiplier *= 4;
+    }
+    
+}
+
+
+/* Next code is from Arne Kovac */
+
+/* Increasing this value would remove some nearly empty diagonals */
+
+double thr=0.0;
+
+/* The doubledouble structure is used by the makegrid function for
+   sorting the data with respect to the x-component. */
+
+struct doubledouble
+           {
+           double x;
+           double y;
+           } Doubledouble;
+
+/* The ddcomp function is used by the makegrid function for sorting
+   the data as an argument for qsort. */
+           
+int ddcomp(const void *a, const void *b)        /* MAN: changed to work in qsort below */
+  {
+
+struct doubledouble *q1=(struct doubledouble *)a; 
+struct doubledouble *q2=(struct doubledouble *)b;  
+  int t;
+  
+  if(q1->x>q2->x)
+/*    return 1; */
+t=1;
+  else
+  if(q1->x<q2->x)
+/*    return -1;  */
+t=-1;
+  else
+/*    return 0;   */
+t=0;    
+    return t;
+  }
+
+void makegrid(double *x,double *y,int *n,double *gridx,double *gridy,
+               int *gridn, double *G, int *Gindex)
+
+               /* This function computes from observations in x und y
+                  new data on a grid of length gridn as well as a
+                  description of the matrix that maps the original
+                  data (or better the ordered original data, so that
+                  x[i]<=x[j] when i<=j) to the new grid data. 
+               
+                  input:
+                  x, y   vector of observations of length n 
+                  gridn
+
+                  output:
+                  gridx, gridy the constructed grid of length gridn */
+  {
+  struct doubledouble *q;
+  int i,li=0,ind;
+  
+
+  /* First, sort the data with respect to x. */
+
+  q=(void *)malloc(*n*sizeof(Doubledouble));
+
+  for(i=0;i<*n;i++)
+    {
+    q[i].x=x[i];
+    q[i].y=y[i];
+    }
+  qsort(q,(size_t)*n,sizeof(struct doubledouble),ddcomp);   /* MAN: used to be (int *)ddcomp */
+
+  /* Now create the new grid data. */
+
+  for(i=0;i<*gridn;i++)
+    {
+    gridx[i]=(i+0.5)/(*gridn);
+
+    /* Determine the index of the nearest observation left to the grid time 
+       point. */
+
+    while((li<*n-1)&&(q[li+1].x<gridx[i]))
+      li++;
+    if(li==(*n-1)) /* We are at the right end */
+      {
+      gridy[i]=q[li].y;
+      ind=li-1;
+      G[i]=0;
+      }
+    else
+    if(q[li].x>=gridx[i]) /* We are at the left end */
+      {
+      gridy[i]=q[0].y;
+      ind=0;
+      G[i]=1;
+      }
+    else
+      {
+      gridy[i]=q[li].y+(gridx[i]-q[li].x)*(q[li+1].y-q[li].y)
+                                                /(q[li+1].x-q[li].x); 
+      ind=li;
+      G[i]=1-(gridx[i]-q[li].x)/(q[li+1].x-q[li].x);
+      }
+    Gindex[i]=ind;
+    }
+  free(q);
+  }
+
+
+/* createSigma allocates memory for a new covariance matrix of size n. */
+
+int createSigma(struct sigmastruct *Sigma, int n)
+  {
+  int i;
+  
+  Sigma->n=n;
+  if((Sigma->diag=malloc(n*sizeof(double *)))==NULL)
+    {
+    return(-1);
+    }
+  for(i=0;i<n;i++)
+    {
+      (Sigma->diag)[i]=NULL;
+    }
+    return(0);
+  }
+  
+/* freeSigma releases the memory used by a sigmastruct element. */
+
+void freeSigma(struct sigmastruct *Sigma)
+  {
+  int i;
+
+  for(i=0;i<Sigma->n;i++)
+    if(Sigma->diag[i]!=NULL)
+      free((Sigma->diag)[i]);
+  free(Sigma->diag);
+  }
+
+/* CleanupSigma removes diagonals that contain only elements < thr. */
+   
+void cleanupSigma(struct sigmastruct *Sigma)
+  {
+  int i,j;
+
+  for(i=0;i<Sigma->n;i++)
+    if((Sigma->diag)[i]!=NULL)
+      {
+      j=0;
+      while((j<Sigma->n-i)&&(fabs((Sigma->diag)[i][j])<thr))
+        j++;
+      if(j>=Sigma->n-i)
+        {
+        free(Sigma->diag[i]);
+        Sigma->diag[i]=NULL;
+        }
+      }
+  }
+  
+/* putSigma changes the entry in the i-th row and j-th column to s and
+   allocates memory for the diagonal if necessary. */
+
+int putSigma(struct sigmastruct *Sigma, int i, int j, double s)
+  {
+  int d=abs(i-j);
+  
+  if(fabs(s)>0.0000001){        /* MAN: added brace to avoid ambiguity */
+  if((i>=Sigma->n)||(j>=Sigma->n))
+    {
+    return(-1);
+    /*  MAN 21/01/13 change  to Rprintf due to CHECK note.
+    Rprintf("Error: This element does not exist.");
+        */
+    }
+  else
+    {
+    if((Sigma->diag)[d]==NULL)
+      if((Sigma->diag[d]=calloc(Sigma->n-d,sizeof(double)))==NULL)
+        return(-2);
+    (Sigma->diag)[d][(i+j-d)/2]=s;
+    }
+  }         /* MAN: added */
+return(0);  /* MAN: added, hopefully won't have bad consequences. */
+} 
+  
+/* allocateSigma allocates memory for diagonals of a covariance matrix,
+   specified by the boolean vector d */
+   
+
+int allocateSigma(struct sigmastruct *Sigma, int *d)
+  {
+  int i;
+  
+  for(i=0;i<Sigma->n;i++)
+    {
+      if(d[i]==TRUE)
+	{
+	  if((Sigma->diag[i]=calloc(Sigma->n-i,sizeof(double)))==NULL)
+	    {
+	      *d = (Sigma->n - i)*sizeof(double);
+	      return(-1);
+	    }
+	}
+    }
+    return(0);
+  }
+
+/* computec is the function that computes the factors for the variances
+   of the wavelet coefficients. 
+
+   Gmatrix, Gindex describe the matrix that maps the original data
+                   to the grid data as received by makegrid (s.o.)
+   n, gridn        are the numbers of original and grid observations
+   H, LengthH      describe the used wavelet filter. The filter coefficients
+                   are stored in the vector H, their number in LengthH.
+   bc              is either PERIODIC or SYMMETRIC, the boundary correction
+                   to be used
+
+   c contains afterwards the coefficients c_{jk}, such that
+               Var(w_{jk})=c_{jk}\cdot\sigma^2
+*/
+
+
+void computec(int *n,double *c,int *gridn,double *Gmatrix,int *Gindex,
+              double *H, int *LengthH, int *bc, int *error)
+  {
+  int virtgn,i,j,k,l,d,zaehler=0,gn=*gridn,laststart=0;
+  int ii,dd,jj,o1,o2,iiG,iiH,jjG,jjH,gn2,LengthH2=*LengthH/2,dH,dG;
+  int *NEEDIT,offset,offset2,band,band1,band2;
+  double cellC,cellD,sig,G[20];
+  double ProductG[20][20],ProductH[20][20];
+  struct sigmastruct Sigma,Sigma2,Sigma3;
+  int rc;
+
+
+
+  if(*LengthH>20)
+    {
+	/* MAN 01/03/12.  Change below to Rprintf */
+    Rprintf("Sorry, you can not use this procedure with more than 20 filter coefficients!\n");
+    *error = 1;
+    return; 
+    }
+  if((NEEDIT=malloc(*gridn*sizeof(int)))==NULL) {
+    *error = 2;
+    *n = *gridn * sizeof(int);  /* Contains number of bytes requested */
+    return;
+    }
+
+  /* First step: Compute Filter G from Filter H */
+  sig=-1.0;
+  for(k=0;k<*LengthH;k++)
+    {
+    G[*LengthH-k-1]=sig*H[k];
+    sig=-sig;
+    }
+
+  for(k=0;k<*LengthH;k++)
+    for(l=0;l<*LengthH;l++)
+      {
+      ProductG[k][l]=G[k]*G[l];
+      ProductH[k][l]=H[k]*H[l];
+      }
+
+  /* Second step: Compute the variance/covariance-matrix of the grid data */
+
+  if (createSigma(&Sigma,gn) < 0)   {
+        *error = 3;
+        *n = (int)gn * sizeof(double);
+        return;
+        }
+  for(i=0;i<*gridn;i++)
+    {
+    j=laststart;
+    while(Gindex[i]-Gindex[j]>=2) 
+      j++;
+    laststart=j;
+    for(;j<=i;j++)
+      {
+      switch(Gindex[i]-Gindex[j])
+        {
+        case  1: rc = putSigma(&Sigma,i,j,Gmatrix[i]*(1.0-Gmatrix[j]));
+
+             if (rc < 0)    {
+                if (rc == -1)   {
+                    *error = 4;
+                    return;
+                    }
+
+                if (rc == -2)   {
+                    *error = 5;
+                    *n = (Sigma.n - abs(i-j))*sizeof(double);
+                    return;
+                    }
+                }
+                    
+
+                 break;
+        case  0: rc= putSigma(&Sigma,i,j,Gmatrix[i]*Gmatrix[j]+(1.0-Gmatrix[i])*(1.0-Gmatrix[j]));
+             if (rc < 0)    {
+                if (rc == -1)   {
+                    *error = 4;
+                    return;
+                    }
+
+                if (rc == -2)   {
+                    *error = 5;
+                    *n = (Sigma.n - abs(i-j))*sizeof(double);
+                    return;
+                    }
+                }
+                 break;
+        }
+      }
+    }
+  
+  /* And now the difficult part... */
+  
+  if(*bc==PERIODIC)
+    {
+    while(gn>=2) /* Apply the wavelet filters to the covariance matrix Sigma. */
+      {
+      gn2=gn/2; /* gn and gn2 are the sizes of Sigma and Sigma2 (or Sigma3). */ 
+
+    /* Store the result of the high pass filter in sigma2... */
+      if (createSigma(&Sigma2,gn2)<0){
+        *error = 3l;
+        *n = gn2 * sizeof(double);
+        return;
+        }
+
+    /* ... and the result of the low pass filter in sigma3. */
+      if (createSigma(&Sigma3,gn2)<0)   {
+        *error = 3;
+        *n = gn2 * sizeof(double);
+        return;
+        }
+      cleanupSigma(&Sigma);       
+
+      /* First we need to know which diagonals in sigma2 and sigma3 will not
+         be empty. */
+
+      band1=gn/2;
+      band2=gn/2+1;
+      while((band1>=0)&&(Sigma.diag[band1]==NULL))
+        band1--;
+      while((band2<=gn-1)&&(Sigma.diag[band2]==NULL))
+        band2++;
+      if(band1<=gn-band2)
+        band=gn-band2;
+      else
+        band=band1;
+        
+      if(band+*LengthH>gn)
+        for(d=0;d<gn2;d++)
+          NEEDIT[d]=TRUE;
+      else
+        {
+        for(d=0;d<gn2;d++)
+          NEEDIT[d]=FALSE;
+        for(d=0;(d<=(band+*LengthH)/2)&&(d<gn2);d++)
+          NEEDIT[d]=TRUE;
+        for(d=1;(d<=(band+*LengthH)/2)&&(d<gn2);d++)
+          NEEDIT[gn2-d]=TRUE;
+        }
+
+      /* We allocate memory only for these diagonals. */
+
+      if (allocateSigma(&Sigma2,NEEDIT) <0) {
+        *error = 6;
+        *n = *NEEDIT;
+        return;
+        }
+        
+      if (allocateSigma(&Sigma3,NEEDIT) < 0)    {
+        *error = 6;
+        *n = *NEEDIT;
+        return;
+        }
+
+      /* Every entry of Sigma is involved in the computation of (LengthH/2)^2
+         entries of Sigma2 and Sigma3. We find out in which and do the
+         necessary computaions. */
+
+      /* Let's start with the main diagonal elements of Sigma. */
+
+      if(Sigma.diag[0]!=NULL)
+        for(j=0;j<gn;j++)
+          if(fabs(sig=Sigma.diag[0][j])>thr)
+            {
+            o1=j%2;
+            iiH=j/2;
+            iiG=(iiH+LengthH2-1)%(gn2);
+
+            for(k=0;k<LengthH2;k++)
+              {
+              Sigma3.diag[0][iiH]+=sig*ProductH[2*k+o1][2*k+o1];
+              Sigma2.diag[0][iiG]+=sig*ProductG[2*k+o1][2*k+o1];
+              jjH=((j-2*(k+1)+*gridn)/2)%(gn2);
+              jjG=(jjH+LengthH2-1)%(gn2);
+              for(l=k+1;l<LengthH2;l++)
+                { 
+                dH=abs(iiH-jjH);
+                dG=abs(iiG-jjG);
+                if(dH==0)
+                  Sigma3.diag[dH][iiH]+=2*sig*ProductH[2*k+o1][2*l+o1];
+                else       
+                  Sigma3.diag[dH][(iiH+jjH-dH)/2]+=sig*ProductH[2*k+o1][2*l+o1];
+                if(dG==0)
+                  Sigma2.diag[dG][iiG]+=2*sig*ProductG[2*k+o1][2*l+o1];
+                else         
+                  Sigma2.diag[dG][(iiG+jjG-dG)/2]+=sig*ProductG[2*k+o1][2*l+o1];
+            
+                if((--jjH)<0) jjH=gn2-1;
+                if((--jjG)<0) jjG=gn2-1;
+                }
+              if((--iiH)<0) iiH=gn2-1;
+              if((--iiG)<0) iiG=gn2-1;
+              }
+            }
+
+      /* Now do the rest. */
+      for(d=1;d<gn;d++)
+        if(Sigma.diag[d]!=NULL)
+          for(j=0;j<gn-d;j++)
+            if(fabs(sig=Sigma.diag[d][j])>thr)
+              {
+              o1=(d+j)%2;
+              iiH=((d+j+*gridn)/2)%(gn2);
+              iiG=(iiH+LengthH2-1)%(gn2);
+
+              for(k=0;k<LengthH2;k++)
+                {
+                jjH=((j+*gridn)/2)%(gn2);
+                jjG=(jjH+LengthH2-1)%(gn2);
+                o2=j%2;
+                for(l=0;l<LengthH2;l++)
+                  {
+                  dH=abs(iiH-jjH);
+                  dG=abs(iiG-jjG);
+                  if(dH==0)
+                    Sigma3.diag[dH][iiH]+=2*sig*ProductH[o1][o2];
+                  else       
+                    Sigma3.diag[dH][(iiH+jjH-dH)/2]+=sig*ProductH[o1][o2];
+                  if(dG==0)
+                    Sigma2.diag[dG][iiG]+=2*sig*ProductG[o1][o2];
+                  else         
+                    Sigma2.diag[dG][(iiG+jjG-dG)/2]+=sig*ProductG[o1][o2];
+                  if((--jjH)<0) jjH=gn2-1;
+                  if((--jjG)<0) jjG=gn2-1;
+                  o2+=2;
+                  }
+                if((--iiH)<0) iiH=gn2-1;
+                if((--iiG)<0) iiG=gn2-1;
+                o1+=2;
+                }
+              }
+
+      /* Now Sigma2 und Sigma3 should contain the right values. Store
+         only the main diagonal of Sigma2 in c. */
+      for(j=0;j<gn2;j++)
+        c[zaehler++]=Sigma2.diag[0][j];
+
+      /* Sigma and Sigma2 are now redundant. */
+      freeSigma(&Sigma);
+      freeSigma(&Sigma2);
+
+      /* Sigma3 becomes our new Sigma. */
+      memcpy(&Sigma,&Sigma3,sizeof(Sigma));
+      gn=gn2;
+      }
+    } /* end of the periodic case */
+  else
+  if(*bc==SYMMETRIC) /* The symmetric case is even more difficult... */
+    {
+    virtgn=gn; /* virtgn is used to determine when we can finish and takes
+                  exactly the same values as gn in the periodic case. */
+    offset=0; /* Symmetric boundary conditions provide extra coefficients
+                 on both sides. offset gives the number of such extra
+                 coeffs on the left-hand side. */
+    while(virtgn>=2)
+      {
+      /* First of all, we want to know how many diagonals and extra coeffs
+         Sigma2 and Sigma3 have. */
+
+      if(offset%2==0)
+        gn2=(gn+1)/2+LengthH2-1;
+      else
+        gn2=(gn+2)/2+LengthH2-1;
+      offset2=(offset+*LengthH-1)/2;
+
+      /* Now allocate memory for them. */
+      
+      if (createSigma(&Sigma2,gn2) <0)  {
+        *error = 3;
+        *n = gn2 * sizeof(double);
+        return;
+        }
+        
+      if (createSigma(&Sigma3,gn2) <0)  {
+        *error = 3;
+        *n = gn2*sizeof(double);
+        return;
+        }
+      cleanupSigma(&Sigma);
+      
+      /* Again, we need to know which diagonals in sigma2 and sigma3 will not
+         be empty. */
+
+      band=gn-1;
+      while((band>=0)&&(Sigma.diag[band]==NULL))
+        band--;
+      if(band+2*(*LengthH)>gn)
+        for(d=0;d<gn2;d++)
+          NEEDIT[d]=TRUE;
+      else
+        {
+        for(d=0;d<gn2;d++)
+          NEEDIT[d]=FALSE;
+        for(d=0;(d<=(band+*LengthH)/2)&&(d<gn2);d++)
+          NEEDIT[d]=TRUE;
+        }
+
+      /* We allocate memory only for these diagonals. */
+
+      if (allocateSigma(&Sigma2,NEEDIT) < 0)    {
+        *error = 6;
+        *n = *NEEDIT;
+        return;
+        }
+      if (allocateSigma(&Sigma3,NEEDIT) < 0)    {
+        *error = 6;
+        *n = *NEEDIT;
+        return;
+        }
+
+      /* Every entry of Sigma is involved in the computation of (LengthH/2)^2
+         entries of Sigma2 and Sigma3. We find out in which and do the
+         necessary computaions. */
+
+      /* Let's start with the values that are not effected by boundary 
+         correction.  First the main diagonal. */
+
+      if(Sigma.diag[0]!=NULL)
+        for(j=0;j<gn;j++)
+          if(fabs(sig=Sigma.diag[0][j])>thr)
+            {
+            o1=(j+offset)%2;
+            iiH=(j+offset%2)/2+LengthH2-1;
+            iiG=iiH;
+
+            for(k=0;k<LengthH2;k++)
+              {
+              Sigma3.diag[0][iiH]+=sig*ProductH[2*k+o1][2*k+o1];
+              Sigma2.diag[0][iiG]+=sig*ProductG[2*k+o1][2*k+o1];
+              jjH=(j+offset%2)/2+LengthH2-1-(k+1);
+              jjG=jjH;
+              for(l=k+1;l<LengthH2;l++)
+                { 
+                if((iiH<0)||(jjH<0))
+		/* MAN 01/03/12.  Changed to Rprintf. */
+                  Rprintf("ERROR\n");
+                dH=abs(iiH-jjH);
+                dG=abs(iiG-jjG);
+                if(dH==0)
+                  Sigma3.diag[dH][iiH]+=2*sig*ProductH[2*k+o1][2*l+o1];
+                else       
+                  Sigma3.diag[dH][(iiH+jjH-dH)/2]+=sig*ProductH[2*k+o1][2*l+o1];
+                if(dG==0)
+                  Sigma2.diag[dG][iiG]+=2*sig*ProductG[2*k+o1][2*l+o1];
+                else       
+                  Sigma2.diag[dG][(iiG+jjG-dG)/2]+=sig*ProductG[2*k+o1][2*l+o1];
+                jjH--;
+                jjG--;
+                }
+              iiH--;
+              iiG--;
+              }
+            }
+
+      /* Now do the not-effected values on the other diagonals. */
+
+      for(d=1;d<gn;d++)
+        if(Sigma.diag[d]!=NULL)
+          /*for(j=*LengthH-2+offset%2;j<gn-d-(*LengthH-2+offset%2);j++)*/
+          for(j=0;j<gn-d;j++)
+            if(fabs(sig=Sigma.diag[d][j])>thr)
+              {
+              o1=(d+j+offset)%2;
+              iiH=(d+j+offset%2)/2+LengthH2-1;
+              iiG=iiH;
+
+              for(k=0;k<LengthH2;k++)
+                {
+                jjH=(j+offset%2)/2+LengthH2-1;
+                jjG=jjH;
+                o2=(j+offset)%2;
+                for(l=0;l<LengthH2;l++)
+                  {
+                  dH=abs(iiH-jjH);
+                  dG=abs(iiG-jjG);
+                  if(dH==0)
+                    Sigma3.diag[dH][iiH]+=2*sig*ProductH[o1][o2];
+                  else       
+                    Sigma3.diag[dH][(iiH+jjH-dH)/2]+=sig*ProductH[o1][o2];
+                  if(dG==0)
+                    Sigma2.diag[dG][iiG]+=2*sig*ProductG[o1][o2];
+                  else         
+                    Sigma2.diag[dG][(iiG+jjG-dG)/2]+=sig*ProductG[o1][o2];
+                  jjH--;
+                  jjG--;
+                  o2+=2;
+                  }
+                iiH--;
+                iiG--;
+                o1+=2;
+                }
+              }
+
+      /* Finally, do the boundary entries. */
+
+      for(d=0;d<gn2;d++)
+        if(Sigma2.diag[d]!=NULL)
+          {
+          for(j=0;(j<gn2-d)&&(j<LengthH2-1+offset%2);j++)
+            {
+            cellC=0;
+            cellD=0;
+            i=d+j;
+            iiG=2*i-(*LengthH-2)-offset%2;
+            for(k=0;k<*LengthH;k++,iiG++)
+              {
+              jjG=2*j-(*LengthH-2)-offset%2;
+              for(l=0;l<*LengthH;l++,jjG++)
+                {
+                ii=iiG;
+                jj=jjG;
+                if(ii<0)
+                  ii=-ii-1;
+                if(jj<0)
+                  jj=-jj-1;
+                if(ii>=gn)
+                  {
+                  ii=2*gn-ii-1;
+                  }
+                if(jj>=gn)
+                  {
+                  jj=2*gn-jj-1;
+                  }
+                dd=abs(ii-jj);
+                if(Sigma.diag[dd]!=NULL)
+                  {
+                  sig=(Sigma.diag)[dd][(ii+jj-dd)/2];
+                  cellC+=sig*ProductH[k][l];
+                  cellD+=sig*ProductG[k][l];
+                  }
+                }
+              }
+            Sigma2.diag[d][j]=cellD;
+            Sigma3.diag[d][j]=cellC;
+            }
+          for(j=gn2-d-1;(j>=0)&&(j>=gn2-d-LengthH2+1-offset%2);j--)
+            {
+            cellC=0;
+            cellD=0;
+            i=d+j;
+            iiG=2*i-(*LengthH-2)-offset%2;
+            for(k=0;k<*LengthH;k++,iiG++)
+              {
+              jjG=2*j-(*LengthH-2)-offset%2;
+              for(l=0;l<*LengthH;l++,jjG++)
+                {
+                ii=iiG;
+                jj=jjG;
+                if(ii<0)
+                  ii=-ii-1;
+                if(jj<0)
+                  jj=-jj-1;
+                if(ii>=gn)
+                  {
+                  ii=2*gn-ii-1;
+                  }
+                if(jj>=gn)
+                  {
+                  jj=2*gn-jj-1;
+                  }
+                dd=abs(ii-jj);
+                if(Sigma.diag[dd]!=NULL)
+                  {
+                  sig=(Sigma.diag)[dd][(ii+jj-dd)/2];
+                  cellC+=sig*ProductH[k][l];
+                  cellD+=sig*ProductG[k][l];
+                  }
+                }
+              }
+            Sigma2.diag[d][j]=cellD;
+            Sigma3.diag[d][j]=cellC;
+            }
+          }
+
+      /* This looks now pretty the same as in the periodic case. */
+
+      for(j=0;j<gn2;j++)
+        c[zaehler++]=Sigma2.diag[0][j];
+      freeSigma(&Sigma);
+      freeSigma(&Sigma2);
+      memcpy(&Sigma,&Sigma3,sizeof(Sigma));
+
+      gn=gn2;
+      offset=offset2;
+      virtgn=virtgn/2;
+      }
+    } /* end of the symmetric case */
+
+  /* We are finished with the computation of c and can release any memory. */
+
+  freeSigma(&Sigma);
+  free(NEEDIT);
+  }
+
+
+/*
+ * Error codes for the rainmat suite.
+ *
+ * 0 - No error
+ *
+ * Errors here:
+ *
+ * rainmat: 100 memory error for creation of w
+ *      101 memory error for creation of subvectors of w
+ *          J returns the number of the subvector
+ *          that couldn't be created. 
+ *
+ * wlpart   110 memory error for creation of TheData 
+ *      111 memory error for creation of ixvec
+ *
+ * rotateleft   120 memory error for creation of tmp
+ *
+ * rainmatPARENT 130    memory error for creation of lvec
+ *
+ * mkcoef   140 memory error for creation of ixvec
+ *      141 memory error for creation of TheData
+ *      142 memory error for creation of lcoefvec
+ *      143 memory error for creation of tmpcfvec
+ *
+ * rainmatPARTIAL 150   memory error for creation of lvec
+ *
+ * PsiJonly:    160 wout is not int enough to store answer
+ *          (change a constant in the S calling function,
+ *          the variable lwout contains the number of doubles
+ *          required)
+ *      161 memory error for creation of w
+ *      162 memory error for creation of subvectors of w
+ *          J returns the number of the subvector
+ *          that couldn't be created. 
+ *
+ * 
+ *
+ * Other error codes can occur from other parts of WaveThresh
+ *
+ */
+        
+
+/*
+ * Compute the matrix that obtains S from I
+ *
+ */
+
+void 
+rainmat (
+    int *J,        /* The desired maximum level (positive)     */
+    int *donej,        /* The first j columns already filled       */
+    double **coefvec,   /* The \psi_{jk} stacked into one vector    */
+    int *lvec,     /* A vector of lengths of each \psi_j vector in
+               coefvec. The jth element is the length of the
+               jth \psi_j in coefvec
+             */
+    double *fmat,       /* This vector will contain the answer. This is
+               the lower triangular portion of the J*J matrix,
+               and therefore is of length J(J-1)/2 */
+    int *error        /* Error code                   */
+)
+{
+
+/* First we compute the w. One for each j           */
+
+double **w;
+register int j,k,m,l;
+double sum;
+int lj,ll;
+
+
+if ((w = (double **)malloc((unsigned)*J*sizeof(double *)))==NULL)   {
+    *error = 100;
+    return;
+    }
+
+/* Now populate each of the *w */
+
+for(j=0; j<*J; ++j) {
+    if ((*(w+j) = (double *)malloc((unsigned)(*(lvec+j)*2-1)*sizeof(double)))==NULL)    {
+        *error = 101;
+        *J = (int)j;
+        return;
+        }
+    }
+
+/* Now compute each of the wjk */
+
+for(j=0; j< *J; ++j)    {
+    lj = *(lvec+j);
+    for(k = 1-lj; k <= lj-1; ++k)   {
+        sum = 0.0;
+        for(m = max(0, k); m <= min(lj-1, lj-1+k); ++m) {
+            sum += *((*(coefvec+j))+m) *
+                *((*(coefvec+j))+m-k);
+            }
+        ACCESSW(w, j, k-1+lj) = sum;
+        }
+    }
+
+/* Now compute the F */
+
+for(j=0; j<*J; ++j) {
+    lj = *(lvec+j);
+    for(l=j; l<*J; ++l) {
+        if (l >= *donej)    {
+            ll = *(lvec+l);
+            sum = 0.0;
+            for(k=max(1-ll, 1-lj); k <= min(lj-1, ll-1); ++k) {
+                sum += ACCESSW(w, j, k-1+lj) *
+                    ACCESSW(w, l, (-k)-1+ll);
+                }
+            *(fmat+*J*l+j) = *(fmat+*J*j+l) = sum;
+            }
+        }
+    }
+
+
+/* Now free the w */
+for(j=0; j<*J; ++j) {
+    free((void *)*(w+j));
+    }
+free((void *)w);
+}
+
+
+
+void 
+wlpart (int *J, int *BigJ, double *H, int *LengthH, int *error)
+{
+register int KeepGoing;
+register int somefull;
+register int allnonzero;
+register int i;
+register int j;
+double *TheData;
+int ndata;
+double *C, *D;
+int *firstC, *lastC, *offsetC, *firstD, *lastD, *offsetD;
+int LengthC, LengthD, levels=0;
+int type,bc;
+int *ixvec;
+
+
+
+*error=0;
+
+*BigJ = *J + 1;
+KeepGoing = TRUE;
+
+while(KeepGoing)    {
+
+/*     Rprintf("Entered loop BigJ is %d\n", *BigJ); */
+
+    ndata = (int)0x01 << *BigJ;
+
+    /*
+     * Basically a dummy wavelet transform to set up first/last stuff
+     */
+    if ((TheData = (double *)malloc((unsigned)ndata*sizeof(double)))==NULL) {
+        *error = 110;
+        return;
+        }
+
+    for(i=0; i<ndata; ++i)
+        *(TheData+i) = 0.0;
+
+    /*
+     * Do the wavelet transform
+     */
+
+/* MAN: 7/12/10. allocate memory for the inputs into simpleWT. 
+  The allocation should cover the present sizes (w.r.t the while
+loop).  This allocation should be done especially since the memory for
+the objects are free'd later on!  
+Maybe the D ones should be the same size as the Cs just in case.
+*/
+
+firstC=calloc(*BigJ+1,sizeof(int));
+lastC=calloc(*BigJ+1,sizeof(int));
+offsetC=calloc(*BigJ+1,sizeof(int));
+firstD=calloc(*BigJ,sizeof(int));
+lastD=calloc(*BigJ,sizeof(int));
+offsetD=calloc(*BigJ,sizeof(int));
+C=calloc(2*ndata-1,sizeof(double));
+D=calloc(ndata-1,sizeof(double));
+
+
+    
+    simpleWT(TheData, &ndata, H, LengthH,
+        C, &LengthC, D, &LengthD, &levels,
+        firstC, lastC, offsetC,
+        firstD, lastD, offsetD,
+        &type, &bc, error);
+
+    if (*error != 0)
+        return;
+
+    /*
+     * Create ixvec
+     */
+
+    if ((ixvec = (int *)malloc((unsigned)*BigJ*sizeof(int)))==NULL){
+        *error = 111;
+        return;
+        }
+
+    for(i=0; i< *BigJ; ++i)
+        *(ixvec+i) =(0x01 << (*BigJ -1 - i)); 
+
+    for(i=1; i< *BigJ; ++i)
+        *(ixvec+i) = *(ixvec+i-1) + *(ixvec+i);
+
+    for(i=0; i< *BigJ; ++i)
+        --*(ixvec+i);
+
+    somefull = FALSE;
+
+    for(i=0; i<*J; ++i) {
+
+        for(j=0; j<LengthD; ++j)
+            *(D+j) = 0;
+
+        *(D+ *(ixvec+i)) = 1;
+
+        waverecons(C, D, H, LengthH, &levels,
+            firstC, lastC, offsetC, firstD, lastD, offsetD,
+            &type, &bc, error);
+
+        if (*error != 0)
+            return;
+
+        allnonzero = TRUE;
+
+        for(j=0; j<ndata; ++j)  {
+            if (*(C+j) == 0.0)  {
+                allnonzero = FALSE;
+                break;
+                }
+            }
+        somefull = somefull || allnonzero;
+
+
+        if (somefull)
+            break;
+
+    } /* for loop */
+    /* Free memory */
+/* MAN:  frees. */
+
+    free((void *)C);
+    free((void *)D);
+    free((void *)firstC); free((void *)lastC);
+    free((void *)offsetC);
+    free((void *)firstD); free((void *)lastD);
+    free((void *)offsetD);
+
+    free((void *)ixvec);
+    free((void *)TheData);
+
+    if (!somefull)
+        KeepGoing = FALSE;
+    else
+        *BigJ = *BigJ + 1;
+    }	/* while */
+} /* function */
+
+
+/*
+ * Return the index number of the last zero in a vector
+ * Return -1 if no such exists
+ */
+
+int 
+idlastzero (double *v, int *nv)
+{
+register int i;
+
+for(i= *nv-1; i>=0; --i)
+        if (*(v+i) == 0.0)
+                break;
+
+return(i);
+}
+
+/*
+ * Cyclically rotate a vector n places to the left
+ * (a C replacement for guyrot)
+ */
+
+void 
+rotateleft (double *v, int *nv, int *n, int *error)
+{
+register int i;
+double *tmp;    /* Storage for the ones the fall off the left   */
+
+*error = 0;
+
+*n = *n % *nv;
+
+if (*n == 0)    /* No rotation required */
+    return;
+
+if ((tmp = (double *)malloc((unsigned)(*n)*sizeof(double))) == NULL)    {
+    *error = 120;
+    return;
+    }
+
+for(i=0; i< *n; ++i)    
+    *(tmp+i) = *(v+i);
+
+for(i=0; i< *nv - *n; ++i)
+    *(v+i) = *(v+i+*n);
+
+for(i=0; i< *n; ++i)
+    *(v+ i + *nv - *n) = *(tmp+i);
+    
+free((void *)tmp);
+}
+
+void 
+rainmatPARENT (
+    int *J,    /* The dimension of the problem             */
+    double *H,  /* The wavelet filter coefficients          */
+    int *LengthH,  /* The number of wavelet filter coefficients        */
+    double *fmat,   /* The answer                       */
+    double *tol,    /* Elements smaller than this will be deleted       */
+    int *error    /* Error code. Nonzero is an error          */
+)
+{
+register int i;
+int BigJ;  /* The level we must go to to be able to compute
+         * coefficients without error
+         */
+int donej; /* Only for partial                 */
+
+double **coefvec;   /* These are the \Psi_j (\tau)          */
+int *lvec;     /* Vector of length *J contains the length  
+             * of each vector in coefvec
+             */
+
+
+
+donej = 0;
+
+if (*LengthH == 2)  /* Haar - can compute exactly */
+    {
+    haarmat(J, &donej, fmat, error);
+    return;
+    }
+
+/* whichlevel */
+
+wlpart(J, &BigJ, H, LengthH, error);
+
+if (*error != 0)
+    return;
+
+/* mkcoef */
+
+if ((lvec = (int *)malloc((unsigned)*J*sizeof(int)))==NULL)   {
+    *error = 130;
+    return;
+    }
+
+for(i=0; i<*J; ++i)
+    *(lvec+i) = 0;
+
+/* MAN 7/12/10.  coefvec initialization? */
+
+/* coefvec=calloc(*J,sizeof(double*));*/
+
+mkcoef(J, BigJ, H, LengthH, &coefvec, lvec, tol, error); 
+
+if (*error != 0)
+    return;
+
+/* rainmat */ 
+donej = 0;
+
+rainmat(J, &donej, coefvec, lvec, fmat, error);
+
+if (*error != 0)
+    return;
+
+free((void *)lvec);
+
+for(i=0; i<*J; ++i)
+    free((void *)*(coefvec+i));
+
+free((void *)coefvec);
+}
+
+/* Make \Psi_j(\tau) components */
+
+void 
+mkcoef (
+    int *J,    /* Dimension of the problem             */
+    int BigJ,  /* The maximum depth that we have to go to      */
+    double *H,  /* Wavelet filter coefficients              */
+    int *LengthH,  /* Number of wavelet filter coefficients        */
+    double ***coefvec, /* Coefficients of \Psi_j(\tau)          */
+    int *lvec, /* Vector of length *J that will contain length of
+         * each component of coefvec */
+    double *tol,    /* Elements smaller than this will be deleted       */
+    int *error    /* Error code                       */
+)
+{
+register int i,j;
+register int large_ones;
+int ndata;
+int *ixvec;        /* Index vector for inserting 1s into blank WT  */
+double **lcoefvec;  /* Local version of coefvec         */
+double *tmpcfvec;   /* Temporary vector             */
+
+/* Things needed for the simpleWT */
+double *TheData;
+double *C, *D;
+int *firstC, *lastC, *offsetC, *firstD, *lastD, *offsetD;
+int LengthC, LengthD, levels;
+int type,bc;
+int n_to_rotate;
+
+
+
+ndata = (int)0x01 << BigJ;
+
+/*
+ * Create ixvec
+ */
+
+if ((ixvec = (int *)malloc((unsigned)BigJ*sizeof(int)))==NULL){
+    *error = 140;
+    return;
+    }
+
+for(i=0; i< BigJ; ++i)
+    *(ixvec+i) =(0x01 << (BigJ -1 - i)); 
+
+for(i=1; i< BigJ; ++i)
+    *(ixvec+i) = *(ixvec+i-1) + *(ixvec+i);
+
+for(i=0; i< BigJ; ++i){
+    --*(ixvec+i);
+}
+
+
+/*
+ * Basically a dummy wavelet transform to set up first/last stuff
+ */
+if ((TheData = (double *)malloc((unsigned)ndata*sizeof(double)))==NULL) {
+    *error = 141;
+    return;
+    }
+
+for(i=0; i<ndata; ++i)
+    *(TheData+i) = 0.0;
+
+/*
+ * Do the wavelet transform
+ */
+
+/* MAN 7/12/10.  The call to simpleWT doesn't know what memory it's using
+and so during the next for loop, *D is being used when we don't know what 
+it contains.  I am going to allocate memory specifically for the input into
+simpleWT.
+*/
+
+firstC=calloc(BigJ+1,sizeof(int));
+lastC=calloc(BigJ+1,sizeof(int));
+offsetC=calloc(BigJ+1,sizeof(int));
+firstD=calloc(BigJ,sizeof(int));
+lastD=calloc(BigJ,sizeof(int));
+offsetD=calloc(BigJ,sizeof(int));
+C=calloc(2*ndata-1,sizeof(double));
+D=calloc(ndata-1,sizeof(double));
+
+simpleWT(TheData, &ndata, H, LengthH,
+    C, &LengthC, D, &LengthD, &levels,
+    firstC, lastC, offsetC,
+    firstD, lastD, offsetD,
+    &type, &bc, error);
+
+if (*error != 0)
+    return;
+
+if ((lcoefvec = (double **)malloc((unsigned)*J*sizeof(double *)))==NULL){
+    *error = 142;
+    return;
+    }
+
+for(i=1; i<= *J; ++i)   {
+    for(j=0; j<LengthD; ++j)
+        *(D+j) = 0.0;
+
+    *(D+ *(ixvec+i-1)) = 1;
+
+    waverecons(C, D, H, LengthH, &levels,
+        firstC, lastC, offsetC, firstD, lastD, offsetD,
+        &type, &bc, error);
+
+    if (*error != 0)
+        return;
+
+    /* Now copy reconstruction into TheData  (vec in S) */
+
+    for(j=0; j<ndata; ++j)
+        *(TheData+j) = *(C+j);
+
+    n_to_rotate = (int)idlastzero(TheData, &ndata);
+
+    if (n_to_rotate < 0)
+        n_to_rotate = 0;
+
+    rotateleft(TheData, &ndata, &n_to_rotate, error);
+
+    if (*error != 0)
+        return;
+
+    large_ones = 0;
+
+    for(j=0; j<ndata; ++j)
+        if (fabs(*(TheData+j)) > *tol)
+            ++large_ones;
+
+    /* Now get memory for the large ones */
+
+    if ((tmpcfvec = (double *)malloc((unsigned)large_ones*sizeof(double)))==NULL)   {
+        *error = 143;
+        return;
+        }
+
+    large_ones = 0;
+
+    for(j=0; j<ndata; ++j)
+        if (fabs(*(TheData+j)) > *tol)
+            *(tmpcfvec+large_ones++) = *(TheData+j);
+
+
+    /* Install this vector into the array */
+
+    *(lcoefvec+i-1) = tmpcfvec;
+    *(lvec+i-1) = (int)large_ones;
+    }
+
+/* Install the lcoefvec into the coefvec */
+
+*coefvec = lcoefvec;
+
+free((void *)ixvec);
+free((void *)TheData);
+
+
+/* MAN 7/12/10.  Free the memory allocated above for simpleWT. */
+
+/*
+free(tmpcfvec);
+free(lcoefvec);
+*/
+
+free((void *)C);
+free((void *)D);
+free((void *)firstC); free((void *)lastC);
+free((void *)offsetC);
+free((void *)firstD); free((void *)lastD);
+free((void *)offsetD);
+
+}
+
+void 
+rainmatOLD (
+    int *J,        /* The desired maximum level (positive)     */
+    double *coefvec,    /* The \psi_{jk} stacked into one vector    */
+    int *ixvec,
+    int *lvec,     /* A vector of lengths of each \psi_j vector in
+               coefvec. The jth element is the length of the
+               jth \psi_j in coefvec
+             */
+    double *fmat,       /* This vector will contain the answer. This is
+               the lower triangular portion of the J*J matrix,
+               and therefore is of length J(J-1)/2 */
+    int *error        /* Error code
+                1-  Generating **w
+                2+j Memory error on 2+j th one
+            */
+)
+{
+
+/* First we compute the w. One for each j           */
+
+double **w;
+register int j,k,m,l,cnt;
+double sum;
+int lj,ll;
+
+if ((w = (double **)malloc((unsigned)*J*sizeof(double *)))==NULL)   {
+    *error = 1;
+    return;
+    }
+
+/* Now populate each of the *w */
+
+for(j=0; j<*J; ++j) {
+    if ((*(w+j) = (double *)malloc((unsigned)(*(lvec+j)*2-1)*sizeof(double)))==NULL)    {
+        *error = (int)(2+j);
+        return;
+        }
+    }
+
+/* Now compute each of the wjk */
+
+for(j=0; j< *J; ++j)    {
+    lj = *(lvec+j);
+    for(k = 1-lj; k <= lj-1; ++k)   {
+        sum = 0.0;
+        for(m = max(0, k); m <= min(lj-1, lj-1+k); ++m) {
+            sum += *(coefvec+*(ixvec+j)+m) *
+                *(coefvec+*(ixvec+j)+m-k);
+            }
+        ACCESSW(w, j, k-1+lj) = sum;
+        }
+    }
+
+/* Now compute the F */
+
+cnt = 0;
+for(j=0; j<*J; ++j) {
+    lj = *(lvec+j);
+    for(l=j; l<*J; ++l) {
+        ll = *(lvec+l);
+        sum = 0.0;
+        for(k=max(1-ll, 1-lj); k <= min(lj-1, ll-1); ++k)   {
+            sum += ACCESSW(w, j, k-1+lj) *
+                ACCESSW(w, l, (-k)-1+ll);
+            }
+        
+        *(fmat+*J*l+j) = *(fmat+*J*j+l) = sum;
+        ++cnt;
+        }
+    }
+
+/* Now free the w */
+for(j=0; j<*J; ++j) {
+    free((void *)*(w+j));
+    }
+free((void *)w);
+}
+
+/* rainmatPARTIAL - partial matrix filling              */
+
+void 
+rainmatPARTIAL (
+    int *J,    /* The dimension of the problem             */
+    int *donej,    /* The first j dimensions are already filled        */
+    double *H,  /* The wavelet filter coefficients          */
+    int *LengthH,  /* The number of wavelet filter coefficients        */
+    double *fmat,   /* The answer                       */
+    double *tol,    /* Elements smaller than this will be deleted       */
+    int *error    /* Error code. Nonzero is an error          */
+)
+{
+register int i;
+int BigJ;  /* The level we must go to to be able to compute
+         * coefficients without error
+         */
+
+double **coefvec;   /* These are the \Psi_j (\tau)          */
+int *lvec;     /* Vector of length *J contains the length  
+             * of each vector in coefvec
+             */
+
+
+
+if (*LengthH == 2)  /* Haar - can compute exactly */
+    {
+    haarmat(J, donej, fmat, error);
+    return;
+    }
+
+/* whichlevel */
+
+wlpart(J, &BigJ, H, LengthH, error);
+
+if (*error != 0)
+    return;
+
+/* mkcoef */
+
+if ((lvec = (int *)malloc((unsigned)*J*sizeof(int)))==NULL)   {
+    *error = 150;
+    return;
+    }
+
+for(i=0; i<*J; ++i)
+    *(lvec+i) = 0;
+
+/* MAN 7/12/10.  Init. coefvec? */
+/* coefvec=calloc(*J,sizeof(double*));*/
+
+mkcoef(J, BigJ, H, LengthH, &coefvec, lvec, tol, error); 
+
+if (*error != 0)
+    return;
+
+/* rainmat */ 
+
+rainmat(J, donej, coefvec, lvec, fmat, error);
+
+if (*error != 0)
+    return;
+
+free((void *)lvec);
+
+for(i=0; i<*J; ++i)
+    free((void *)*(coefvec+i));
+
+free((void *)coefvec);
+}
+
+void 
+PsiJ_impl (
+    int *J,    /* The dimension of the problem             */
+    double *H,  /* The wavelet filter coefficients          */
+    int *LengthH,  /* The number of wavelet filter coefficients        */
+    double *tol,    /* Elements smaller than this will be deleted       */
+    double *wout,   /* Answers for \Psi_j(\tau)             */
+    int *lwout,    /* Length of previous array             */
+    int *rlvec,    /* Vector of length J contains lengths of \psi_j    */
+    int *error    /* Error code. Nonzero is an error          */
+)
+{
+register int i;
+int BigJ=0;  /* The level we must go to to be able to compute
+         * coefficients without error
+         */
+double **coefvec;   /* These are the \psi_j (\tau)          */
+int *lvec;     /* Vector of length *J contains the length  
+             * of each vector in coefvec
+             */
+
+
+
+/* whichlevel */
+
+wlpart(J, &BigJ, H, LengthH, error);
+
+if (*error != 0)
+    return;
+
+/* mkcoef */
+
+if ((lvec = (int *)malloc((unsigned)*J*sizeof(int)))==NULL)   {
+    *error = 130;
+    return;
+    }
+
+for(i=0; i<*J; ++i)
+    *(lvec+i) = 0;
+
+/* MAN 7/12/10.  Init for coefvec? */
+
+/* coefvec=calloc(*J,sizeof(double)); */
+
+mkcoef(J, BigJ, H, LengthH, &coefvec, lvec, tol, error); 
+
+if (*error != 0)
+    return;
+
+
+PsiJonly(J, coefvec, lvec, wout, lwout, error);
+
+if (*error != 0)
+    return;
+
+for(i=0; i<*J; ++i)
+    *(rlvec + i) = *(lvec+i);
+
+free((void *)lvec);
+
+for(i=0; i<*J; ++i)
+    free((void *)*(coefvec+i));
+
+free((void *)coefvec);
+}
+
+void 
+PsiJonly (
+    int *J,        /* The desired maximum level (positive)     */
+    double **coefvec,   /* The \psi_{jk} stacked into one vector    */
+    int *lvec,     /* A vector of lengths of each \psi_j vector in
+               coefvec. The jth element is the length of the
+               jth \psi_j in coefvec
+             */
+    double *wout,       /* Output contains the \Psi_j(\tau)     */
+    int *lwout,        /* Length of this vector. If it is not long
+             * enough an error code is returned     */
+    int *error        /* Error code                   */
+)
+{
+
+/* First we compute the w. One for each j           */
+
+double **w;
+register int j,k,m;
+double sum;
+int totall;
+int lj,cnt;
+
+/* Check output vector is long enough to store answer */
+
+totall = 0;
+for(j=0; j < *J; ++j)
+    totall += *(lvec+j)*2l - 1l; 
+
+if (totall > *lwout)    {
+    *error = 160;
+    *lwout = totall;
+    return;
+    }
+
+
+if ((w = (double **)malloc((unsigned)*J*sizeof(double *)))==NULL)   {
+    *error = 161;
+    return;
+    }
+
+/* Now populate each of the *w */
+
+for(j=0; j<*J; ++j) {
+    if ((*(w+j) = (double *)malloc((unsigned)(*(lvec+j)*2-1)*sizeof(double)))==NULL)    {
+        *error = 162;
+        *J = (int)j;
+        return;
+        }
+    }
+
+/* Now compute each of the wjk */
+
+for(j=0; j< *J; ++j)    {
+    lj = *(lvec+j);
+    for(k = 1-lj; k <= lj-1; ++k)   {
+        sum = 0.0;
+        for(m = max(0, k); m <= min(lj-1, lj-1+k); ++m) {
+            sum += *((*(coefvec+j))+m) *
+                *((*(coefvec+j))+m-k);
+            }
+        ACCESSW(w, j, k-1+lj) = sum;
+        }
+    }
+
+/* Store the w */
+
+cnt = 0;
+
+for(j=0; j < *J; ++j)   {
+    lj = *(lvec+j);
+    for(k = 1-lj; k <= lj-1; ++k)   {
+        *(wout+cnt) = ACCESSW(w, j, k-1+lj);
+        ++cnt;
+        }
+    }
+
+
+/* Now free the w */
+for(j=0; j<*J; ++j) {
+    free((void *)*(w+j));
+    }
+free((void *)w);
+}
+
+/* haarmat - Computes matrix exactly using formula      */
+
+void 
+haarmat (
+    int *J,        /* The desired maximum level (positive)     */
+    int *donej,        /* The first j columns already filled       */
+    double *fmat,       /* This vector will contain the answer. This is
+               the lower triangular portion of the J*J matrix,
+               and therefore is of length J(J-1)/2 */
+    int *error        /* Error code                   */
+)
+{
+register int j,l;
+double a;
+double twoj, twol, two2j, two2jmo;
+
+for(j=0; j<*J; ++j) {
+    for(l=j; l<*J; ++l) {
+        if (l >= *donej)    {
+
+            if (l==j)   {
+                twoj = pow(2.0, ((double)j+1)); 
+                two2j = twoj*twoj;
+                a = (two2j + 5.0)/(3.0*twoj);
+                }
+
+            else    {
+                two2jmo = pow(2.0, (double)(2*j+1));
+                twol = pow(2.0, ((double)l+1));
+                a = (two2jmo + 1.0)/twol;
+                }
+            *(fmat+*J*l+j) = *(fmat+*J*j+l) = a;
+            }
+        }
+    }
+
+}
+
+/*
+ * Now follows the code from swt2d.c
+ */
+
+
+/*
+ * Perform whole of SWT2D after initialising
+ */
+
+void 
+SWT2Dall (
+    double *m,  /* The input data                   */
+    int *nm,    /* The dimension of the square matrix m         */
+    double *am, /* The *big* answer 3D array                */
+    int *J, /* The level at which to store the initial information  */
+    double *H,      /* The smoothing filter             */
+    int *LengthH,       /* The length of the smoothing filter       */
+    int *error /* Error code 0=ok, anything else is memory error   */
+)
+{
+int D1, D12;    /* Dimensions of am array               */
+int nm2, nm4;   /* nm divided by 2 then 4               */
+
+
+*error = 0;
+
+initSWT2D(m, nm, am, J, H, LengthH, error);
+
+if (*error != 0)
+    return;
+
+/*
+ * Now for each level use the previous level as the coefficients to
+ * do a 2D wavelet transform for the next level
+ *
+ * Produce level J-2 from J-1 (which was done in initSWT2D)
+ * Produce level J-3 from J-2 ...
+ * ...
+ * Produce level 0 from 1
+ * Go home!
+ */
+D12 = (*J)*(*nm * 2);
+D1 = (*J);
+
+nm2 = *nm/2;
+nm4 = nm2/2;
+
+SWT2Drec(am, D1, D12, 0, 0, nm2, nm4, *J-1, H, LengthH, error);
+if (*error != 0)
+    return;
+SWT2Drec(am, D1, D12, *nm, 0, nm2, nm4, *J-1, H, LengthH, error);
+if (*error != 0)
+    return;
+SWT2Drec(am, D1, D12, 0, *nm, nm2, nm4, *J-1, H, LengthH, error);
+if (*error != 0)
+    return;
+SWT2Drec(am, D1, D12, *nm, *nm, nm2, nm4, *J-1, H, LengthH, error);
+if (*error != 0)
+    return;
+}
+
+void 
+SmallStore (
+    double *am, /* The *big* matrix to store everything in      */
+    int D1, /* First dimension of am                */
+    int D12,    /* First and second dimensions of am multiplied     */
+    int J,      /* The level to fill                    */
+    int sl, /* Side length of small packets             */
+    int x,      /* The origin x coordinate              */
+    int y,      /* The origin y coordinate              */
+    int ix, /* The smaller matrix i offset              */
+    int jy, /* The smaller matrix j offset              */
+    double *hhout,  /* The new smoothed matrix              */
+    double *hgout,  /* The new horizontal detail matrix         */
+    double *ghout,  /* The new vertical detail matrix           */
+    double *ggout,  /* The new diagonal detail matrix           */
+    int nm /* Size of the hhout, hgout, ghout, ggout       */
+)
+{
+register int i,j;
+
+for(i=0; i< sl; ++i)
+  for(j=0; j< sl; ++j)  {
+    ACCESS3D(am, D1, D12, J, x+i, y+j) = ACCESS(hhout, nm, ix+i, jy+j);
+    ACCESS3D(am, D1, D12, J, x+i, sl+y+j) = ACCESS(hgout, nm, ix+i, jy+j);
+    ACCESS3D(am, D1, D12, J, sl+x+i, y+j) = ACCESS(ghout, nm, ix+i, jy+j);
+    ACCESS3D(am, D1, D12, J, sl+x+i, sl+y+j) = ACCESS(ggout, nm, ix+i, jy+j);
+    }
+}
+
+/* initialise the answer matrix */
+
+void 
+initSWT2D (
+    double *m,  /* The input data                   */
+    int *nm,    /* The dimension of the square matrix m         */
+    double *am, /* The *big* answer 3D array                */
+    int *J, /* The level at which to store the initial information  */
+    double *H,      /* The smoothing filter             */
+    int *LengthH,       /* The length of the smoothing filter       */
+    int *error /* Error code 0=ok, anything else is memory error   */
+)
+{
+int mlength;    /* Length of vector representing matrix         */
+int D1, D12;    /* 1st and Second dimension of answer matrix        */
+double *hhout, *hgout, *ghout, *ggout;  /* Intermediate stores      */
+int nm2;    /* Half of *nm                      */
+
+
+
+*error = 0;
+
+mlength = *nm * *nm;
+
+/* First create some space for hhout, hgout, ghout and ggout.       */
+
+if ((hhout = (double *)malloc((size_t)(mlength* sizeof(double))))==NULL){
+    *error = 7;
+    return;
+    }
+
+if ((hgout = (double *)malloc((size_t)(mlength* sizeof(double))))==NULL){
+    *error = 8;
+    return;
+    }
+
+if ((ghout = (double *)malloc((size_t)(mlength* sizeof(double))))==NULL){
+    *error = 9;
+    return;
+    }
+
+if ((ggout = (double *)malloc((size_t)(mlength* sizeof(double))))==NULL){
+    *error = 10;
+    return;
+    }
+
+/* Apply the 2D SWT to the initial data and store the HH, GH, HG, GG
+ * matrices in their appropriate place in the big matrix
+ */
+
+SWT2D(m, nm, hhout, hgout, ghout, ggout, H, LengthH, error);
+
+#ifdef PRINTON
+Rprintf("First hhout matrix\n");
+{
+int i,j;
+for(i=0; i<*nm; ++i)    {
+    Rprintf("[%d, ] ", i);
+    for(j=0; j<*nm; ++j)
+      Rprintf("%lf ", ACCESS(hhout, *nm, i,j));
+    Rprintf("\n");
+    }
+}
+#endif
+    
+
+if (*error != 0)
+    return;
+
+/*
+ * Now copy each of the results hhout, hgout, ghout and ggout to the answer
+ * matrix am
+ */
+
+
+D12 = (*J)*(*nm * 2);
+D1 = (*J);
+
+nm2 = *nm / 2;
+
+SmallStore(am, D1, D12, *J-1, nm2, 0l, 0l, 0l, 0l,
+    hhout, hgout, ghout, ggout, *nm);
+SmallStore(am, D1, D12, *J-1, nm2, *nm, 0l, nm2, 0l,
+    hhout, hgout, ghout, ggout, *nm);
+SmallStore(am, D1, D12, *J-1, nm2, 0l, *nm, 0l, nm2,
+    hhout, hgout, ghout, ggout, *nm);
+SmallStore(am, D1, D12, *J-1, nm2, *nm, *nm, nm2, nm2,
+    hhout, hgout, ghout, ggout, *nm);
+
+
+free((void *)hhout);
+free((void *)hgout);
+free((void *)ghout);
+free((void *)ggout);
+}
+
+    
+
+void 
+SWT2Drec (
+    double *am, /* The big storage array                */
+    int D1, /* First dimension of am                */
+    int D12,    /* First and second dimensions of am multiplied     */
+    int x,      /* X origin coordinate of smoothed data         */
+    int y,      /* Y origin coordinate of smoothed data         */
+    int TWOsl,  /* Side length of smoothed data             */
+    int sl, /* Side length of result packets (2*sl = TWOsl)     */
+    int J,      /* Level we accessing from (and putting into j-1)   */
+    double *H,      /* The smoothing filter             */
+    int *LengthH,       /* The length of the smoothing filter       */
+    int *error /* Error code                       */
+)
+{
+register int i,j;
+double *m;  /* Somewhere to put the smoothed data           */
+int mlength;    /* The length of this matrix                */
+double *hhout, *hgout, *ghout, *ggout; /* Smoothed, hori, verti & diag  */
+int sl2;    /* sl divided by 2                  */
+
+
+
+*error = 0;
+
+#ifdef PRINTON
+Rprintf("SWT2Drec: x=%ld, y=%ld, TWOsl=%ld, sl=%ld, J=%ld\n",x,y,TWOsl,sl,J);
+#endif
+
+mlength = TWOsl * TWOsl;
+
+/* Create space for TWOsl * TWOsl matrix m*/
+
+if ((m = (double *)malloc((size_t)mlength*sizeof(double)))==NULL){
+    *error = 11;
+    return;
+    }
+
+/* Fill matrix from am from x,y at origin at level j*/
+
+for(i=0; i<TWOsl; ++i)
+ for(j=0; j<TWOsl; ++j)
+  ACCESS(m, TWOsl, i, j) = ACCESS3D(am, D1, D12, J, x+i, y+j);
+
+/* Create space for hhout, etc */
+
+if ((hhout = (double *)malloc((size_t)mlength*sizeof(double)))==NULL){
+    *error = 12;
+    return;
+    }
+if ((hgout = (double *)malloc((size_t)mlength*sizeof(double)))==NULL){
+    *error = 13;
+    return;
+    }
+
+if ((ghout = (double *)malloc((size_t)mlength*sizeof(double)))==NULL){
+    *error = 14;
+    return;
+    }
+
+if ((ggout = (double *)malloc((size_t)mlength*sizeof(double)))==NULL){
+    *error = 15;
+    return;
+    }
+
+/* Process using SWT2D and into hhout, hgout, ghout, hhout */
+
+SWT2D(m, &TWOsl, hhout, hgout, ghout, ggout, H, LengthH, error);
+
+if (*error != 0)
+    return;
+
+#ifdef PRINTON
+Rprintf("HH matrix for level %ld\n", J); 
+for(i=0; i<TWOsl; ++i)  {
+ Rprintf("[%d,] ",i);
+ for(j=0; j<TWOsl; ++j)
+  Rprintf("%lf ", ACCESS(hhout, TWOsl, i, j));
+ Rprintf("\n");
+ }
+#endif
+
+/* Free m */
+
+free((void *)m);
+
+/* Small Store the hhout etc into am at level j-1 */
+
+SmallStore(am, D1, D12, J-1, sl, x, y, 0l, 0l, hhout, hgout, ghout, ggout,
+    TWOsl);
+SmallStore(am, D1, D12, J-1, sl, x+TWOsl, y, sl, 0l, hhout, hgout, ghout, ggout,
+    TWOsl);
+SmallStore(am, D1, D12, J-1, sl, x, y+TWOsl, 0l, sl, hhout, hgout, ghout, ggout,
+    TWOsl);
+SmallStore(am, D1, D12, J-1, sl, x+TWOsl, y+TWOsl, sl, sl, hhout, hgout, ghout,
+    ggout, TWOsl);
+
+/* Free hhout, etc */
+
+free((void *)hhout); free((void *)hgout);
+free((void *)ghout); free((void *)ggout);
+
+/* Call SWTrec again 4 times if J != 0 , otherwise return */
+
+if (J == 1)
+    return;
+
+sl2 = sl/2;
+
+SWT2Drec(am, D1, D12, x, y, sl, sl2, J-1, H, LengthH, error);
+if (*error != 0)
+    return;
+SWT2Drec(am, D1, D12, x+TWOsl, y, sl, sl2, J-1, H, LengthH, error);
+if (*error != 0)
+    return;
+SWT2Drec(am, D1, D12, x, y+TWOsl, sl, sl2, J-1, H, LengthH, error);
+if (*error != 0)
+    return;
+SWT2Drec(am, D1, D12, x+TWOsl, y+TWOsl, sl, sl2, J-1, H, LengthH, error);
+if (*error != 0)
+    return;
+}
+
+
+/* Performs "head" part of 2D packet SWT algorithm 
+ *
+ * This is just the decomposition step. The full algorithm is implemented
+ * in S
+ */
+
+
+void 
+SWT2D (
+    double *m,      /* The matrix to decompose          */
+    int *nm,        /* The dimension of the square matrix m     */
+    double *hhout,      /* The smoothed-smoothed matrix of dimension m  */
+    double *hgout,      /* The smoothed-detail matrix of dimension m    */
+    double *ghout,      /* The detail-smoothed matrix of dimension m    */
+    double *ggout,      /* The detail-detail matrix of dimension m  */
+    double *H,      /* The smoothing filter             */
+    int *LengthH,       /* The length of the smoothing filter       */
+    int *error     /* Error code 0=ok, 1=memory error      */
+)
+{
+int mlength;        /* The number of items in h and g       */
+double *h;      /* Intermediate smoothed matrix         */
+double *g;      /* Intermediate detail matrix           */
+
+
+
+*error = 0;
+
+mlength = *nm * *nm;
+
+
+/* First need to create intermediate matrices h and g   */
+
+if ((h = (double *)malloc((size_t)(mlength* sizeof(double))))==NULL){
+    *error = 3;
+    return;
+    }
+if ((g = (double *)malloc((size_t)(mlength * sizeof(double))))==NULL){
+    *error = 4;
+    return;
+    }
+
+/* Fill up the h and g matrices by "across rows" operator       */
+
+SWT2DROWblock(m, nm, h, g, H, (int)*LengthH, error);
+
+if (*error != 0)
+    return;
+
+/* Now for each of h and g apply the "across cols" operator     */
+
+SWT2DCOLblock(h, nm, hhout, hgout, H, (int)*LengthH, error);
+
+if (*error != 0)
+    return;
+
+SWT2DCOLblock(g, nm, ghout, ggout, H, (int)*LengthH, error);
+
+if (*error != 0)
+    return;
+
+/* That's it */
+
+free((void *)h);
+free((void *)g);
+}
+
+/*
+ * Performs part of 2D packet SWT algorithm. 
+ *
+ * Takes matrix m and applies the G and H filters across the rows of
+ * the matrix. Then this is done again but to the rotated versions.
+ */ 
+
+void 
+SWT2DROWblock (
+    double *m,      /* Input matrix                 */
+    int *nm,        /* Dimension of square input matrix     */
+    double *hout,       /* Smoothed answer matrix (same dim as m)   */
+    double *gout,       /* Detail answer matrix (same dim as m)     */
+    double *H,      /* The smoothing filter             */
+    int LengthH,        /* The length of the smoothing filter       */
+    int *error     /* Error code. 0=ok, 1=memory error     */
+)
+{
+register int i,j;
+int lengthout;      /* Length of out matrices (half of *nm)     */
+double *col;        /* A container for columns of matrices      */
+double *out;        /* A vector for storing the processed coeffs    */
+
+
+
+*error = 0;
+
+/* Get some memory for a column container called col    */
+
+if ((col = (double *)malloc((unsigned)*nm*sizeof(double)))==NULL)   {
+    *error = 1;
+    return;
+    } 
+
+/* Get some memory for results of a filtering op    */ 
+
+lengthout = (int)*nm/2;
+
+if ((out = (double *)malloc((unsigned)lengthout*sizeof(double)))==NULL) {
+    *error = 2;
+    return;
+    } 
+
+/* Process one column at a time */
+
+for(j=0; j< *nm; ++j)   {
+
+    /* Copy column j */
+
+    for(i=0; i< *nm; ++i)
+        *(col+i) = ACCESS(m, *nm, i, j);
+
+    
+    /* Apply DWT-smooth to j */
+
+    convolveC(col, (int)*nm, 0, H, LengthH, out,
+        0, lengthout-1, WAVELET, 1, PERIODIC);  
+
+    /* Store this column */
+
+    for(i=0; i < lengthout; ++i)
+        ACCESS(hout, *nm, i, j) = *(out+i);
+
+    /* Apply DWT-detail to j */ 
+
+    convolveD(col, (int)*nm, 0, H, LengthH, out,
+        0, lengthout-1, WAVELET, 1, PERIODIC);  
+
+    /* Store this column */
+
+    for(i=0; i < lengthout; ++i)
+        ACCESS(gout, *nm, i, j) = *(out+i);
+
+
+    /* Rotate column j */
+
+    rotater(col, (int)*nm);
+
+    /* Apply DWT-smooth to rotated j */
+
+    convolveC(col, (int)*nm, 0, H, LengthH, out,
+        0, lengthout-1, WAVELET, 1, PERIODIC);  
+
+    /* Store this column */
+
+    for(i=0; i < lengthout; ++i)
+        ACCESS(hout, *nm, i+lengthout, j) = *(out+i);
+
+    /* Apply DWT-detail to j */ 
+
+    convolveD(col, (int)*nm, 0, H, LengthH, out,
+        0, lengthout-1, WAVELET, 1, PERIODIC);  
+
+    /* Store this column */
+
+    for(i=0; i < lengthout; ++i)
+        ACCESS(gout, *nm, i+lengthout, j) = *(out+i);
+    }
+
+/* That's it */
+free((void *)col);
+free((void *)out);
+return;
+}
+
+/*
+ * Performs part of 2D packet SWT algorithm. 
+ *
+ * Takes matrix m and applies the G and H filters across the cols of
+ * the matrix. Then this is done again but to the rotated versions.
+ */ 
+
+void 
+SWT2DCOLblock (
+    double *m,      /* Input matrix                 */
+    int *nm,        /* Dimension of square input matrix     */
+    double *hout,       /* Smoothed answer matrix (same dim as m)   */
+    double *gout,       /* Detail answer matrix (same dim as m)     */
+    double *H,      /* The smoothing filter             */
+    int LengthH,        /* The length of the smoothing filter       */
+    int *error     /* Error code. 0=ok, 1=memory error     */
+)
+{
+register int i,j;
+int lengthout;      /* Length of out matrices (half of *nm)     */
+double *row;        /* A container for columns of matrices      */
+double *out;        /* A vector for storing the processed coeffs    */
+
+
+
+*error = 0;
+
+/* Get some memory for a column container called row    */
+
+if ((row = (double *)malloc((unsigned)*nm*sizeof(double)))==NULL)   {
+    *error = 5;
+    return;
+    } 
+
+/* Get some memory for results of a filtering op    */ 
+
+lengthout = (int)*nm/2;
+
+if ((out = (double *)malloc((unsigned)lengthout*sizeof(double)))==NULL) {
+    *error = 6;
+    return;
+    } 
+
+/* Process one row at a time */
+
+for(i=0; i< *nm; ++i)   {
+
+    /* Copy row i */
+
+    for(j=0; j< *nm; ++j)
+        *(row+j) = ACCESS(m, *nm, i, j);
+
+    
+    /* Apply DWT-smooth to i */
+
+    convolveC(row, (int)*nm, 0, H, LengthH, out,
+        0, lengthout-1, WAVELET, 1, PERIODIC);  
+
+    /* Store this row */
+
+    for(j=0; j < lengthout; ++j)
+        ACCESS(hout, *nm, i, j) = *(out+j);
+
+    /* Apply DWT-detail to i */ 
+
+    convolveD(row, (int)*nm, 0, H, LengthH, out,
+        0, lengthout-1, WAVELET, 1, PERIODIC);  
+
+    /* Store this row */
+
+    for(j=0; j < lengthout; ++j)
+        ACCESS(gout, *nm, i, j) = *(out+j);
+
+
+    /* Rotate row i */
+
+    rotater(row, (int)*nm);
+
+    /* Apply DWT-smooth to rotated i */
+
+    convolveC(row, (int)*nm, 0, H, LengthH, out,
+        0, lengthout-1, WAVELET, 1, PERIODIC);  
+
+    /* Store this row */
+
+    for(j=0; j < lengthout; ++j)
+        ACCESS(hout, *nm, i, j+lengthout) = *(out+j);
+
+    /* Apply DWT-detail to rotated i */ 
+
+    convolveD(row, (int)*nm, 0, H, LengthH, out,
+        0, lengthout-1, WAVELET, 1, PERIODIC);  
+
+    /* Store this row */
+
+    for(j=0; j < lengthout; ++j)
+        ACCESS(gout, *nm, i, j+lengthout) = *(out+j);
+    }
+
+/* That's it */
+free((void *)row);
+free((void *)out);
+return;
+}
+
+void 
+ixtoco (int *level, int *maxlevel, int *index, int *x, int *y)
+{
+register int i;
+int lic;
+int mf;
+
+mf = 0x01 << *level;
+
+for(i=*level; i<= *maxlevel; ++i)        {
+        lic = *index % 10;
+        *index /= 10;
+        *x += ((lic & 0x01) *  mf) << 1;
+        *y += ((lic & 0x02) *  mf) ;
+        mf <<= 1;
+        }
+}
+
+
+/* A reconstruction at level levj   */
+
+void 
+SWTRecon (
+    double *am, /* The big storage array                */
+    int D1, /* First dimension of am                */
+    int D12,    /* First and second dimensions of am multiplied     */
+    int levj,   /* The level to reconstruct             */
+    double *out,    /* The matrix where the reconstruction is put       */
+    int x,      /* The x coordinate of the origin           */
+    int y,      /* The y coordinate of the origin           */
+    double *H,  /* The filter                       */
+    int *LengthH,   /* The length of the filter             */
+    int *error /* Error code 0=ok                  */
+)
+{
+register int i,j;
+int sl; /* Side length of matrix holding details        */
+int matele; /* Number of elements in matrix             */
+int bc=PERIODIC;    /* Periodic boundary conditions         */
+double *hhout, *hgout, *ghout, *ggout;
+
+
+
+*error = 0;
+
+sl = 1 << levj; /* Dim of detail arrays is 2^levj   */
+matele = sl*sl;     /* Number of elements in matrix     */
+
+/* Get memory for horizontal, vertical and diagonal detail and smooth   */
+
+if ((hhout = (double *)malloc((size_t)matele*sizeof(double)))==NULL)    {
+    *error = 16;
+    return;
+    }
+
+if ((hgout = (double *)malloc((size_t)matele*sizeof(double)))==NULL)    {
+    *error = 17;
+    return;
+    }
+
+if ((ghout = (double *)malloc((size_t)matele*sizeof(double)))==NULL)    {
+    *error = 18;
+    return;
+    }
+
+if ((ggout = (double *)malloc((size_t)matele*sizeof(double)))==NULL)    {
+    *error = 19;
+    return;
+    }
+
+/* Get hold of the horizontal, vertical and diagonal detail     */
+
+for(i=0; i<sl; ++i)
+  for(j=0; j<sl; ++j)   {
+    ACCESS(hgout, sl, i, j) = ACCESS3D(am, D1, D12, levj, x+i, y+sl+j);
+    ACCESS(ghout, sl, i, j) = ACCESS3D(am, D1, D12, levj, x+sl+i, y+j);
+    ACCESS(ggout, sl, i, j) = ACCESS3D(am, D1, D12, levj, x+sl+i, y+sl+j);
+    }
+
+/*
+ * Get hold of the smooth at this level 
+ *
+ * If levj==0 then this is just the final smoothed scaling function coefficients
+ *
+ * If levj>0 then we have to recursively get hold of the smooth at the j-1
+ * level
+ * 
+ */
+
+if (levj == 0)
+    ACCESS(hhout, sl, 0, 0) = ACCESS3D(am, D1, D12, levj, x, y);
+else    {
+    SWTGetSmooth(am, D1, D12, hhout, levj, x, y, sl, H, LengthH, error);
+    if (*error != 0)
+        return;
+    }
+
+/*
+ * Use S,H,V, and D to reconstruct at level levj, x, y 
+ * and put it into out.
+ */
+
+#ifdef PRINTON
+Rprintf("This is ggout\n");
+for(i=0; i<sl; ++i) {
+  Rprintf("[%d,] ", i);
+  for(j=0; j<sl; ++j)
+    Rprintf("%lf ", ACCESS(ggout, sl, i, j));
+  Rprintf("\n");
+  }
+Rprintf("This is hgout\n");
+for(i=0; i<sl; ++i) {
+  Rprintf("[%d,] ", i);
+  for(j=0; j<sl; ++j)
+    Rprintf("%lf ", ACCESS(hgout, sl, i, j));
+  Rprintf("\n");
+  }
+Rprintf("This is ghout\n");
+for(i=0; i<sl; ++i) {
+  Rprintf("[%d,] ", i);
+  for(j=0; j<sl; ++j)
+    Rprintf("%lf ", ACCESS(ghout, sl, i, j));
+  Rprintf("\n");
+  }
+#endif
+
+/*
+tpose(hhout, sl); - this doesn't need to be done because its already been done
+*/
+tpose(hgout, sl);
+tpose(ghout, sl);
+tpose(ggout, sl);
+
+ImageReconstructStep(hhout, hgout, ghout, ggout, sl, 0, sl, 0,
+    H, *LengthH, 2*sl, 0, 2*sl-1, out, &bc, error);
+
+#ifdef PRINTON
+Rprintf("Immediate IRS\n");
+for(i=0; i<2*sl; ++i)   {
+    Rprintf("[%d, ] ", i);
+    for(j=0; j<2*sl; ++j)   {
+        Rprintf("%lf ", ACCESS(out, 2*sl, i,j));
+        }
+    Rprintf("\n");
+    }
+#endif
+
+if (*error != 0)
+    return;
+
+/*
+ * Free memory if necessary
+ */
+
+free((void *)hhout);
+free((void *)hgout);
+free((void *)ghout);
+free((void *)ggout);
+}
+
+void 
+SAvBasis (
+    double *am, /* The big storage array                */
+    int *D1,    /* First dimension of am                */
+    int *D12,   /* First and second dimensions of am multiplied     */
+    double *TheSmooth,  /* The returned smooth              */
+    int *levj,      /* The level you want it at         */
+    double *H,      /* The filter                   */
+    int *LengthH,       /* Length of the filter             */
+    int *error     /* Error code. O=ok             */
+)
+{
+
+
+*error = 0;
+
+SWTGetSmooth(am, *D1, *D12, TheSmooth, *levj, 0, 0, 1l<<*levj,
+    H, LengthH, error);
+
+if (*error != 0)
+    return;
+
+tpose(TheSmooth, 1<<*levj);
+
+}
+
+void 
+SWTGetSmooth (
+    double *am, /* The big storage array                */
+    int D1, /* First dimension of am                */
+    int D12,    /* First and second dimensions of am multiplied     */
+    double *TheSmooth,  /* The returned smooth              */
+    int levj,       /* The level you want it at         */
+    int x,          /* The x ordinate for the origin        */
+    int y,          /* The y ordinate for the origin        */
+    int sl,     /* Sidelength of TheSmooth array        */
+    double *H,      /* The filter                   */
+    int *LengthH,       /* Length of the filter             */
+    int *error     /* Error code. O=ok             */
+)
+{
+register int i,j;
+double *holder, *holder2;   /* Some storage space           */
+double *rc0, *rc1, *rc2, *rc3;
+            /* The four reconstructions         */
+int matele;     /* Number of elements in the recon matrices */
+
+
+
+/*
+ * Get memory for SWTRecon
+ */
+
+matele = sl*sl;
+
+if ((rc0 = (double *)malloc((size_t)matele*sizeof(double)))==NULL)  {
+    *error = 20;
+    return;
+    } 
+
+if ((rc1 = (double *)malloc((size_t)matele*sizeof(double)))==NULL)  {
+    *error = 21;
+    return;
+    } 
+
+if ((rc2 = (double *)malloc((size_t)matele*sizeof(double)))==NULL)  {
+    *error = 22;
+    return;
+    } 
+
+if ((rc3 = (double *)malloc((size_t)matele*sizeof(double)))==NULL)  {
+    *error = 24;
+    return;
+    } 
+
+
+/*
+ * Perform SWTRecon for each of the 4 indices
+ *
+ * and maybe do some rotation
+ */
+SWTRecon(am, D1, D12, levj-1, rc0, x, y, H, LengthH, error);
+if (*error != 0) return;
+SWTRecon(am, D1, D12, levj-1, rc1, x+sl, y, H, LengthH, error);
+if (*error != 0) return;
+SWTRecon(am, D1, D12, levj-1, rc2, x, y+sl, H, LengthH, error);
+if (*error != 0) return;
+SWTRecon(am, D1, D12, levj-1, rc3, x+sl, y+sl, H, LengthH, error);
+if (*error != 0) return;
+
+/* Rotation -
+ *
+ * rc0  -   none
+ * rc1  -   rotate rows
+ * rc2  -   rotate columns
+ * rc3  -   rotate rows and columns
+ *
+ */ 
+
+if ((holder = (double *)malloc((size_t)sl*sizeof(double)))==NULL)   {
+    *error = 25;
+    return;
+    }
+if ((holder2 = (double *)malloc((size_t)sl*sizeof(double)))==NULL)  {
+    *error = 26;
+    return;
+    }
+
+
+/* Rotate row by row */
+
+for(i=0; i<sl; ++i) {
+
+    /* Get row i */
+    for(j = 0; j<sl; ++j)   {
+        *(holder+j) = ACCESS(rc1,sl,i,j);
+        *(holder2+j) = ACCESS(rc3,sl,i,j);
+        }
+
+    rotateback(holder, (int)sl);
+    rotateback(holder2, (int)sl);
+
+    for(j=0; j<sl; ++j) {
+        ACCESS(rc1,sl,i,j) = *(holder+j);
+        ACCESS(rc3,sl,i,j) = *(holder2+j);
+        }
+    }
+
+/* Rotate col by col */
+
+for(j=0; j<sl; ++j) {
+
+    /* Get col j */
+    for(i = 0; i<sl; ++i)   {
+        *(holder+i) = ACCESS(rc2,sl,i,j);
+        *(holder2+i) = ACCESS(rc3,sl,i,j);
+        }
+
+    rotateback(holder, (int)sl);
+    rotateback(holder2, (int)sl);
+
+    for(i=0; i<sl; ++i) {
+        ACCESS(rc2,sl,i,j) = *(holder+i);
+        ACCESS(rc3,sl,i,j) = *(holder2+i);
+        }
+    }
+#ifdef PRINTON
+Rprintf("This is for level %ld\n", levj);
+Rprintf("r0\n");
+for(i=0; i<sl; ++i) {
+  Rprintf("[%d,] ", i);
+  for(j=0; j<sl; ++j)
+    Rprintf("%lf ", ACCESS(rc0, sl, i, j));
+  Rprintf("\n");
+  }
+Rprintf("r1\n");
+for(i=0; i<sl; ++i) {
+  Rprintf("[%d,] ",i );
+  for(j=0; j<sl; ++j)
+    Rprintf("%lf ", ACCESS(rc1, sl, i, j));
+  Rprintf("\n");
+  }
+Rprintf("r2\n");
+for(i=0; i<sl; ++i) {
+  Rprintf("[%d,] ", i);
+  for(j=0; j<sl; ++j)
+    Rprintf("%lf ", ACCESS(rc2, sl, i, j));
+  Rprintf("\n");
+  }
+Rprintf("r3\n");
+for(i=0; i<sl; ++i) {
+  Rprintf("[%d,] ", i);
+  for(j=0; j<sl; ++j)
+    Rprintf("%lf ", ACCESS(rc3, sl, i, j));
+  Rprintf("\n");
+  }
+#endif
+
+/*
+ * Free holder memory
+ */
+
+free((void *)holder);
+free((void *)holder2);
+
+
+/*
+ * Work out the average and put it into TheSmooth
+ */
+
+for(i=0; i<sl; ++i)
+  for(j=0; j<sl; ++j)   
+    ACCESS(TheSmooth, sl, i,j) = (ACCESS(rc0,sl,i,j)+
+                  ACCESS(rc1,sl,i,j)+
+                  ACCESS(rc2,sl,i,j)+
+                  ACCESS(rc3,sl,i,j))/4.0;
+
+#ifdef PRINTON
+Rprintf("Transposed TheSmooth\n");
+/*
+tpose(TheSmooth, sl);
+*/
+
+for(i=0; i<sl; ++i) {
+    Rprintf("[%d, ] ", i);
+    for(j=0; j<sl; ++j) {
+        Rprintf("%lf ", ACCESS(TheSmooth, sl, i,j));
+        }
+    Rprintf("\n");
+    }
+#endif
+
+
+/*
+ * Free memory
+ */
+
+free((void *)rc0);
+free((void *)rc1);
+free((void *)rc2);
+free((void *)rc3);
+}
+
+void 
+tpose (double *m, int l)
+{
+double tmp;
+register int i,j;
+
+for(i=0; i<l; ++i)
+    for(j=0; j<i; ++j)  {
+        tmp = ACCESS(m, l, i, j);
+        ACCESS(m, l, i, j) = ACCESS(m, l, j, i);
+        ACCESS(m, l, j, i) = tmp;
+        }
+}
+
+void 
+getpacketwst2D (
+    double *am, /* The big storage array                */
+    int *D1,    /* First dimension of am                */
+    int *D12,   /* First and second dimensions of am multiplied     */
+    int *maxlevel, /* The maximum level (in C numbering)            */
+    int *level, /* Which level of coefficients you require      */
+    int *index, /* The index number of the packet           */
+    int *type,  /* The type of coefficients S,H,V or D (TYPES etc.) */
+    double *out,    /* A square matrix of dimension sl          */
+    int *sl    /* Dimension of out square matrix           */
+)
+{
+register int i,j;
+int x,y;    /* The coordinates into am              */
+
+
+x=y=0;
+ixtoco(level, maxlevel, index, &x, &y);
+
+switch(*type)   {
+    case TYPES:
+        break;
+
+    case TYPEH:
+        y += *sl;
+        break;
+
+    case TYPEV:
+        x += *sl;
+        break;
+
+    case TYPED:
+        x += *sl;
+        y += *sl;
+        break;
+    };
+
+for(i=0; i<*sl; ++i)
+  for(j=0; j<*sl; ++j)
+    ACCESS(out, *sl, i, j) = ACCESS3D(am, *D1, *D12, *level, x+i, y+j);
+
+tpose(out, *sl);
+
+}
+
+void 
+putpacketwst2D (
+    double *am, /* The big storage array                */
+    int *D1,    /* First dimension of am                */
+    int *D12,   /* First and second dimensions of am multiplied     */
+    int *maxlevel, /* The maximum level (in C numbering)            */
+    int *level, /* Which level of coefficients you require      */
+    int *index, /* The index number of the packet           */
+    int *type,  /* The type of coefficients S,H,V or D (TYPES etc.) */
+    double *in, /* A square matrix of dimension sl          */
+    int *sl    /* Dimension of out square matrix           */
+)
+{
+register int i,j;
+int x,y;    /* The coordinates into am              */
+
+
+x=y=0;
+ixtoco(level, maxlevel, index, &x, &y);
+
+tpose(in, *sl);
+
+switch(*type)   {
+    case TYPES:
+        break;
+
+    case TYPEH:
+        y += *sl;
+        break;
+
+    case TYPEV:
+        x += *sl;
+        break;
+
+    case TYPED:
+        x += *sl;
+        y += *sl;
+        break;
+    };
+
+
+for(i=0; i<*sl; ++i)
+  for(j=0; j<*sl; ++j)
+    ACCESS3D(am, *D1, *D12, *level, x+i, y+j) = ACCESS(in, *sl, i, j);
+
+}
+
+/*
+ * The following code was first written in C++ by Markus Monnerjahn, Universitat
+ * Kaiserslautern. The code was rewritten in C (and a few errors corrected)
+ * by Piotr Fryzlewicz, Wroclaw University whilst he was visiting University of
+ * Bristol in 1998-9. The code is designed to integrate with S-Plus
+ */
+
+/* The following was in Fryzlewicz's ``Filters.h'' */
+
+
+
+Filter GetFilt(int);
+
+double Sum(double* vect, int length);
+
+/* The following was in Fryzlewicz's ``WavInt.h'' */
+
+#define NORMAL 0
+#define INVERSE 1
+
+#define NO_PRECOND 0
+#define PRECOND 1
+
+void Precondition(int Scale, int Direction, Filter F, double* Vect);
+
+void TransStep(int Scale, Filter F, double* Vect);
+
+void InvTransStep(int Scale, Filter F, double* Vect);
+
+void Transform(int MinScale, int Direction, int FilterNumber, double* Vect, int 
+Size, int Precond,
+int* FilterHistory);
+
+/* The following was in Fryzlewicz's ``Coef.h'' */
+
+
+
 /* The following is in Fryzlewicz's ``WavInt.c'' */
 
 void Precondition(int Scale, int Direction, Filter F, double* Vect) {
@@ -9024,11 +8887,8 @@ double Sum(double* vect, int length) {
  */
 
 
-double *CreateArray3D(nr, nc, ns, error)
-int nr;
-int nc;
-int ns;
-int *error;
+double *
+CreateArray3D (int nr, int nc, int ns, int *error)
 {
 double *array;
 
@@ -9056,9 +8916,8 @@ else
  *
  */
 
-void DestroyArray3D(array, error)
-double *array;
-int *error;
+void 
+DestroyArray3D (double *array, int *error)
 {
 
 
@@ -9079,14 +8938,15 @@ else
  */
 
 
-void wd3Dstep(Carray, truesize, size, H, LengthH, error)
-double *Carray; /* Input 3D array. All dimensions are size      */
-int *truesize;  /* The true dimensions of the Carray            */
-int *size;  /* Number of rows, columns and sides (power of 2)   */
-        /* For this invocation of the routine only      */
-double *H;  /* Wavelet filter coefficients              */
-int *LengthH;   /* Number of wavelet filter coefficients        */
-int *error; /* Error code.  0=O.k.                  */
+void 
+wd3Dstep (
+    double *Carray, /* Input 3D array. All dimensions are size      */
+    int *truesize,  /* The true dimensions of the Carray            */
+    int *size,  /* Number of rows, columns and sides (power of 2)   */
+    double *H,  /* Wavelet filter coefficients              */
+    int *LengthH,   /* Number of wavelet filter coefficients        */
+    int *error /* Error code.  0=O.k.                  */
+)
         /* Memory errors 3003 to 3017               */
 {
 register int r,c,s; /* Counters for rows, cols and sides        */
@@ -9102,9 +8962,7 @@ int halfsize;
 
 double *c_in, *c_out, *d_out;
 
-double *CreateArray3D();    /* Creates a 3D array           */
-void convolveC();       /* Convolve with wavelet smoother   */
-void convolveD();       /* Convolve with wavelet detailer   */
+
 
 
 
@@ -9633,15 +9491,17 @@ free((void *)d_out);
 }
 
 
-void wd3D(Carray, size, H, LengthH, error)
-double *Carray;     /* Input and output coefficients        */
-int *size;      /* Dimension of this array          */
-double *H;      /* The wavelet coefficients         */
-int *LengthH;       /* Number of wavelet coefficients       */
-int *error;     /* Error code 0=o.k.                */
+void 
+wd3D (
+    double *Carray,     /* Input and output coefficients        */
+    int *size,      /* Dimension of this array          */
+    double *H,      /* The wavelet coefficients         */
+    int *LengthH,       /* Number of wavelet coefficients       */
+    int *error     /* Error code 0=o.k.                */
+)
 {
 int insize;
-void wd3Dstep();
+
 
 *error = 0;
 
@@ -9667,19 +9527,21 @@ while(insize >= 2)  {
  * Reconstruct 3D wavelet object in Carray
  */
 
-void wr3D(Carray, truesize, H, LengthH, error)
-double *Carray; /* Contains array of wavelet coefficients       */
-int *truesize;  /* Dimension of 3D array Carray             */
-double *H;  /* The wavelet filter coefficients          */
-int *LengthH;   /* Number of wavelet filter coefficients        */
-int *error; /* Error code   (0=o.k.)                */
+void 
+wr3D (
+    double *Carray, /* Contains array of wavelet coefficients       */
+    int *truesize,  /* Dimension of 3D array Carray             */
+    double *H,  /* The wavelet filter coefficients          */
+    int *LengthH,   /* Number of wavelet filter coefficients        */
+    int *error /* Error code   (0=o.k.)                */
+)
         /* Memory errors from wr3Dstep              */
         /* 3035l the dimension of Carray is 1, therefore cannot */
         /*  do any further reconstruction           */
 {
 int sizeout;
 
-void wr3Dstep();
+
 
 *error = 0;
 
@@ -9710,16 +9572,18 @@ while(sizeout <= *truesize) {
  * wr3Dstep:    Perform 3D wavelet reconstruction step
  */
 
-void wr3Dstep(Carray, truesize, sizeout, H, LengthH, error) 
-double *Carray; /* Array of wavelet coefficients and previous Cs to replace */
-int *truesize;  /* True size of Carray                          */  
-int *sizeout;   /* Size of answer array                     */
-double *H;  /* The wavelet coefficients                 */
-int *LengthH;   /* Number of wavelet coefficients               */
-int *error; /* Error code. 0=o.k.
+void 
+wr3Dstep (
+    double *Carray, /* Array of wavelet coefficients and previous Cs to replace */
+    int *truesize,  /* True size of Carray                          */
+    int *sizeout,   /* Size of answer array                     */
+    double *H,  /* The wavelet coefficients                 */
+    int *LengthH,   /* Number of wavelet coefficients               */
+    int *error /* Error code. 0=o.k.
          * Memory errors 3018 to 3034
          *
          */
+)
 {
 register int r,c,s;
 double *Ha,*Ga; /* Will be storage for third application of filters */
@@ -9731,7 +9595,7 @@ double *c_in, *d_in, *c_out;
 int halfsize;
 int type,bc;
 
-void conbar();
+
 
 *error = 0;
 type = WAVELET;
@@ -10190,12 +10054,8 @@ free((void *)d_in);
 
 
 
-void getARRel(Carray, size, level,
-    GHH, HGH, GGH, HHG, GHG, HGG, GGG)
-double *Carray;
-int *size;
-int *level;
-double *GHH,*HGH,*GGH,*HHG,*GHG,*HGG,*GGG; 
+void 
+getARRel (double *Carray, int *size, int *level, double *GHH, double *HGH, double *GGH, double *HHG, double *GHG, double *HGG, double *GGG) 
 {
 register int r,c,s;
 int halfsize;
@@ -10264,12 +10124,8 @@ for(r=0; r < (int)halfsize; ++r)
 #define IX_HGG  6
 #define IX_GGG  7
 
-void putarr(Carray, truesize, level, Iarrayix, Iarray)
-double *Carray;
-int *truesize;
-int *level;
-int *Iarrayix;
-double *Iarray;
+void 
+putarr (double *Carray, int *truesize, int *level, int *Iarrayix, double *Iarray)
 {
 register int r,c,s;
 int halfsize;
@@ -10401,32 +10257,32 @@ switch(*Iarrayix)   {
 /*TRD November 1994              */
 /*last updated May 1995          */
 
-void multiwd(C, lengthc, D, lengthd, nlevels,nphi,npsi,ndecim,H, G, NH, lowerc, upperc, offsetc, 
-   lowerd, upperd, offsetd,nbc)
-double *C;        /*C coefficients matrix */
-int *lengthc;    /*number of coefficients in C */
-double *D;        /*D coefficients matrix */
-int  *lengthd;   /*number of coefficients in D */
-int  *nlevels;   /*number of levels in decomposition */
-int  *nphi;      /*number of scaling functions */
-int  *npsi;      /*number of wavelet functions*/
-int  *ndecim;    /*amount of decimation at each level*/
-double  *H;         /*Band pass filter*/
-double  *G;         /*High pass filter*/
-int  *NH;        /*number of coeff matrices in the filter */
-int  *lowerc;    /*for each level the lowest C coefficient */
-int  *upperc;    /*for each level the highest C coefficient */
-int  *offsetc;   /*amount to offset to access each level  */
-int  *upperd;    /*for each level the lowest C coefficient */
-int  *lowerd;    /*for each level the highest C coefficient */
-int  *offsetd;   /*amount to offset to access each level  */
-int  *nbc;        /* boundary conds 1=period 2=symm. */
+void 
+multiwd (
+    double *C,        /*C coefficients matrix */
+    int *lengthc,    /*number of coefficients in C */
+    double *D,        /*D coefficients matrix */
+    int *lengthd,   /*number of coefficients in D */
+    int *nlevels,   /*number of levels in decomposition */
+    int *nphi,      /*number of scaling functions */
+    int *npsi,      /*number of wavelet functions*/
+    int *ndecim,    /*amount of decimation at each level*/
+    double *H,         /*Band pass filter*/
+    double *G,         /*High pass filter*/
+    int *NH,        /*number of coeff matrices in the filter */
+    int *lowerc,    /*for each level the lowest C coefficient */
+    int *upperc,    /*for each level the highest C coefficient */
+    int *offsetc,   /*amount to offset to access each level  */
+    int *lowerd,    /*for each level the highest C coefficient */
+    int *upperd,    /*for each level the lowest C coefficient */
+    int *offsetd,   /*amount to offset to access each level  */
+    int *nbc        /* boundary conds 1=period 2=symm. */
+)
 {
   int level,prevlvl,prevoffsetc,index,base,k,l,m,n;
- void TRDerror();
 
-int trd_reflect();      /* MAN: added missing function declaration  */
-int trd_module();       /* ...  see L10209,102010 */
+
+
 
  for(level=*nlevels-1;level >=0;level--)
   {
@@ -10478,32 +10334,32 @@ int trd_module();       /* ...  see L10209,102010 */
 /*By T Downie November 1994 */
 /*updated Jan 95            */
 
-void multiwr(C, lengthc, D, lengthd, nlevels, nphi, npsi, ndecim, H, G, NH, lowerc, upperc, offsetc, 
-   lowerd, upperd, offsetd,nbc,startlevel)
-double *C; /*C coefficients an .x2 matrix */
-int *lengthc;  /*number of coefficients in C */
-double *D; /*D coefficients an .x2 matrix */
-int  *lengthd; /*number of coefficients in D */
-int  *nlevels; /*number of levels in decomposition */
-int  *nphi;    /*number of scaling functions */
-int  *npsi;    /*number of wavelet functions */
-int  *ndecim;  /*decimation/scaling factor */
-double  *H;     /*the H filter coefficients */
-double  *G;     /*the G filter coefficients */
-int  *NH;      /*number of filter matrices */
-int  *lowerc;  /*for each level the lowest C coefficient */
-int  *upperc;  /*for each level the highest C coefficient */
-int  *offsetc; /*amount to offset to access each level  */
-int  *upperd;  /*for each level the lowest D coefficient */
-int  *lowerd;  /*for each level the highest D coefficient */
-int  *offsetd; /*amount to offset to access each level  */
-int  *nbc;     /*choice of boundary conditions */
-int  *startlevel; /*level at which to start the wavelet reconstrauction*/
+void 
+multiwr (
+    double *C, /*C coefficients an .x2 matrix */
+    int *lengthc,  /*number of coefficients in C */
+    double *D, /*D coefficients an .x2 matrix */
+    int *lengthd, /*number of coefficients in D */
+    int *nlevels, /*number of levels in decomposition */
+    int *nphi,    /*number of scaling functions */
+    int *npsi,    /*number of wavelet functions */
+    int *ndecim,  /*decimation/scaling factor */
+    double *H,     /*the H filter coefficients */
+    double *G,     /*the G filter coefficients */
+    int *NH,      /*number of filter matrices */
+    int *lowerc,  /*for each level the lowest C coefficient */
+    int *upperc,  /*for each level the highest C coefficient */
+    int *offsetc, /*amount to offset to access each level  */
+    int *lowerd,  /*for each level the highest D coefficient */
+    int *upperd,  /*for each level the lowest D coefficient */
+    int *offsetd, /*amount to offset to access each level  */
+    int *nbc,     /*choice of boundary conditions */
+    int *startlevel /*level at which to start the wavelet reconstrauction*/
+)
 {
  int level,offslvlc,offslvld,index,base,newck,newcl,oldck,oldcl,olddl,lim;
 
-int trd_module();       /* MAN : added */
-int trd_reflect();      /* ... */
+
 
   for(level=*startlevel; level<*nlevels; level++){     /*level=level of convolution*/
     offslvlc=*(offsetc+level); /*ammount to offset C for this level */
@@ -10547,11 +10403,10 @@ int trd_reflect();      /* ... */
   }
 }
 
-int trd_reflect(a,b)
-int a;
-int b;
+int 
+trd_reflect (int a, int b)
 {
-int trd_module();   /* MAN : added */
+
 
   if(b <= 0) return (-1);
   else {
@@ -10563,8 +10418,8 @@ int trd_module();   /* MAN : added */
 }
 
 
-int trd_module(a, b)
-int a,b;
+int 
+trd_module (int a, int b)
 {
  /* roubust modulus function */
  /* returns a (mod b) for b >0 and any integer a */
@@ -10594,8 +10449,8 @@ int a,b;
  *
  */
 
-int IsPowerOfTwo(n)
-int n;
+int 
+IsPowerOfTwo (int n)
 {
 int cnt = 0;
 
@@ -10614,8 +10469,8 @@ else
     return(cnt);
 }
 
-void TRDerror(s)
-char *s;
+void 
+TRDerror (char *s)
 {
 /* MAN 01/03/12. Remove stderr write x 2
 fRprintf(stderr, "Module TRDerror in WaveThresh\n");
@@ -10642,26 +10497,27 @@ Rprintf("%s", s);
  * COMWST:  Complex-valued packet-ordered non-decimated transform
  */
 
-void comwst(CaR, CaI, DataR, DataI, LengthData, levels,
-    HR, HI, GR, GI, LengthH, error)
-double *CaR;        /* Will contain bottom most Cs (real)          */
-double *CaI;        /* Will contain bottom most Cs (imaginary)     */
-double *DataR;      /* This is a 2D array. Zeroeth level contains data */
-double *DataI;      /* This is a 2D array. Zeroeth level contains data */
-int *LengthData;    /* Length of Data, this is power of 2              */
-int *levels;        /* The number of levels, 2^(*levels)=LengthData    */
-double *HR;     /* Smoothing filter (real)             */
-double *HI;     /* Smoothing filter (imag)             */
-double *GR;     /* Detail filter (real)                */
-double *GI;     /* Detail filter (imag)    */
-int *LengthH;       /* Length of filter                */
-int *error;     /* Error code, if non-zero then it's a mem error   */
+void 
+comwst (
+    double *CaR,        /* Will contain bottom most Cs (real)          */
+    double *CaI,        /* Will contain bottom most Cs (imaginary)     */
+    double *DataR,      /* This is a 2D array. Zeroeth level contains data */
+    double *DataI,      /* This is a 2D array. Zeroeth level contains data */
+    int *LengthData,    /* Length of Data, this is power of 2              */
+    int *levels,        /* The number of levels, 2^(*levels)=LengthData    */
+    double *HR,     /* Smoothing filter (real)             */
+    double *HI,     /* Smoothing filter (imag)             */
+    double *GR,     /* Detail filter (real)                */
+    double *GI,     /* Detail filter (imag)    */
+    int *LengthH,       /* Length of filter                */
+    int *error     /* Error code, if non-zero then it's a mem error   */
+)
 {
 int startin, outstart1, outstart2;
 register int i;
 double *bookR, *bookI;  /* Bookkeeping vectors, one for R and I        */
 
-void comwvpkstr();
+
 
 *error = 0;
 
@@ -10715,37 +10571,33 @@ else    {
 }
 
 
-void comwvpkstr(CaR, CaI, DataR, DataI, startin, lengthin,
-    outstart1, outstart2,
-    level,
-    HR, HI, GR, GI, LengthH, LengthData, bookR, bookI, error)
-double *CaR;
-double *CaI;
-double *DataR;
-double *DataI;
-int startin;
-int lengthin;
-int outstart1;
-int outstart2;
-int level;  /* The level where we're at         */
-double *HR;
-double *HI;
-double *GR;
-double *GI;
-int LengthH;
-int *LengthData;
-double *bookR;
-double *bookI;
-int *error;
+void 
+comwvpkstr (
+    double *CaR,
+    double *CaI,
+    double *DataR,
+    double *DataI,
+    int startin,
+    int lengthin,
+    int outstart1,
+    int outstart2,
+    int level,  /* The level where we're at         */
+    double *HR,
+    double *HI,
+    double *GR,
+    double *GI,
+    int LengthH,
+    int *LengthData,
+    double *bookR,
+    double *bookI,
+    int *error
+)
 {
 register int i;
 int lengthout;
 double *book1R, *book1I, *book2R, *book2I;
 
-void comconC();
-void comconD();
-void comrotater();
-void comwvpkstr();
+
 
 /*
 Rprintf("wvpkstr entry\n");
@@ -10874,10 +10726,8 @@ free((void *)book2I);
  * COMROTATER: complex version of rotater
  */
 
-void comrotater(bookR, bookI, length)
-double *bookR;
-double *bookI;
-int length;
+void 
+comrotater (double *bookR, double *bookI, int length)
 {
 register int i;
 double tmpR,tmpI;
@@ -10894,34 +10744,30 @@ for(i=0; i<length-1; ++i)   {
 *(bookI+length-1) = tmpI;
 }
 
-struct complex  {
-    double *realval;
-    double *imagval;
-    };
 
 
-
-void comAB_WRAP(wstR, wstI, wstCR, wstCI,
-    LengthData, level,
-    HR, HI, GR, GI, LengthH,
-    answerR, answerI, error)
-double *wstR;       /* Wavelet coefficients - real          */
-double *wstI;       /* Wavelet coefficients - imag          */
-double *wstCR;      /* Father coeffs - real             */  
-double *wstCI;      /* Father coeffs - imag             */
-int *LengthData;
-int *level;
-double *HR, *HI;    /* Smoothing filter, real and imag      */
-double *GR, *GI;    /* Detail filter, real and imag         */
-int *LengthH;
-double *answerR, *answerI;  /* Real and imag of answer      */
-int *error;
+void 
+comAB_WRAP (
+    double *wstR,       /* Wavelet coefficients - real          */
+    double *wstI,       /* Wavelet coefficients - imag          */
+    double *wstCR,      /* Father coeffs - real             */
+    double *wstCI,      /* Father coeffs - imag             */
+    int *LengthData,
+    int *level,
+    double *HR,
+    double *HI,    /* Smoothing filter, real and imag      */
+    double *GR,
+    double *GI,    /* Detail filter, real and imag         */
+    int *LengthH,
+    double *answerR,
+    double *answerI,  /* Real and imag of answer      */
+    int *error
+)
 {
 register int i;
 int nlevels;
 struct complex *acopy;
-struct complex *comAB();
-void destroycomplex();
+
 
 nlevels = 2 + (int)*level;
 
@@ -10936,8 +10782,8 @@ for(i=0; i< (int)*LengthData; ++i)  {
 destroycomplex(acopy);
 }
 
-void destroycomplex(a)
-struct complex *a;
+void 
+destroycomplex (struct complex *a)
 {
 free((void *)a->realval);
 free((void *)a->imagval);
@@ -10955,21 +10801,23 @@ free((void *)a);
  */
 
 
-struct complex *comAB(wstR, wstI, wstCR, wstCI,
-    nlevels, level, ix1, ix2,
-    HR, HI, GR, GI, LengthH, error)
-double *wstR;   /* Wavelet coefficients, non-dec, real          */  
-double *wstI;   /* Wavelet coefficients, non-dec, imag          */  
-double *wstCR;  /* Father wav. coeffs, non-dec, real            */
-double *wstCI;  /* Father wav. coeffs, non-dec, imag            */
-int nlevels; /* The original length of the data         */
-int level;  /* The level to reconstruct             */
-int ix1;    /* The "left" packet index              */
-int ix2;    /* The "right" packet index             */
-double *HR,*HI; /* Smoothing filter                 */
-double *GR,*GI; /* Detail filter                    */
-int LengthH;    /* The length of the filter             */
-int *error; /* Error code                       */
+struct complex *
+comAB (
+    double *wstR,   /* Wavelet coefficients, non-dec, real          */
+    double *wstI,   /* Wavelet coefficients, non-dec, imag          */
+    double *wstCR,  /* Father wav. coeffs, non-dec, real            */
+    double *wstCI,  /* Father wav. coeffs, non-dec, imag            */
+    int nlevels, /* The original length of the data         */
+    int level,  /* The level to reconstruct             */
+    int ix1,    /* The "left" packet index              */
+    int ix2,    /* The "right" packet index             */
+    double *HR,
+    double *HI, /* Smoothing filter                 */
+    double *GR,
+    double *GI, /* Detail filter                    */
+    int LengthH,    /* The length of the filter             */
+    int *error /* Error code                       */
+)
 {
 register int i;
 double *clR, *clI;
@@ -10981,11 +10829,7 @@ double *genDR, *genDI;  /* Generic Cs for when we need real and imag */
 int LengthC;
 int LengthCin;
 
-void comcbr();
-double *getpacket();
-struct complex *comAB();
-void rotateback();
-void destroycomplex();
+
 
 *error = 0;
 
